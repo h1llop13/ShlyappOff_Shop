@@ -118,7 +118,7 @@ public class AdminController {
         productToUpdate.setPrice(product.getPrice());
         productToUpdate.setNicotineStrength(product.getNicotineStrength());
         productToUpdate.setVolume(product.getVolume());
-        productToUpdate.setActive(product.getActive());
+        productToUpdate.setActive(true);
 
         // Обновляем категорию и бренд
         Optional<Category> category = categoryService.findById(categoryId);

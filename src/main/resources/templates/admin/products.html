@@ -48,7 +48,6 @@
             <th>Название</th>
             <th>Вкусы</th>
             <th>Цена</th>
-            <th>Активен</th>
             <th>Действия</th>
         </tr>
         </thead>
@@ -62,10 +61,6 @@
                 </a>
             </td>
             <td th:text="${product.price} + ' ₽'">0 ₽</td>
-            <td>
-                <span th:if="${product.active}" class="badge bg-success">Да</span>
-                <span th:if="${!product.active}" class="badge bg-danger">Нет</span>
-            </td>
             <td>
                 <a th:href="@{/admin/product/edit/{id}(id=${product.id})}" class="btn btn-sm btn-outline-light">Редактировать</a>
                 <form th:action="@{/admin/product/delete/{id}(id=${product.id})}" method="post" style="display: inline;">

@@ -94,14 +94,6 @@
             </div>
         </div>
 
-        <div class="mb-3 form-check">
-            <!-- Скрытое поле, чтобы отправлялось 'false', если галочка снята -->
-            <input type="hidden" name="active" value="false">
-            <input type="checkbox" class="form-check-input" id="active" name="active" value="true"
-                   th:checked="${product.active == null || product.active}">
-            <label class="form-check-label" for="active">Товар активен (виден на сайте)</label>
-        </div>
-
         <div class="d-flex gap-2">
             <button type="submit" class="btn btn-warning" th:text="${product.id != null ? 'Сохранить изменения' : 'Добавить товар'}">Сохранить</button>
             <a href="/admin" class="btn btn-outline-light">Отмена</a>
