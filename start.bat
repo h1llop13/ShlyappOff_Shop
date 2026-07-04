@@ -1,7 +1,7 @@
 @echo off
-echo ==========================================
-echo   Запуск ShlyapOff (Docker + PostgreSQL)
-echo ==========================================
+echo 
+echo 
+echo 
 
 :: Проверяем, есть ли файл .env
 if not exist ".env" (
