@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org"> <!-- Обязательно указываем xmlns:th! -->
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShlyapOff - Главная</title>
+    <!-- Подключаем Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-dark text-white"> <!-- Темная тема, как в ТЗ -->
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-black sticky-top">
+    <div class="container">
+        <a class="navbar-brand fw-bold" href="/">ShlyapOff</a>
+        <div class="collapse navbar-collapse">
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item"><a class="nav-link" href="/">Главная</a></li>
+                <li class="nav-item"><a class="nav-link" href="/admin">Админ</a></li>
+                <li class="nav-item"><a class="nav-link" href="/catalog">Каталог</a></li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/cart">
+                        🛒 Корзина
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<div class="container mt-5">
+    <div class="p-5 mb-4 bg-secondary rounded-3 text-center">
+        <h1 class="display-4 fw-bold">Добро пожаловать в ShlyapOff!</h1>
+        <p class="lead">Лучший выбор вейп-продукции.</p>
+        <a href="/catalog" class="btn btn-outline-light btn-lg">Перейти в каталог</a>
+    </div>
+
+    <h2 class="mb-4">Новинки</h2>
+
+    <!-- Проверяем, есть ли товары в списке -->
+    <div th:if="${#lists.isEmpty(products)}" class="alert alert-warning">
+        Товаров пока нет. Загляните позже!
+    </div>
+
+    <!-- Если товары есть, выводим их карточками -->
+    <div class="row row-cols-1 row-cols-md-3 g-4">
+        <!-- Цикл th:each проходит по списку products. Каждую запись кладем в переменную 'product' -->
+        <div class="col" th:each="product : ${products}">
+            <div class="card bg-black text-white h-100">
+                <!-- Если у товара есть картинка, показываем её. Если нет - заглушку -->
+                <img th:if="${product.imageUrl != null}" th:src="${product.imageUrl}" class="card-img-top" alt="Фото">
+                <img th:if="${product.imageUrl == null}" src="https://via.placeholder.com/300x200?text=No+Image" class="card-img-top" alt="Нет фото">
+
+                <div class="card-body">
+                    <h5 class="card-title" th:text="${product.name}">Название товара</h5>
+                    <p class="card-text text-white-50" th:text="${product.description}">Описание...</p>
+                </div>
+                <div class="card-footer bg-black border-0 d-flex justify-content-between align-items-center mt-auto">
+                    <span class="h5 mb-0 text-warning" th:text="${product.price} + ' ₽'">0 ₽</span>
+                    <a th:href="@{/product/{id}(id=${product.id})}" class="btn btn-outline-light">Подробнее</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

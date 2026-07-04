@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Админка - Бренды</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-dark text-white">
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-black sticky-top">
+    <div class="container">
+        <a class="navbar-brand fw-bold" href="/admin">Админка ShlyapOff</a>
+        <div class="collapse navbar-collapse">
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item"><a class="nav-link" href="/admin">Товары</a></li>
+                <li class="nav-item"><a class="nav-link" href="/admin/categories">Категории</a></li>
+                <li class="nav-item"><a class="nav-link active" href="/admin/brands">Бренды</a></li>
+                <li class="nav-item"><a class="nav-link" href="/">На сайт</a></li>
+                <li class="nav-item">
+                    <form th:action="@{/logout}" method="post" class="d-inline">
+                        <button type="submit" class="nav-link btn btn-link text-white-50 text-decoration-none p-0 border-0">Выйти</button>
+                    </form>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<div class="container mt-5">
+    <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show">
+        <span th:text="${successMessage}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Управление брендами</h1>
+        <a href="/admin/brand/create" class="btn btn-warning">Добавить бренд</a>
+    </div>
+
+    <table class="table table-dark table-striped">
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>Название</th>
+            <th>Действия</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="brand : ${brands}">
+            <td th:text="${brand.id}">1</td>
+            <td th:text="${brand.name}">Бренд</td>
+            <td>
+                <a th:href="@{/admin/brand/edit/{id}(id=${brand.id})}" class="btn btn-sm btn-outline-light">Редактировать</a>
+                <form th:action="@{/admin/brand/delete/{id}(id=${brand.id})}" method="post" style="display: inline;">
+                    <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Удалить бренд?')">Удалить</button>
+                </form>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

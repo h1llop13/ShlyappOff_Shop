@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Форма бренда</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-dark text-white">
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-black sticky-top">
+    <div class="container">
+        <a class="navbar-brand fw-bold" href="/admin">Админка ShlyapOff</a>
+    </div>
+</nav>
+
+<div class="container mt-5">
+    <h1 th:text="${brand.id != null ? 'Редактировать бренд' : 'Добавить бренд'}">Форма</h1>
+
+    <form th:action="${brand.id != null ? '/admin/brand/edit/' + brand.id : '/admin/brand/create'}" method="post">
+        <div class="mb-3">
+            <label for="name" class="form-label">Название бренда</label>
+            <input type="text" class="form-control bg-dark text-white" id="name" name="name"
+                   th:value="${brand.name}" required>
+        </div>
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-warning">Сохранить</button>
+            <a href="/admin/brands" class="btn btn-outline-light">Отмена</a>
+        </div>
+    </form>
+</div>
+
+</body>
+</html>

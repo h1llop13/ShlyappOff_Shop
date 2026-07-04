@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  # Сервис 1: База данных PostgreSQL
+  db:
+    image: postgres:16-alpine
+    container_name: shlyapoff_db
+    environment:
+      POSTGRES_DB: shlyapoff_db
+      POSTGRES_USER: shlyapoff_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shlyapoff_user -d shlyapoff_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Сервис 2: Наше приложение
+  app:
+    build: .
+    container_name: shlyapoff_app
+    ports:
+      - "8080:8080"
+    environment:
+      # Передаем настройки подключения к БД (они перезапишут значения из application.yml)
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/shlyapoff_db
+      SPRING_DATASOURCE_USERNAME: shlyapoff_user
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      # Папка для картинок внутри контейнера
+      UPLOAD_DIR: /app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      # Пробрасываем папку uploads, чтобы картинки не пропадали при пересоздании контейнера
+      - ./uploads:/app/uploads
+
+volumes:
+  pgdata:
