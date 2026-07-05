@@ -3,7 +3,6 @@ spring:
     name: ShlyapOff
 
   datasource:
-    # Читаем URL из переменной окружения SPRING_DATASOURCE_URL. Если её нет — используем локальный адрес
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/shlyapoff_db}
     username: ${SPRING_DATASOURCE_USERNAME:postgres}
     password: ${SPRING_DATASOURCE_PASSWORD}
@@ -14,10 +13,9 @@ spring:
       ddl-auto: validate
     properties:
       hibernate:
-        # dialect: org.hibernate.dialect.PostgreSQLDialect <-- УДАЛЯЕМ эту строку (Hibernate сам всё понял)
         format_sql: true
     show-sql: false
-    open-in-view: false # <-- ДОБАВЛЯЕМ. Это лучшая практика, отключает ленивую загрузку БД во время рендеринга HTML
+    open-in-view: false
 
   thymeleaf:
     cache: false
@@ -27,14 +25,15 @@ spring:
       max-file-size: 5MB
       max-request-size: 10MB
 
+  threads:
+    virtual:
+      enabled: true
 
 app:
   upload:
-    # папка с картинками
     dir: ${UPLOAD_DIR:./uploads}
 
-    telegram:
-      bot-token: ${TELEGRAM_BOT_TOKEN}
-      admin-chat-id: 1409371857 # Замени на свой реальный ID в Telegram (можно узнать у @userinfobot)
-
-spring.threads.virtual.enabled: true
+# ВАЖНО: секция telegram на КОРНЕВОМ уровне (без отступов слева)!
+telegram:
+  bot-token: ${TELEGRAM_BOT_TOKEN}
+  admin-chat-id: ${TELEGRAM_ADMIN_CHAT_ID}

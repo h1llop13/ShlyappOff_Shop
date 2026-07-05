@@ -18,6 +18,7 @@ public class OrderService {
 
     private final OrderRepository orderRepository;
     private final CartService cartService;
+    private final TelegramNotificationService telegramNotificationService;
 
     @Transactional
     public Order createOrderFromCart(String sessionId, String customerName, String phone,
@@ -60,6 +61,8 @@ public class OrderService {
 
         // Очищаем корзину
         cartService.clearCart(sessionId);
+
+        telegramNotificationService.notifyAdminAboutNewOrder(savedOrder);
 
         return savedOrder;
     }
