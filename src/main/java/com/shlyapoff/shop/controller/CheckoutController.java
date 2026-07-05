@@ -95,8 +95,8 @@ public class CheckoutController {
 
             // TODO: Здесь будет отправка уведомления в Telegram
 
-            redirectAttributes.addFlashAttribute("orderId", savedOrder.getId());
-            return "redirect:/success";
+            // Передаем ID заказа прямо в URL
+            return "redirect:/success?orderId=" + savedOrder.getId();
 
         } catch (IllegalStateException e) {
             redirectAttributes.addFlashAttribute("error", "Корзина пуста");

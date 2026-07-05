@@ -33,7 +33,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/", "/catalog", "/product/**", "/css/**", "/js/**", "/images/**", "/login", "/error").permitAll()
                         .requestMatchers("/cart/**").permitAll()
-                        .requestMatchers("/checkout", "/success").permitAll()
+                        .requestMatchers("/checkout", "/success").permitAll() // не дай бог сука опять на login перекинешь
                         .requestMatchers("/admin/**").hasAuthority("ROLE_ADMIN")
                         .anyRequest().authenticated()
                 )

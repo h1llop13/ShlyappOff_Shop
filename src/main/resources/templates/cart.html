@@ -195,9 +195,9 @@
         <span class="total-label">Итого</span>
         <span class="total-value" th:text="${total} + ' ₽'">0 ₽</span>
     </div>
-    <button class="checkout-btn" id="htmlCheckoutBtn" onclick="alert('Заказ принят! Мы свяжемся с вами.')">
+    <a href="/checkout" class="checkout-btn" id="htmlCheckoutBtn">
         Перейти к оформлению
-    </button>
+    </a>
 </div>
 
 <script>
@@ -206,23 +206,18 @@
         tg.expand();
         tg.ready();
 
-        // Проверяем, есть ли товары (через наличие элемента bottom-bar)
         const hasItems = document.getElementById('htmlBottomBar') !== null;
 
         if (hasItems) {
-            // Получаем сумму из HTML
             const totalText = document.querySelector('.total-value').innerText;
 
-            // Настраиваем нативную кнопку Telegram
+            // ИСПРАВЛЕНИЕ: Вместо alert() — переход на /checkout
             tg.MainButton.setText(`Оформить • ${totalText}`);
             tg.MainButton.show();
             tg.MainButton.onClick(() => {
-                // Здесь будет логика отправки заказа боту
-                alert('Заказ принят! Администратор свяжется с вами в Telegram.');
-                // В будущем: tg.close() или отправка формы
+                window.location.href = '/checkout';
             });
 
-            // Скрываем HTML-кнопку, так как есть нативная
             document.getElementById('htmlBottomBar').style.display = 'none';
         } else {
             tg.MainButton.hide();

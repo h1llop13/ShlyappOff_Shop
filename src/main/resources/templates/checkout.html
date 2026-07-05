@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Оформление заказа - ShlyapOff</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+    <style>
+        :root {
+            --bg: var(--tg-theme-bg-color, #ffffff);
+            --text: var(--tg-theme-text-color, #000000);
+            --hint: var(--tg-theme-hint-color, #888888);
+            --secondary-bg: var(--tg-theme-secondary-bg-color, #f5f5f5);
+            --btn-bg: var(--text);
+            --btn-text: var(--bg);
+            --border: color-mix(in srgb, var(--text) 10%, transparent);
+            --danger: #ff3b30;
+            --success: #34c759;
+            --radius: 16px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            padding-bottom: 120px;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* === HEADER === */
+        .header {
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            position: sticky;
+            top: 0;
+            background: var(--bg);
+            z-index: 100;
+            border-bottom: 1px solid var(--border);
+            backdrop-filter: blur(10px);
+        }
+        .back-btn {
+            font-size: 24px;
+            text-decoration: none;
+            color: var(--text);
+            padding: 8px;
+        }
+        .header h1 {
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        /* === CONTENT === */
+        .content {
+            padding: 20px 16px;
+        }
+
+        /* === ORDER SUMMARY === */
+        .section {
+            margin-bottom: 24px;
+        }
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+
+        .order-summary {
+            background: var(--secondary-bg);
+            border-radius: var(--radius);
+            padding: 16px;
+        }
+        .summary-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .summary-item:last-child {
+            border-bottom: none;
+        }
+        .item-name {
+            font-size: 14px;
+            color: var(--hint);
+        }
+        .item-details {
+            font-size: 14px;
+            font-weight: 500;
+            text-align: right;
+        }
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            padding-top: 12px;
+            margin-top: 12px;
+            border-top: 2px solid var(--border);
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        /* === FORM === */
+        .form-group {
+            margin-bottom: 16px;
+        }
+        .form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: var(--hint);
+        }
+        .form-input,
+        .form-select,
+        .form-textarea {
+            width: 100%;
+            padding: 14px 16px;
+            background: var(--secondary-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: var(--text);
+            font-size: 15px;
+            font-family: inherit;
+            transition: border-color 0.2s;
+        }
+        .form-input:focus,
+        .form-select:focus,
+        .form-textarea:focus {
+            outline: none;
+            border-color: var(--text);
+        }
+        .form-textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+        .form-error {
+            color: var(--danger);
+            font-size: 12px;
+            margin-top: 4px;
+        }
+
+        /* === RADIO GROUP === */
+        .radio-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .radio-option {
+            display: flex;
+            align-items: center;
+            padding: 14px 16px;
+            background: var(--secondary-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .radio-option:hover {
+            border-color: var(--text);
+        }
+        .radio-option input[type="radio"] {
+            margin-right: 12px;
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+        .radio-option.selected {
+            border-color: var(--text);
+            background: var(--btn-bg);
+            color: var(--btn-text);
+        }
+
+        /* === BOTTOM BAR === */
+        .bottom-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--bg);
+            border-top: 1px solid var(--border);
+            padding: 16px;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+        .submit-btn {
+            width: 100%;
+            padding: 16px;
+            background: var(--btn-bg);
+            color: var(--btn-text);
+            border: none;
+            border-radius: 14px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        .submit-btn:active {
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+<!-- HEADER -->
+<header class="header">
+    <a href="/cart" class="back-btn">←</a>
+    <h1>Оформление заказа</h1>
+</header>
+
+<!-- CONTENT -->
+<div class="content">
+    <!-- ORDER SUMMARY -->
+    <div class="section">
+        <h2 class="section-title">Ваш заказ</h2>
+        <div class="order-summary">
+            <div th:each="item : ${cart.items}" class="summary-item">
+                <span class="item-name" th:text="${item.product.name}">Товар</span>
+                <span class="item-details">
+                        <span th:text="${item.quantity}">1</span> ×
+                        <span th:text="${item.product.price}">0</span> ₽
+                    </span>
+            </div>
+            <div class="total-row">
+                <span>Итого</span>
+                <span th:text="${total} + ' ₽'">0 ₽</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- FORM -->
+    <form th:action="@{/checkout}" method="post" th:object="${orderDto}" id="checkoutForm">
+        <!-- CUSTOMER NAME -->
+        <div class="section">
+            <h2 class="section-title">Контактные данные</h2>
+            <div class="form-group">
+                <label class="form-label">Ваше имя *</label>
+                <input type="text" class="form-input" th:field="*{customerName}"
+                       th:classappend="${#fields.hasErrors('customerName')} ? 'error'"
+                       placeholder="Иван Иванов" required>
+                <div th:if="${#fields.hasErrors('customerName')}" class="form-error">
+                    <span th:errors="*{customerName}">Ошибка</span>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Телефон</label>
+                <input type="tel" class="form-input" th:field="*{phone}"
+                       th:classappend="${#fields.hasErrors('phone')} ? 'error'"
+                       placeholder="+7 (999) 123-45-67">
+                <div th:if="${#fields.hasErrors('phone')}" class="form-error">
+                    <span th:errors="*{phone}">Ошибка</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- DELIVERY TYPE -->
+        <div class="section">
+            <h2 class="section-title">Способ получения *</h2>
+            <div class="radio-group">
+                <label class="radio-option">
+                    <input type="radio" th:field="*{deliveryType}" value="Самовывоз" required>
+                    <span>Самовывоз</span>
+                </label>
+                <label class="radio-option">
+                    <input type="radio" th:field="*{deliveryType}" value="Доставка">
+                    <span>Доставка</span>
+                </label>
+            </div>
+            <div th:if="${#fields.hasErrors('deliveryType')}" class="form-error">
+                <span th:errors="*{deliveryType}">Ошибка</span>
+            </div>
+        </div>
+
+        <!-- COMMENT -->
+        <div class="section">
+            <h2 class="section-title">Комментарий</h2>
+            <div class="form-group">
+                    <textarea class="form-textarea" th:field="*{comment}"
+                              th:classappend="${#fields.hasErrors('comment')} ? 'error'"
+                              placeholder="Дополнительные пожелания..."></textarea>
+                <div th:if="${#fields.hasErrors('comment')}" class="form-error">
+                    <span th:errors="*{comment}">Ошибка</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Hidden field for Telegram user ID -->
+        <input type="hidden" name="telegramUserId" id="telegramUserId">
+
+        <!-- BOTTOM BAR (HTML Fallback) -->
+        <div class="bottom-bar" id="htmlBottomBar">
+            <button type="submit" class="submit-btn">Подтвердить заказ</button>
+        </div>
+    </form>
+</div>
+
+<script>
+    // === TELEGRAM WEBAPP ===
+    if (window.Telegram && window.Telegram.WebApp) {
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        tg.ready();
+
+        // Автозаполнение имени из Telegram
+        if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+            const user = tg.initDataUnsafe.user;
+            if (user.first_name) {
+                const nameInput = document.querySelector('[name="customerName"]');
+                if (nameInput && !nameInput.value) {
+                    nameInput.value = user.first_name + (user.last_name ? ' ' + user.last_name : '');
+                }
+
+                // Сохраняем Telegram ID
+                const tgIdInput = document.getElementById('telegramUserId');
+                if (tgIdInput && user.id) {
+                    tgIdInput.value = user.id;
+                }
+            }
+        }
+
+        // Нативная кнопка Telegram
+        const totalText = document.querySelector('.total-row span:last-child').innerText;
+        tg.MainButton.setText(`Подтвердить • ${totalText}`);
+        tg.MainButton.show();
+        tg.MainButton.onClick(() => {
+            document.getElementById('checkoutForm').submit();
+        });
+
+        // Скрываем HTML-кнопку
+        document.getElementById('htmlBottomBar').style.display = 'none';
+    }
+
+    // Подсветка выбранной радио-кнопки
+    document.querySelectorAll('.radio-option input[type="radio"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            document.querySelectorAll('.radio-option').forEach(opt => opt.classList.remove('selected'));
+            if (this.checked) {
+                this.closest('.radio-option').classList.add('selected');
+            }
+        });
+
+        // Инициализация для уже выбранных
+        if (radio.checked) {
+            radio.closest('.radio-option').classList.add('selected');
+        }
+    });
+</script>
+</body>
+</html>
