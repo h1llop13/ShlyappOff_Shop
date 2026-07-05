@@ -2,80 +2,175 @@
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title th:text="${product.name} + ' - ShlyapOff'">Товар</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body class="bg-dark text-white">
 
-<nav class="navbar navbar-expand-lg navbar-dark bg-black sticky-top">
-    <div class="container">
-        <a class="navbar-brand fw-bold" href="/">ShlyapOff</a>
-        <div class="collapse navbar-collapse">
-            <ul class="navbar-nav ms-auto">
-                <li class="nav-item"><a class="nav-link" href="/">Главная</a></li>
-                <li class="nav-item"><a class="nav-link" href="/admin">Админ</a></li>
-                <li class="nav-item"><a class="nav-link" href="/catalog">Каталог</a></li>
-                <li class="nav-item">
-                    <a class="nav-link" href="/cart">
-                        🛒 Корзина
-                    </a>
-                </li>
-            </ul>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+    <style>
+        :root {
+            --bg: var(--tg-theme-bg-color, #000000);
+            --text: var(--tg-theme-text-color, #ffffff);
+            --hint: var(--tg-theme-hint-color, #888888);
+            --secondary-bg: var(--tg-theme-secondary-bg-color, #1a1a1a);
+
+            --btn-bg: var(--text);
+            --btn-text: var(--bg);
+
+            --border: color-mix(in srgb, var(--text) 15%, transparent);
+            --radius: 16px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            padding-bottom: 100px;
+        }
+
+        .app-header {
+            position: sticky; top: 0; z-index: 100; display: flex; align-items: center;
+            padding: 16px; background: var(--bg); border-bottom: 1px solid var(--border);
+            backdrop-filter: blur(10px);
+        }
+        .back-btn { font-size: 24px; text-decoration: none; color: var(--text); margin-right: 16px; padding: 8px; }
+        .header-title { font-size: 18px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        .product-image-container {
+            width: 100%; background: var(--secondary-bg); display: flex;
+            justify-content: center; align-items: center; max-height: 400px; overflow: hidden;
+        }
+        .product-image { width: 100%; height: 100%; object-fit: cover; }
+
+        .product-content { padding: 20px 16px; }
+        .price-tag { font-size: 28px; font-weight: 800; color: var(--text); margin-bottom: 8px; }
+        .product-name { font-size: 22px; font-weight: 700; margin-bottom: 12px; line-height: 1.3; }
+        .product-desc { font-size: 15px; color: var(--hint); line-height: 1.5; margin-bottom: 24px; }
+
+        .section-title { font-size: 16px; font-weight: 600; margin-bottom: 12px; color: var(--text); }
+
+        .specs-list {
+            background: var(--secondary-bg); border-radius: var(--radius);
+            padding: 4px 16px; margin-bottom: 24px;
+        }
+        .spec-item {
+            display: flex; justify-content: space-between; padding: 12px 0;
+            border-bottom: 1px solid var(--border); font-size: 14px;
+        }
+        .spec-item:last-child { border-bottom: none; }
+        .spec-label { color: var(--hint); }
+        .spec-value { font-weight: 500; text-align: right; }
+
+        .variants-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; }
+        .variant-chip {
+            padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: 500;
+            border: 1px solid var(--border); background: transparent; color: var(--text);
+            display: flex; align-items: center; gap: 6px;
+        }
+        .variant-chip.in-stock { border-color: var(--text); color: var(--text); }
+        .variant-chip.out-of-stock { color: var(--hint); text-decoration: line-through; opacity: 0.6; }
+
+        .bottom-bar {
+            position: fixed; bottom: 0; left: 0; right: 0; padding: 16px;
+            background: var(--bg); border-top: 1px solid var(--border);
+            backdrop-filter: blur(20px); z-index: 1000;
+        }
+        .add-to-cart-btn {
+            width: 100%; padding: 16px; background: var(--btn-bg); color: var(--btn-text);
+            border: none; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="app-header">
+    <a href="javascript:history.back()" class="back-btn">←</a>
+    <h1 class="header-title" th:text="${product.name}">Товар</h1>
+</header>
+
+<!-- IMAGE -->
+<div class="product-image-container">
+    <img th:if="${product.imageUrl != null}" th:src="${product.imageUrl}" class="product-image" alt="Фото">
+    <img th:if="${product.imageUrl == null}" src="https://via.placeholder.com/600x400?text=No+Image" class="product-image" alt="Нет фото">
+</div>
+
+<!-- CONTENT -->
+<div class="product-content">
+    <div class="price-tag" th:text="${product.price} + ' ₽'">0 ₽</div>
+    <h2 class="product-name" th:text="${product.name}">Название товара</h2>
+    <p class="product-desc" th:text="${product.description}">Описание товара...</p>
+
+    <!-- VARIANTS (FLAVORS) -->
+    <div th:if="${variants != null && !variants.isEmpty()}">
+        <h3 class="section-title">Вкусы и варианты</h3>
+        <div class="variants-grid">
+            <div th:each="variant : ${variants}"
+                 th:class="${variant.inStock} ? 'variant-chip in-stock' : 'variant-chip out-of-stock'">
+                <span th:text="${variant.flavorName}">Вкус</span>
+                <span th:if="${!variant.inStock}">✕</span>
+            </div>
         </div>
     </div>
-</nav>
 
-<div class="container mt-5">
-    <div class="row">
-        <!-- Левая колонка: Картинка -->
-        <div class="col-md-6">
-            <img th:if="${product.imageUrl != null}" th:src="${product.imageUrl}" class="img-fluid rounded" alt="Фото">
-            <img th:if="${product.imageUrl == null}" src="https://via.placeholder.com/600x400?text=No+Image" class="img-fluid rounded" alt="Нет фото">
+    <!-- SPECS -->
+    <h3 class="section-title">Характеристики</h3>
+    <div class="specs-list">
+        <div class="spec-item">
+            <span class="spec-label">Крепость</span>
+            <span class="spec-value" th:text="${product.nicotineStrength ?: 'Не указана'}">-</span>
         </div>
-
-        <!-- Правая колонка: Информация -->
-        <div class="col-md-6">
-            <h1 class="mb-3" th:text="${product.name}">Название товара</h1>
-            <p class="text-white-50 mb-4" th:text="${product.description}">Описание товара...</p>
-
-            <div class="mb-3">
-                <span class="h3 text-warning" th:text="${product.price} + ' ₽'">0 ₽</span>
-            </div>
-
-            <!-- Блок с вкусами/вариантами -->
-            <div th:if="${!product.variants.isEmpty()}" class="mb-4">
-                <h5>Вкусы:</h5>
-                <div class="row">
-                    <div th:each="variant : ${product.variants}" class="col-md-6 mb-2">
-                        <div class="d-flex align-items-center p-2 bg-black rounded">
-                            <span th:if="${variant.inStock}" class="text-success me-2">✓</span>
-                            <span th:if="${!variant.inStock}" class="text-danger me-2">✗</span>
-                            <span th:text="${variant.flavorName}"
-                                  th:classappend="${variant.inStock} ? 'text-white' : 'text-decoration-line-through text-white-50'">
-                    Вкус
-                </span>
-                            <span th:if="${!variant.inStock}" class="ms-2 badge bg-secondary">Нет в наличии</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="mb-4">
-                <p><strong>Крепость:</strong> <span th:text="${product.nicotineStrength}">Не указана</span></p>
-                <p><strong>Объем:</strong> <span th:text="${product.volume}">Не указан</span></p>
-                <p><strong>Категория:</strong> <span th:text="${product.category != null ? product.category.name : 'Без категории'}">-</span></p>
-                <p><strong>Бренд:</strong> <span th:text="${product.brand != null ? product.brand.name : 'Неизвестен'}">-</span></p>
-            </div>
-
-            <form th:action="@{/cart/add}" method="post" class="d-inline">
-                <input type="hidden" name="productId" th:value="${product.id}">
-                <button type="submit" class="btn btn-warning btn-lg">В корзину</button>
-            </form>
-            <a href="/catalog" class="btn btn-outline-light btn-lg ms-2">Назад в каталог</a>
+        <div class="spec-item">
+            <span class="spec-label">Объем</span>
+            <span class="spec-value" th:text="${product.volume ?: 'Не указан'}">-</span>
+        </div>
+        <div class="spec-item">
+            <span class="spec-label">Категория</span>
+            <span class="spec-value" th:text="${product.category != null ? product.category.name : 'Без категории'}">-</span>
+        </div>
+        <div class="spec-item">
+            <span class="spec-label">Бренд</span>
+            <span class="spec-value" th:text="${product.brand != null ? product.brand.name : 'Неизвестен'}">-</span>
         </div>
     </div>
 </div>
 
+<!-- BOTTOM BAR (HTML Fallback) -->
+<div class="bottom-bar" id="htmlBottomBar">
+    <form th:action="@{/cart/add}" method="post" id="addToCartForm" style="width: 100%;">
+        <input type="hidden" name="productId" th:value="${product.id}">
+        <button type="submit" class="add-to-cart-btn">Добавить в корзину</button>
+    </form>
+</div>
+
+<script>
+    // === TELEGRAM WEBAPP MAGIC ===
+    if (window.Telegram && window.Telegram.WebApp) {
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        tg.ready();
+
+        // 1. Нативная кнопка "Назад" в шапке Telegram
+        tg.BackButton.show();
+        tg.BackButton.onClick(() => {
+            window.history.back();
+        });
+
+        // 2. Нативная нижняя кнопка "В корзину" (MainButton)
+        // Она выглядит намного круче и нативнее, чем HTML-кнопка
+        if (tg.MainButton) {
+            tg.MainButton.setText('Добавить в корзину');
+            tg.MainButton.show();
+            tg.MainButton.onClick(() => {
+                document.getElementById('addToCartForm').submit();
+            });
+
+            // Скрываем нашу HTML-кнопку, так как есть нативная
+            document.getElementById('htmlBottomBar').style.display = 'none';
+        }
+    }
+</script>
 </body>
 </html>

@@ -2,114 +2,208 @@
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ShlyapOff - Каталог</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Каталог - ShlyapOff</title>
+
+    <!-- Telegram WebApp SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+    <style>
+        :root {
+            /* Базовые цвета Telegram (сами меняются при смене темы) */
+            --bg: var(--tg-theme-bg-color, #000000);
+            --text: var(--tg-theme-text-color, #ffffff);
+            --hint: var(--tg-theme-hint-color, #888888);
+            --secondary-bg: var(--tg-theme-secondary-bg-color, #1a1a1a);
+
+            /* МАГИЯ ЧБ: Кнопки инвертируют цвета фона и текста */
+            --btn-bg: var(--text);
+            --btn-text: var(--bg);
+
+            /* Границы и карточки (полупрозрачный текст) */
+            --border: color-mix(in srgb, var(--text) 15%, transparent);
+            --card-bg: color-mix(in srgb, var(--text) 5%, transparent);
+
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            --radius: 16px;
+            --transition: all 0.3s ease;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            padding-bottom: 80px;
+        }
+
+        .header { padding: 20px 16px; position: sticky; top: 0; background: var(--bg); z-index: 100; border-bottom: 1px solid var(--border); }
+        .header h1 { font-size: 28px; font-weight: 700; margin-bottom: 16px; }
+
+        .filters { display: flex; flex-direction: column; gap: 12px; }
+        .search-box { position: relative; }
+        .search-box input {
+            width: 100%; padding: 12px 16px 12px 44px;
+            background: var(--secondary-bg); border: 1px solid var(--border);
+            border-radius: var(--radius); color: var(--text); font-size: 15px;
+        }
+        .search-box input:focus { outline: none; border-color: var(--text); }
+        .search-box::before { content: "🔍"; position: absolute; left: 16px; top: 50%; transform: translateY(-50%); opacity: 0.5; }
+
+        .filter-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; }
+        .filter-select {
+            padding: 10px 12px; background: var(--secondary-bg); border: 1px solid var(--border);
+            border-radius: 12px; color: var(--text); font-size: 14px;
+        }
+        .btn-search {
+            padding: 10px 20px; background: var(--btn-bg); color: var(--btn-text);
+            border: none; border-radius: 12px; font-weight: 600; cursor: pointer;
+        }
+
+        .products-container { padding: 20px 16px; }
+        .products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+
+        .product-card {
+            background: var(--card-bg); border: 1px solid var(--border);
+            border-radius: var(--radius); overflow: hidden; transition: var(--transition);
+        }
+        .product-card:hover { transform: translateY(-4px); box-shadow: var(--shadow); border-color: var(--text); }
+
+        .product-image { width: 100%; height: 200px; object-fit: cover; background: var(--secondary-bg); }
+        .product-content { padding: 16px; }
+        .product-title { font-size: 16px; font-weight: 600; margin-bottom: 8px; line-height: 1.3; }
+        .product-description { font-size: 13px; color: var(--hint); margin-bottom: 12px; line-height: 1.4; }
+
+        .product-footer { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+        .product-price { font-size: 20px; font-weight: 700; color: var(--text); }
+
+        .btn-details {
+            padding: 8px 14px; background: transparent; border: 1px solid var(--border);
+            border-radius: 10px; color: var(--text); font-size: 13px; text-decoration: none;
+        }
+        .btn-cart {
+            padding: 8px 14px; background: var(--btn-bg); border: none;
+            border-radius: 10px; color: var(--btn-text); font-size: 13px; font-weight: 600; cursor: pointer;
+        }
+
+        .empty-state { text-align: center; padding: 60px 20px; color: var(--hint); }
+        .empty-state-icon { font-size: 64px; margin-bottom: 16px; opacity: 0.5; }
+
+        .pagination { display: flex; justify-content: center; align-items: center; gap: 8px; margin-top: 32px; }
+        .page-btn {
+            padding: 10px 16px; background: var(--secondary-bg); border: 1px solid var(--border);
+            border-radius: 10px; color: var(--text); font-size: 14px; text-decoration: none;
+        }
+        .page-btn.active { background: var(--btn-bg); color: var(--btn-text); border-color: var(--btn-bg); }
+
+        .bottom-nav {
+            position: fixed; bottom: 0; left: 0; right: 0; background: var(--bg);
+            border-top: 1px solid var(--border); display: flex; justify-content: space-around;
+            padding: 12px 0; z-index: 1000;
+        }
+        .nav-item { display: flex; flex-direction: column; align-items: center; gap: 4px; text-decoration: none; color: var(--hint); }
+        .nav-item.active { color: var(--text); font-weight: 600; }
+        .nav-icon { font-size: 24px; }
+        .nav-label { font-size: 11px; font-weight: 500; }
+
+        @media (max-width: 640px) {
+            .products-grid { grid-template-columns: 1fr; }
+            .filter-row { grid-template-columns: 1fr; }
+        }
+    </style>
 </head>
-<body class="bg-dark text-white">
-
-<nav class="navbar navbar-expand-lg navbar-dark bg-black sticky-top">
-    <div class="container">
-        <a class="navbar-brand fw-bold" href="/">ShlyapOff</a>
-        <div class="collapse navbar-collapse">
-            <ul class="navbar-nav ms-auto">
-                <li class="nav-item"><a class="nav-link" href="/">Главная</a></li>
-                <li class="nav-item"><a class="nav-link" href="/admin">Админ</a></li>
-                <li class="nav-item"><a class="nav-link active" href="/catalog">Каталог</a></li>
-                <li class="nav-item">
-                    <a class="nav-link" href="/cart">
-                        🛒 Корзина
-                    </a>
-                </li>
-            </ul>
+<body>
+<div class="header">
+    <h1>Каталог</h1>
+    <form th:action="@{/catalog}" method="get" class="filters">
+        <div class="search-box">
+            <input type="text" name="search" placeholder="Поиск товаров..." th:value="${search}">
         </div>
-    </div>
-</nav>
-
-<div class="container mt-5">
-    <h1 class="mb-4">Каталог товаров</h1>
-
-    <!-- ФОРМА ПОИСКА И ФИЛЬТРАЦИИ -->
-    <form method="get" action="/catalog" class="mb-4 p-3 bg-black rounded">
-        <div class="row g-3">
-            <div class="col-md-4">
-                <input type="text" name="search" class="form-control bg-dark text-white border-secondary"
-                       placeholder="Поиск по названию..." th:value="${search}">
-            </div>
-            <div class="col-md-3">
-                <select name="categoryId" class="form-select bg-dark text-white border-secondary">
-                    <option value="">Все категории</option>
-                    <option th:each="cat : ${categories}" th:value="${cat.id}" th:text="${cat.name}"
-                            th:selected="${cat.id == categoryId}"></option>
-                </select>
-            </div>
-            <div class="col-md-3">
-                <select name="brandId" class="form-select bg-dark text-white border-secondary">
-                    <option value="">Все бренды</option>
-                    <option th:each="br : ${brands}" th:value="${br.id}" th:text="${br.name}"
-                            th:selected="${br.id == brandId}"></option>
-                </select>
-            </div>
-            <div class="col-md-2">
-                <button type="submit" class="btn btn-warning w-100">Найти</button>
-            </div>
+        <div class="filter-row">
+            <select name="categoryId" class="filter-select">
+                <option value="">Все категории</option>
+                <option th:each="cat : ${categories}" th:value="${cat.id}" th:text="${cat.name}"
+                        th:selected="${cat.id == categoryId}"></option>
+            </select>
+            <select name="brandId" class="filter-select">
+                <option value="">Все бренды</option>
+                <option th:each="br : ${brands}" th:value="${br.id}" th:text="${br.name}"
+                        th:selected="${br.id == brandId}"></option>
+            </select>
+            <button type="submit" class="btn-search">Найти</button>
         </div>
     </form>
+</div>
 
-    <!-- СПИСОК ТОВАРОВ -->
-    <div th:if="${#lists.isEmpty(products)}" class="alert alert-warning">
-        По вашему запросу ничего не найдено.
+<div class="products-container">
+    <div th:if="${#lists.isEmpty(products)}" class="empty-state">
+        <div class="empty-state-icon">🔍</div>
+        <h3>Ничего не найдено</h3>
     </div>
 
-    <div class="row row-cols-1 row-cols-md-4 g-4"> <!-- Изменили на 4 колонки, чтобы 12 товаров смотрелись лучше -->
-        <div class="col" th:each="product : ${products}">
-            <div class="card bg-black text-white h-100">
-                <img th:if="${product.imageUrl != null}" th:src="${product.imageUrl}" class="card-img-top" alt="Фото">
-                <img th:if="${product.imageUrl == null}" src="https://via.placeholder.com/300x200?text=No+Image" class="card-img-top" alt="Нет фото">
-                <div class="card-body">
-                    <h5 class="card-title" th:text="${product.name}">Название</h5>
-                    <p class="card-text text-white-50" th:text="${product.description}">Описание</p>
-                </div>
-                <div class="card-footer bg-black border-0 d-flex justify-content-between align-items-center mt-auto">
-                    <span class="h5 mb-0 text-warning" th:text="${product.price} + ' ₽'">0 ₽</span>
-                    <div class="d-flex gap-2">
-                    <a th:href="@{/product/{id}(id=${product.id})}" class="btn btn-outline-light">Подробнее</a>
+    <div th:if="${!#lists.isEmpty(products)}" class="products-grid">
+        <div class="product-card" th:each="product : ${products}">
+            <img th:if="${product.imageUrl != null}" th:src="${product.imageUrl}" class="product-image" alt="Фото">
+            <img th:if="${product.imageUrl == null}" src="https://via.placeholder.com/300x200?text=No+Image" class="product-image" alt="Нет фото">
 
-                    <!--кнопка добавления в корзину -->
-                    <form th:action="@{/cart/add}" method="post">
-                        <input type="hidden" name="productId" th:value="${product.id}">
-                        <button type="submit" class="btn btn-warning btn-sm">В корзину</button>
-                    </form>
-                </div>
+            <div class="product-content">
+                <h3 class="product-title" th:text="${product.name}">Название</h3>
+                <p class="product-description" th:text="${product.description}">Описание...</p>
+
+                <div class="product-footer">
+                    <span class="product-price" th:text="${product.price} + ' ₽'">0 ₽</span>
+                    <div style="display: flex; gap: 8px;">
+                        <a th:href="@{/product/{id}(id=${product.id})}" class="btn-details">Подробнее</a>
+                        <form th:action="@{/cart/add}" method="post">
+                            <input type="hidden" name="productId" th:value="${product.id}">
+                            <button type="submit" class="btn-cart">В корзину</button>
+                        </form>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- БЛОК ПАГИНАЦИИ -->
-    <nav th:if="${totalPages > 1}" class="mt-5">
-        <ul class="pagination justify-content-center">
-            <!-- Кнопка Назад -->
-            <li class="page-item" th:classappend="${currentPage == 0} ? 'disabled'">
-                <a class="page-link bg-dark text-white border-secondary"
-                   th:href="@{/catalog(page=${currentPage - 1}, search=${search}, categoryId=${categoryId}, brandId=${brandId})}">Назад</a>
-            </li>
+    <div th:if="${totalPages > 1}" class="pagination">
+        <a th:if="${currentPage > 0}"
+           th:href="@{/catalog(page=${currentPage - 1}, search=${search}, categoryId=${categoryId}, brandId=${brandId})}"
+           class="page-btn">← Назад</a>
 
-            <!-- Номера страниц -->
-            <li class="page-item" th:each="i : ${#numbers.sequence(0, totalPages - 1)}" th:classappend="${i == currentPage} ? 'active'">
-                <a class="page-link bg-dark text-white border-secondary"
-                   th:href="@{/catalog(page=${i}, search=${search}, categoryId=${categoryId}, brandId=${brandId})}"
-                   th:text="${i + 1}">1</a>
-            </li>
+        <span th:each="i : ${#numbers.sequence(0, totalPages - 1)}">
+                <a th:href="@{/catalog(page=${i}, search=${search}, categoryId=${categoryId}, brandId=${brandId})}"
+                   th:text="${i + 1}"
+                   th:class="${i == currentPage} ? 'page-btn active' : 'page-btn'">1</a>
+            </span>
 
-            <!-- Кнопка Вперед -->
-            <li class="page-item" th:classappend="${currentPage == totalPages - 1} ? 'disabled'">
-                <a class="page-link bg-dark text-white border-secondary"
-                   th:href="@{/catalog(page=${currentPage + 1}, search=${search}, categoryId=${categoryId}, brandId=${brandId})}">Вперед</a>
-            </li>
-        </ul>
-    </nav>
+        <a th:if="${currentPage < totalPages - 1}"
+           th:href="@{/catalog(page=${currentPage + 1}, search=${search}, categoryId=${categoryId}, brandId=${brandId})}"
+           class="page-btn">Вперёд →</a>
+    </div>
 </div>
 
+<nav class="bottom-nav">
+    <a href="/" class="nav-item">
+        <span class="nav-icon">🏠</span>
+        <span class="nav-label">Главная</span>
+    </a>
+    <a href="/catalog" class="nav-item active">
+        <span class="nav-icon">📦</span>
+        <span class="nav-label">Каталог</span>
+    </a>
+    <a href="/cart" class="nav-item">
+        <span class="nav-icon">🛒</span>
+        <span class="nav-label">Корзина</span>
+    </a>
+</nav>
+
+<script>
+    // БЕЗОПАСНАЯ инициализация (не падает в обычном браузере)
+    if (window.Telegram && window.Telegram.WebApp) {
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        tg.ready();
+    }
+</script>
 </body>
 </html>

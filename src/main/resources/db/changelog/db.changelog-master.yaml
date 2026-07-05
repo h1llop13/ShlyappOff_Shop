@@ -3,3 +3,7 @@ databaseChangeLog:
       file: db/changelog/changes/001-create-tables.sql
   - include:
       file: db/changelog/changes/002-create-carts-and-variants.sql
+  - include:
+      file: db/changelog/changes/003-create-orders.sql
+  - include:
+      file: db/changelog/changes/004-add-indexes.sql

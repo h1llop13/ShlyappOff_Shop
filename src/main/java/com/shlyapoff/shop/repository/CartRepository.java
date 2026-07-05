@@ -15,6 +15,13 @@ public interface CartRepository extends JpaRepository<Cart, Long> {
     Optional<Cart> findBySessionId(String sessionId);
 
     // НОВЫЙ метод: сразу загружает корзину с товарами и продуктами
-    @Query("SELECT c FROM Cart c LEFT JOIN FETCH c.items i LEFT JOIN FETCH i.product WHERE c.sessionId = :sessionId")
+    @Query("""
+    SELECT DISTINCT c FROM Cart c
+    LEFT JOIN FETCH c.items i
+    LEFT JOIN FETCH i.product p
+    LEFT JOIN FETCH p.category
+    LEFT JOIN FETCH p.brand
+    WHERE c.sessionId = :sessionId
+""")
     Optional<Cart> findBySessionIdWithItems(@Param("sessionId") String sessionId);
 }

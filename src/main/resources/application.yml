@@ -33,4 +33,8 @@ app:
     # папка с картинками
     dir: ${UPLOAD_DIR:./uploads}
 
+    telegram:
+      bot-token: ${TELEGRAM_BOT_TOKEN}
+      admin-chat-id: 1409371857 # Замени на свой реальный ID в Telegram (можно узнать у @userinfobot)
+
 spring.threads.virtual.enabled: true

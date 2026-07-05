@@ -9,6 +9,7 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler; // <-- ВАЖНЫЙ ИМПОРТ
 
 @Configuration
 @EnableWebSecurity
@@ -24,18 +25,16 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        // ИСПРАВЛЕНИЕ: Отключаем "отложенную" генерацию CSRF-токена
+        CsrfTokenRequestAttributeHandler requestHandler = new CsrfTokenRequestAttributeHandler();
+        requestHandler.setCsrfRequestAttributeName(null);
+
         http
                 .authorizeHttpRequests(auth -> auth
-                        // 1. Публичные страницы (доступны всем)
                         .requestMatchers("/", "/catalog", "/product/**", "/css/**", "/js/**", "/images/**", "/login", "/error").permitAll()
-
-                        // 2. ИСПРАВЛЕНИЕ: Разрешаем гостям работать с корзиной (добавлять/удалять товары)
                         .requestMatchers("/cart/**").permitAll()
-
-                        // 3. Админка доступна ТОЛЬКО админу
+                        .requestMatchers("/checkout", "/success").permitAll()
                         .requestMatchers("/admin/**").hasAuthority("ROLE_ADMIN")
-
-                        // 4. Всё остальное требует входа
                         .anyRequest().authenticated()
                 )
                 .formLogin(form -> form
@@ -47,7 +46,11 @@ public class SecurityConfig {
                         .logoutSuccessUrl("/")
                         .permitAll()
                 )
-                .userDetailsService(customUserDetailsService);
+                .userDetailsService(customUserDetailsService)
+                .csrf(csrf -> csrf
+                        .csrfTokenRequestHandler(requestHandler) // <-- ПРИМЕНЯЕМ НАШ ОБРАБОТЧИК
+                        .ignoringRequestMatchers("/api/**")
+                );
 
         return http.build();
     }
