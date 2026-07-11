@@ -1,0 +1,193 @@
+package com.shlyapoff.shop.service;
+
+import com.shlyapoff.shop.model.Cart;
+import com.shlyapoff.shop.model.CartItem;
+import com.shlyapoff.shop.model.Order;
+import com.shlyapoff.shop.model.Product;
+import com.shlyapoff.shop.repository.OrderRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.*;
+
+/**
+ * Юнит-тесты для OrderService.
+ * CartService и TelegramNotificationService замоканы — проверяем только логику OrderService.
+ */
+@ExtendWith(MockitoExtension.class)
+class OrderServiceTest {
+
+    @Mock
+    private OrderRepository orderRepository;
+
+    @Mock
+    private CartService cartService;
+
+    @Mock
+    private TelegramNotificationService telegramNotificationService;
+
+    @InjectMocks
+    private OrderService orderService;
+
+    private static final String SESSION_ID = "session-abc";
+
+    private Cart cartWithItems;
+
+    @BeforeEach
+    void setUp() {
+        Product product1 = new Product();
+        product1.setId(1L);
+        product1.setName("Товар 1");
+        product1.setPrice(new BigDecimal("100.00"));
+
+        Product product2 = new Product();
+        product2.setId(2L);
+        product2.setName("Товар 2");
+        product2.setPrice(new BigDecimal("250.50"));
+
+        CartItem item1 = new CartItem();
+        item1.setProduct(product1);
+        item1.setQuantity(2); // 200.00
+
+        CartItem item2 = new CartItem();
+        item2.setProduct(product2);
+        item2.setQuantity(1); // 250.50
+
+        cartWithItems = new Cart();
+        cartWithItems.setId(5L);
+        cartWithItems.setSessionId(SESSION_ID);
+        cartWithItems.getItems().add(item1);
+        cartWithItems.getItems().add(item2);
+    }
+
+    @Test
+    @DisplayName("создаёт заказ из корзины, верно считает сумму, очищает корзину и шлёт уведомление")
+    void createsOrderFromCartSuccessfully() {
+        when(cartService.getCartBySessionId(SESSION_ID)).thenReturn(Optional.of(cartWithItems));
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> {
+            Order order = invocation.getArgument(0);
+            order.setId(99L);
+            return order;
+        });
+
+        Order result = orderService.createOrderFromCart(
+                SESSION_ID, "Иван Иванов", "+79990001122", "DELIVERY", "Позвонить заранее", 12345L);
+
+        // Сумма = 100.00*2 + 250.50*1 = 450.50
+        assertThat(result.getTotalAmount()).isEqualByComparingTo("450.50");
+        assertThat(result.getCustomerName()).isEqualTo("Иван Иванов");
+        assertThat(result.getItems()).hasSize(2);
+        assertThat(result.getId()).isEqualTo(99L);
+
+        verify(cartService).clearCart(SESSION_ID);
+        verify(telegramNotificationService).notifyAdminAboutNewOrder(result);
+
+        ArgumentCaptor<Order> captor = ArgumentCaptor.forClass(Order.class);
+        verify(orderRepository).save(captor.capture());
+        assertThat(captor.getValue().getPhone()).isEqualTo("+79990001122");
+    }
+
+    @Test
+    @DisplayName("выбрасывает исключение и не сохраняет заказ, если корзина отсутствует")
+    void throwsWhenCartMissing() {
+        when(cartService.getCartBySessionId(SESSION_ID)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> orderService.createOrderFromCart(
+                SESSION_ID, "Иван", "+7000", "PICKUP", null, null))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Корзина пуста");
+
+        verify(orderRepository, never()).save(any());
+        verify(cartService, never()).clearCart(any());
+        verify(telegramNotificationService, never()).notifyAdminAboutNewOrder(any());
+    }
+
+    @Test
+    @DisplayName("выбрасывает исключение, если корзина есть, но пустая (без товаров)")
+    void throwsWhenCartHasNoItems() {
+        Cart emptyCart = new Cart();
+        emptyCart.setSessionId(SESSION_ID);
+
+        when(cartService.getCartBySessionId(SESSION_ID)).thenReturn(Optional.of(emptyCart));
+
+        assertThatThrownBy(() -> orderService.createOrderFromCart(
+                SESSION_ID, "Иван", "+7000", "PICKUP", null, null))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Корзина пуста");
+
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("обновляет статус существующего заказа")
+    void updatesOrderStatus() {
+        Order order = new Order();
+        order.setId(1L);
+        order.setStatus("NEW");
+
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+
+        orderService.updateStatus(1L, "COMPLETED");
+
+        assertThat(order.getStatus()).isEqualTo("COMPLETED");
+        verify(orderRepository).save(order);
+    }
+
+    @Test
+    @DisplayName("выбрасывает исключение при обновлении статуса несуществующего заказа")
+    void throwsWhenUpdatingStatusOfMissingOrder() {
+        when(orderRepository.findById(404L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> orderService.updateStatus(404L, "COMPLETED"))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Заказ не найден");
+
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("findAllOrders возвращает заказы, отсортированные по дате создания")
+    void findAllOrdersDelegatesToRepository() {
+        List<Order> orders = List.of(new Order(), new Order());
+        when(orderRepository.findAllByOrderByCreatedAtDesc()).thenReturn(orders);
+
+        List<Order> result = orderService.findAllOrders();
+
+        assertThat(result).isEqualTo(orders);
+    }
+
+    @Test
+    @DisplayName("getCartForCheckout возвращает пусто, если корзина пустая")
+    void getCartForCheckoutReturnsEmptyForEmptyCart() {
+        Cart emptyCart = new Cart();
+        when(cartService.getCartBySessionId(SESSION_ID)).thenReturn(Optional.of(emptyCart));
+
+        Optional<Cart> result = orderService.getCartForCheckout(SESSION_ID);
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    @DisplayName("getCartForCheckout возвращает корзину, если в ней есть товары")
+    void getCartForCheckoutReturnsCartWithItems() {
+        when(cartService.getCartBySessionId(SESSION_ID)).thenReturn(Optional.of(cartWithItems));
+
+        Optional<Cart> result = orderService.getCartForCheckout(SESSION_ID);
+
+        assertThat(result).isPresent().contains(cartWithItems);
+    }
+}
