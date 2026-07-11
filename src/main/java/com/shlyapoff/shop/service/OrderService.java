@@ -22,7 +22,8 @@ public class OrderService {
 
     @Transactional
     public Order createOrderFromCart(String sessionId, String customerName, String phone,
-                                     String deliveryType, String comment, Long telegramUserId) {
+                                     String deliveryType, String comment, Long telegramUserId,
+                                     String telegramUsername) {
         // Получаем корзину
         Optional<Cart> cartOpt = cartService.getCartBySessionId(sessionId);
         if (cartOpt.isEmpty() || cartOpt.get().getItems().isEmpty()) {
@@ -38,6 +39,7 @@ public class OrderService {
         order.setDeliveryType(deliveryType);
         order.setComment(comment);
         order.setTelegramUserId(telegramUserId);
+        order.setTelegramUsername(telegramUsername);
 
         // Рассчитываем общую сумму и добавляем товары
         BigDecimal total = BigDecimal.ZERO;

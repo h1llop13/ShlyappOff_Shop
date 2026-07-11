@@ -30,6 +30,15 @@ public class TelegramNotificationService {
         sb.append("🛍 <b>НОВЫЙ ЗАКАЗ #").append(order.getId()).append("</b>\n\n");
         sb.append("👤 <b>Клиент:</b> ").append(order.getCustomerName()).append("\n");
 
+        if (order.getTelegramUsername() != null && !order.getTelegramUsername().isBlank()) {
+            sb.append("💬 <b>Telegram:</b> <a href=\"https://t.me/")
+                    .append(order.getTelegramUsername()).append("\">@")
+                    .append(order.getTelegramUsername()).append("</a>\n");
+        } else if (order.getTelegramUserId() != null) {
+            // Username не задан у пользователя — оставляем chat id, чтобы можно было найти диалог
+            sb.append("💬 <b>Telegram ID:</b> <code>").append(order.getTelegramUserId()).append("</code> (username не указан)\n");
+        }
+
         if (order.getPhone() != null && !order.getPhone().isBlank()) {
             sb.append("📱 <b>Телефон:</b> ").append(order.getPhone()).append("\n");
         }

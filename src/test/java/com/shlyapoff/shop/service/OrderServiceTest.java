@@ -85,13 +85,16 @@ class OrderServiceTest {
         });
 
         Order result = orderService.createOrderFromCart(
-                SESSION_ID, "Иван Иванов", "+79990001122", "DELIVERY", "Позвонить заранее", 12345L);
+                SESSION_ID, "Иван Иванов", "+79990001122", "DELIVERY", "Позвонить заранее",
+                12345L, "ivan_the_customer");
 
         // Сумма = 100.00*2 + 250.50*1 = 450.50
         assertThat(result.getTotalAmount()).isEqualByComparingTo("450.50");
         assertThat(result.getCustomerName()).isEqualTo("Иван Иванов");
         assertThat(result.getItems()).hasSize(2);
         assertThat(result.getId()).isEqualTo(99L);
+        assertThat(result.getTelegramUsername()).isEqualTo("ivan_the_customer");
+        assertThat(result.getTelegramUserId()).isEqualTo(12345L);
 
         verify(cartService).clearCart(SESSION_ID);
         verify(telegramNotificationService).notifyAdminAboutNewOrder(result);
@@ -107,7 +110,7 @@ class OrderServiceTest {
         when(cartService.getCartBySessionId(SESSION_ID)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> orderService.createOrderFromCart(
-                SESSION_ID, "Иван", "+7000", "PICKUP", null, null))
+                SESSION_ID, "Иван", "+7000", "PICKUP", null, null, null))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("Корзина пуста");
 
@@ -125,7 +128,7 @@ class OrderServiceTest {
         when(cartService.getCartBySessionId(SESSION_ID)).thenReturn(Optional.of(emptyCart));
 
         assertThatThrownBy(() -> orderService.createOrderFromCart(
-                SESSION_ID, "Иван", "+7000", "PICKUP", null, null))
+                SESSION_ID, "Иван", "+7000", "PICKUP", null, null, null))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("Корзина пуста");
 

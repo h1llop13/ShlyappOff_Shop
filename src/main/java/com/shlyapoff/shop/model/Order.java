@@ -41,6 +41,9 @@ public class Order {
     @Column(name = "telegram_user_id")
     private Long telegramUserId;
 
+    @Column(name = "telegram_username")
+    private String telegramUsername;
+
     @CreatedDate
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

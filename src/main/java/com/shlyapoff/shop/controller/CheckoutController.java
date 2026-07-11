@@ -65,6 +65,7 @@ public class CheckoutController {
             BindingResult bindingResult,
             HttpServletRequest request,
             @RequestParam(required = false) Long telegramUserId,
+            @RequestParam(required = false) String telegramUsername,
             Model model,
             RedirectAttributes redirectAttributes) {
 
@@ -90,7 +91,8 @@ public class CheckoutController {
                     orderDto.getPhone(),
                     orderDto.getDeliveryType(),
                     orderDto.getComment(),
-                    telegramUserId
+                    telegramUserId,
+                    telegramUsername
             );
 
             // TODO: Здесь будет отправка уведомления в Telegram
