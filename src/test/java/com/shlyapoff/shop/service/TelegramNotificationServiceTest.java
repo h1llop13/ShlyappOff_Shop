@@ -3,6 +3,7 @@ package com.shlyapoff.shop.service;
 import com.shlyapoff.shop.bot.ShlyapOffBot;
 import com.shlyapoff.shop.model.Order;
 import com.shlyapoff.shop.model.OrderItem;
+import com.shlyapoff.shop.repository.AdminRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -12,14 +13,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.verify;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.*;
 
 /**
  * Юнит-тесты для TelegramNotificationService.
- * Проверяем, что администратору уходит корректно оформленное сообщение,
- * в частности — что username клиента (для связи) подставляется как надо.
  */
 @ExtendWith(MockitoExtension.class)
 class TelegramNotificationServiceTest {
@@ -27,11 +28,19 @@ class TelegramNotificationServiceTest {
     @Mock
     private ShlyapOffBot bot;
 
+    // 1. Добавляем мок для нового репозитория
+    @Mock
+    private AdminRepository adminRepository;
+
     private static final Long ADMIN_CHAT_ID = 999L;
 
     private TelegramNotificationService buildService() {
-        TelegramNotificationService service = new TelegramNotificationService(bot);
-        ReflectionTestUtils.setField(service, "adminChatId", ADMIN_CHAT_ID);
+        // 2. Передаем ОБА зависимости в конструктор
+        TelegramNotificationService service = new TelegramNotificationService(bot, adminRepository);
+
+        // ВАЖНО: Если ты в TelegramNotificationService оставил имя поля adminChatId,
+        // то напиши здесь "adminChatId" вместо "superAdminChatId"
+        ReflectionTestUtils.setField(service, "superAdminChatId", ADMIN_CHAT_ID);
         return service;
     }
 
@@ -59,11 +68,14 @@ class TelegramNotificationServiceTest {
         order.setTelegramUserId(12345L);
         order.setTelegramUsername("ivan_the_customer");
 
+        // 3. Заглушка: говорим, что других админов в базе нет, чтобы тест не сломался
+        when(adminRepository.findAll()).thenReturn(List.of());
+
         TelegramNotificationService service = buildService();
         service.notifyAdminAboutNewOrder(order);
 
         ArgumentCaptor<String> messageCaptor = ArgumentCaptor.forClass(String.class);
-        verify(bot).sendMessage(org.mockito.ArgumentMatchers.eq(ADMIN_CHAT_ID), messageCaptor.capture());
+        verify(bot).sendMessage(eq(ADMIN_CHAT_ID), messageCaptor.capture());
 
         String message = messageCaptor.getValue();
         assertThat(message).contains("https://t.me/ivan_the_customer");
@@ -71,17 +83,19 @@ class TelegramNotificationServiceTest {
     }
 
     @Test
-    @DisplayName("если username не задан у пользователя — показываем numeric Telegram ID как запасной вариант")
+    @DisplayName("если username не задан — показываем numeric Telegram ID")
     void fallsBackToTelegramIdWhenUsernameMissing() {
         Order order = buildOrder();
         order.setTelegramUserId(12345L);
         order.setTelegramUsername(null);
 
+        when(adminRepository.findAll()).thenReturn(List.of());
+
         TelegramNotificationService service = buildService();
         service.notifyAdminAboutNewOrder(order);
 
         ArgumentCaptor<String> messageCaptor = ArgumentCaptor.forClass(String.class);
-        verify(bot).sendMessage(org.mockito.ArgumentMatchers.eq(ADMIN_CHAT_ID), messageCaptor.capture());
+        verify(bot).sendMessage(eq(ADMIN_CHAT_ID), messageCaptor.capture());
 
         String message = messageCaptor.getValue();
         assertThat(message).contains("12345");
@@ -90,17 +104,19 @@ class TelegramNotificationServiceTest {
     }
 
     @Test
-    @DisplayName("если ни username, ни telegram id нет (заказ оформлен не из Mini App) — блок Telegram не показываем")
+    @DisplayName("если нет Telegram данных — блок Telegram не показываем")
     void omitsTelegramBlockWhenNoTelegramDataAtAll() {
         Order order = buildOrder();
         order.setTelegramUserId(null);
         order.setTelegramUsername(null);
 
+        when(adminRepository.findAll()).thenReturn(List.of());
+
         TelegramNotificationService service = buildService();
         service.notifyAdminAboutNewOrder(order);
 
         ArgumentCaptor<String> messageCaptor = ArgumentCaptor.forClass(String.class);
-        verify(bot).sendMessage(org.mockito.ArgumentMatchers.eq(ADMIN_CHAT_ID), messageCaptor.capture());
+        verify(bot).sendMessage(eq(ADMIN_CHAT_ID), messageCaptor.capture());
 
         assertThat(messageCaptor.getValue()).doesNotContain("Telegram");
     }
