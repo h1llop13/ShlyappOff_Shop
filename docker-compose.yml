@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # Сервис 1: База данных PostgreSQL
   db:
@@ -9,8 +7,6 @@ services:
       POSTGRES_DB: shlyapoff_db
       POSTGRES_USER: shlyapoff_user
       POSTGRES_PASSWORD: ${DB_PASSWORD}
-    ports:
-      - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -18,13 +14,14 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
 
   # Сервис 2: Наше приложение
   app:
     build: .
     container_name: shlyapoff_app
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     environment:
       # Передаем настройки подключения к БД
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/shlyapoff_db
@@ -32,14 +29,20 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
       # Папка для картинок внутри контейнера
       UPLOAD_DIR: /app/uploads
-      # 👇 НОВОЕ: Пробрасываем переменные Telegram
+      # Публичный домен приложения (нужен для ссылок и Telegram Mini App)
+      APP_BASE_URL: ${APP_BASE_URL}
+      # Переменные Telegram-бота
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       TELEGRAM_ADMIN_CHAT_ID: ${TELEGRAM_ADMIN_CHAT_ID}
+      # Логин/пароль первого админа (пароль опционален, см. .env.example)
+      APP_ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      APP_ADMIN_PASSWORD: ${ADMIN_PASSWORD}
     depends_on:
       db:
         condition: service_healthy
     volumes:
       - ./uploads:/app/uploads
+    restart: unless-stopped
 
 volumes:
   pgdata:

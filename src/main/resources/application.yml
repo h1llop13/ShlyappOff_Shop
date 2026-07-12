@@ -5,7 +5,7 @@ spring:
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/shlyapoff_db}
     username: ${SPRING_DATASOURCE_USERNAME:postgres}
-    password: ${SPRING_DATASOURCE_PASSWORD:Glasner@08}
+    password: ${SPRING_DATASOURCE_PASSWORD}
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -30,12 +30,14 @@ spring:
       enabled: true
 
 app:
-  base-url: https://requisite-grip-gizzard.ngrok-free.dev
+  base-url: ${APP_BASE_URL:http://localhost:8080}
   upload:
     dir: ${UPLOAD_DIR:./uploads}
+  admin:
+    username: ${APP_ADMIN_USERNAME:admin}
+    password: ${APP_ADMIN_PASSWORD:}
 
 # ВАЖНО: секция telegram на КОРНЕВОМ уровне (без отступов слева)!
 telegram:
   bot-token: ${TELEGRAM_BOT_TOKEN}
   admin-chat-id: ${TELEGRAM_ADMIN_CHAT_ID}
-
