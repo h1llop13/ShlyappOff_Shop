@@ -30,6 +30,7 @@ spring:
       enabled: true
 
 app:
+  base-url: https://requisite-grip-gizzard.ngrok-free.dev
   upload:
     dir: ${UPLOAD_DIR:./uploads}
 
@@ -37,3 +38,4 @@ app:
 telegram:
   bot-token: ${TELEGRAM_BOT_TOKEN}
   admin-chat-id: ${TELEGRAM_ADMIN_CHAT_ID}
+

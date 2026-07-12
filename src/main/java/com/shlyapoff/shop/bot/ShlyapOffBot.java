@@ -9,12 +9,15 @@ import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import lombok.RequiredArgsConstructor;
+import com.shlyapoff.shop.service.TelegramAuthService;
+import org.springframework.beans.factory.annotation.Value;
 
 @Component
 @RequiredArgsConstructor // Используем конструктор для внедрения зависимостей
 public class ShlyapOffBot extends TelegramLongPollingBot {
 
     private final AdminRepository adminRepository;
+    private final TelegramAuthService telegramAuthService;
 
     @Value("${telegram.bot-token}")
     private String botToken;
@@ -22,6 +25,9 @@ public class ShlyapOffBot extends TelegramLongPollingBot {
     // Твой основной ID админа из конфига (как "супер-админ")
     @Value("${telegram.admin-chat-id}")
     private Long superAdminChatId;
+
+    @Value("${app.base-url}")
+    private String baseUrl;
 
     @Override
     public String getBotUsername() {
@@ -43,11 +49,36 @@ public class ShlyapOffBot extends TelegramLongPollingBot {
                 sendMessage(chatId, "Привет! Я бот магазина ShlyapOff.");
             }
 
+            else if (messageText.equals("/admin_login")) {
+                handleAdminLogin(chatId);
+            }
+
             // Логика добавления админа
             else if (messageText.startsWith("/add_admin")) {
                 handleAddAdmin(chatId, messageText);
             }
         }
+    }
+
+    private void handleAdminLogin(long chatId) {
+        // Проверяем, есть ли у пользователя права (супер-админ или есть в БД)
+        boolean isAuthorized = chatId == superAdminChatId || adminRepository.existsByTelegramChatId(chatId);
+
+        if (!isAuthorized) {
+            sendMessage(chatId, "❌ У вас нет прав для входа в админку.");
+            return;
+        }
+
+        // Генерируем токен
+        String token = telegramAuthService.generateLoginToken(chatId);
+        String loginUrl = baseUrl + "/auth/telegram-login?token=" + token;
+
+        // Отправляем красивую HTML-ссылку
+        String text = "🔐 <b>Вход в админ-панель</b>\n\n" +
+                "Ссылка действительна 5 минут и сгорит после первого использования:\n" +
+                "<a href=\"" + loginUrl + "\">👉 Войти в админку</a>";
+
+        sendMessage(chatId, text);
     }
 
     // ... внутри класса ShlyapOffBot

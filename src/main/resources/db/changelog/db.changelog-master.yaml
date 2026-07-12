@@ -11,3 +11,5 @@ databaseChangeLog:
       file: db/changelog/changes/005-add-telegram-username.sql
   - include:
       file: db/changelog/changes/006-create-admins-table.sql
+  - include:
+      file: db/changelog/changes/007-create-telegram-tokens.sql
