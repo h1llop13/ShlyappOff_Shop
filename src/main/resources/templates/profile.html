@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Профиль - ShlyapOff</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+    <style>
+        :root {
+            --bg: var(--tg-theme-bg-color, #ffffff);
+            --text: var(--tg-theme-text-color, #000000);
+            --hint: var(--tg-theme-hint-color, #888888);
+            --secondary-bg: var(--tg-theme-secondary-bg-color, #f5f5f5);
+            --btn-bg: var(--text);
+            --btn-text: var(--bg);
+            --border: color-mix(in srgb, var(--text) 10%, transparent);
+            --success: #34c759;
+            --radius: 16px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            padding-bottom: 100px;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .header {
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            position: sticky;
+            top: 0;
+            background: var(--bg);
+            z-index: 100;
+            border-bottom: 1px solid var(--border);
+            backdrop-filter: blur(10px);
+        }
+        .back-btn { font-size: 24px; text-decoration: none; color: var(--text); padding: 8px; }
+        .header h1 { font-size: 20px; font-weight: 700; }
+
+        .content { padding: 20px 16px; }
+
+        .card {
+            background: var(--secondary-bg);
+            border-radius: var(--radius);
+            padding: 18px;
+            margin-bottom: 20px;
+        }
+
+        .loyalty-title { font-size: 14px; color: var(--hint); margin-bottom: 6px; }
+        .loyalty-discount { font-size: 32px; font-weight: 800; margin-bottom: 10px; }
+        .loyalty-discount .unit { font-size: 18px; font-weight: 600; color: var(--hint); }
+        .progress-track {
+            height: 8px;
+            background: var(--border);
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 10px 0 8px 0;
+        }
+        .progress-fill { height: 100%; background: var(--success); border-radius: 4px; transition: width .4s ease; }
+        .loyalty-hint { font-size: 13px; color: var(--hint); }
+
+        .section-title { font-size: 16px; font-weight: 600; margin: 24px 0 12px 0; }
+
+        .order-card {
+            background: var(--secondary-bg);
+            border-radius: var(--radius);
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+        .order-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .order-id { font-weight: 700; }
+        .order-status {
+            font-size: 12px;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 20px;
+            background: var(--border);
+        }
+        .order-date { font-size: 13px; color: var(--hint); margin-bottom: 10px; }
+        .order-items { font-size: 14px; color: var(--hint); margin-bottom: 10px; }
+        .order-items div { padding: 2px 0; }
+        .order-totals {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            border-top: 1px solid var(--border);
+            padding-top: 10px;
+        }
+        .order-total-final { font-size: 17px; font-weight: 700; }
+        .order-subtotal-strike { font-size: 13px; color: var(--hint); text-decoration: line-through; margin-right: 6px; }
+        .order-discount-badge { font-size: 12px; color: var(--success); font-weight: 600; }
+
+        .empty-state, .loading-state {
+            text-align: center;
+            color: var(--hint);
+            padding: 60px 16px;
+            font-size: 14px;
+        }
+
+        .bottom-nav {
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            background: var(--bg);
+            border-top: 1px solid var(--border);
+            backdrop-filter: blur(20px);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding: 12px 0;
+            z-index: 1000;
+        }
+        .nav-item {
+            display: flex; flex-direction: column; align-items: center; gap: 4px;
+            text-decoration: none; color: var(--hint);
+            padding: 8px 16px; border-radius: 12px;
+        }
+        .nav-item.active { color: var(--text); font-weight: 600; }
+        .nav-icon { font-size: 24px; }
+        .nav-label { font-size: 11px; font-weight: 500; }
+    </style>
+</head>
+<body>
+<header class="header">
+    <a href="/" class="back-btn">←</a>
+    <h1>Профиль</h1>
+</header>
+
+<div class="content">
+    <div id="loyaltyCard" class="card">
+        <div class="loading-state">Загружаем ваш профиль…</div>
+    </div>
+
+    <div class="section-title">История заказов</div>
+    <div id="ordersList">
+        <div class="loading-state">Загружаем заказы…</div>
+    </div>
+</div>
+
+<nav class="bottom-nav">
+    <a href="/" class="nav-item">
+        <span class="nav-icon">🏠</span>
+        <span class="nav-label">Главная</span>
+    </a>
+    <a href="/catalog" class="nav-item">
+        <span class="nav-icon">📦</span>
+        <span class="nav-label">Каталог</span>
+    </a>
+    <a href="/cart" class="nav-item">
+        <span class="nav-icon">🛒</span>
+        <span class="nav-label">Корзина</span>
+    </a>
+    <a href="/profile" class="nav-item active">
+        <span class="nav-icon">👤</span>
+        <span class="nav-label">Профиль</span>
+    </a>
+</nav>
+
+<script>
+    const loyaltyCard = document.getElementById('loyaltyCard');
+    const ordersList = document.getElementById('ordersList');
+
+    function formatMoney(n) {
+        return new Intl.NumberFormat('ru-RU').format(n) + ' ₽';
+    }
+
+    function formatDate(iso) {
+        if (!iso) return '';
+        const d = new Date(iso);
+        return d.toLocaleDateString('ru-RU', { day: '2-digit', month: 'long', year: 'numeric' }) +
+               ', ' + d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    const STATUS_LABELS = {
+        NEW: 'Новый', PROCESSING: 'В обработке', COMPLETED: 'Выполнен', CANCELLED: 'Отменён'
+    };
+
+    function renderLoyalty(loyalty) {
+        const current = loyalty.currentDiscountPercent || 0;
+        let progressHtml = '';
+
+        if (loyalty.nextDiscountPercent && loyalty.amountLeftToNextDiscount != null) {
+            // Грубая оценка прогресса к следующему порогу для прогресс-бара
+            const left = Math.max(0, loyalty.amountLeftToNextDiscount);
+            const spent = loyalty.totalSpent;
+            const target = spent + left;
+            const pct = target > 0 ? Math.min(100, Math.round((spent / target) * 100)) : 0;
+            progressHtml = `
+                <div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div>
+                <div class="loyalty-hint">До скидки ${loyalty.nextDiscountPercent}% осталось потратить ${formatMoney(left)}</div>
+            `;
+        } else {
+            progressHtml = `<div class="loyalty-hint">Вы получили максимальную скидку по программе лояльности 🎉</div>`;
+        }
+
+        loyaltyCard.innerHTML = `
+            <div class="loyalty-title">Сумма всех ваших заказов</div>
+            <div class="loyalty-discount">${formatMoney(loyalty.totalSpent)}</div>
+            <div class="loyalty-hint">Ваша текущая скидка на все товары: <b style="color:var(--success)">${current}%</b></div>
+            ${progressHtml}
+        `;
+    }
+
+    function renderOrders(orders) {
+        if (!orders.length) {
+            ordersList.innerHTML = '<div class="empty-state">Заказов пока нет — самое время что-нибудь выбрать в каталоге 🛍</div>';
+            return;
+        }
+
+        ordersList.innerHTML = orders.map(order => {
+            const itemsHtml = order.items.map(i =>
+                `<div>${i.quantity} × ${i.productName}</div>`
+            ).join('');
+
+            const hasDiscount = order.discountPercent && order.discountPercent > 0;
+            const totalsHtml = hasDiscount
+                ? `<span class="order-subtotal-strike">${formatMoney(order.subtotalAmount)}</span>
+                   <span class="order-total-final">${formatMoney(order.totalAmount)}</span>
+                   <span class="order-discount-badge">-${order.discountPercent}%</span>`
+                : `<span class="order-total-final">${formatMoney(order.totalAmount)}</span>`;
+
+            return `
+                <div class="order-card">
+                    <div class="order-card-header">
+                        <span class="order-id">Заказ #${order.id}</span>
+                        <span class="order-status">${STATUS_LABELS[order.status] || order.status}</span>
+                    </div>
+                    <div class="order-date">${formatDate(order.createdAt)}</div>
+                    <div class="order-items">${itemsHtml}</div>
+                    <div class="order-totals">${totalsHtml}</div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function showError(message) {
+        loyaltyCard.innerHTML = `<div class="empty-state">${message}</div>`;
+        ordersList.innerHTML = '';
+    }
+
+    async function loadProfile(initData) {
+        try {
+            const res = await fetch('/api/profile/me', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ initData })
+            });
+
+            if (!res.ok) {
+                showError('Не удалось загрузить профиль. Откройте магазин через кнопку в Telegram-боте.');
+                return;
+            }
+
+            const data = await res.json();
+            renderLoyalty(data.loyalty);
+            renderOrders(data.orders);
+        } catch (e) {
+            showError('Не удалось загрузить профиль. Попробуйте ещё раз.');
+        }
+    }
+
+    if (window.Telegram && window.Telegram.WebApp) {
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        tg.ready();
+
+        if (tg.initData) {
+            loadProfile(tg.initData);
+        } else {
+            showError('Профиль доступен только внутри Telegram Mini App.');
+        }
+    } else {
+        showError('Откройте магазин в Telegram, чтобы увидеть свой профиль и историю заказов.');
+    }
+</script>
+</body>
+</html>

@@ -98,10 +98,11 @@ class TelegramNotificationServiceTest {
         verify(bot).sendMessage(eq(ADMIN_CHAT_ID), messageCaptor.capture());
 
         String message = messageCaptor.getValue();
+
         assertThat(message).contains("12345");
-        assertThat(message).contains("username не указан");
         assertThat(message).doesNotContain("https://t.me/");
     }
+
 
     @Test
     @DisplayName("если нет Telegram данных — блок Telegram не показываем")

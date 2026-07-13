@@ -2,7 +2,7 @@
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>Админка - Бренды</title>
+    <title>Админка - Программа лояльности</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="bg-dark text-white">
@@ -14,9 +14,9 @@
             <ul class="navbar-nav ms-auto">
                 <li class="nav-item"><a class="nav-link" href="/admin">Товары</a></li>
                 <li class="nav-item"><a class="nav-link" href="/admin/categories">Категории</a></li>
-                <li class="nav-item"><a class="nav-link active" href="/admin/brands">Бренды</a></li>
+                <li class="nav-item"><a class="nav-link" href="/admin/brands">Бренды</a></li>
                 <li class="nav-item"><a class="nav-link" href="/admin/customers">Клиенты</a></li>
-                <li class="nav-item"><a class="nav-link" href="/admin/loyalty">Лояльность</a></li>
+                <li class="nav-item"><a class="nav-link active" href="/admin/loyalty">Лояльность</a></li>
                 <li class="nav-item"><a class="nav-link" href="/">На сайт</a></li>
                 <li class="nav-item">
                     <form th:action="@{/logout}" method="post" class="d-inline">
@@ -34,29 +34,37 @@
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
 
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1>Управление брендами</h1>
-        <a href="/admin/brand/create" class="btn btn-warning">Добавить бренд</a>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1>Программа лояльности</h1>
+        <a href="/admin/loyalty/create" class="btn btn-warning">Добавить порог</a>
     </div>
+    <p class="text-white-50">
+        Как только сумма всех заказов клиента достигает указанного порога, ему автоматически
+        присваивается скидка на все последующие заказы (действует до тех пор, пока не будет достигнут
+        следующий, более высокий порог).
+    </p>
 
     <table class="table table-dark table-striped">
         <thead>
         <tr>
-            <th>ID</th>
-            <th>Название</th>
+            <th>Порог (сумма заказов, ₽)</th>
+            <th>Скидка</th>
             <th>Действия</th>
         </tr>
         </thead>
         <tbody>
-        <tr th:each="brand : ${brands}">
-            <td th:text="${brand.id}">1</td>
-            <td th:text="${brand.name}">Бренд</td>
+        <tr th:each="tier : ${tiers}">
+            <td th:text="${tier.minAmount} + ' ₽'">5000 ₽</td>
+            <td th:text="${tier.discountPercent} + '%'">5%</td>
             <td>
-                <a th:href="@{/admin/brand/edit/{id}(id=${brand.id})}" class="btn btn-sm btn-outline-light">Редактировать</a>
-                <form th:action="@{/admin/brand/delete/{id}(id=${brand.id})}" method="post" style="display: inline;">
-                    <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Удалить бренд?')">Удалить</button>
+                <a th:href="@{/admin/loyalty/edit/{id}(id=${tier.id})}" class="btn btn-sm btn-outline-light">Редактировать</a>
+                <form th:action="@{/admin/loyalty/delete/{id}(id=${tier.id})}" method="post" style="display: inline;">
+                    <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Удалить порог?')">Удалить</button>
                 </form>
             </td>
+        </tr>
+        <tr th:if="${tiers.isEmpty()}">
+            <td colspan="3" class="text-white-50">Пороги ещё не заданы — скидки по программе лояльности не начисляются.</td>
         </tr>
         </tbody>
     </table>

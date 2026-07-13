@@ -2,6 +2,7 @@ package com.shlyapoff.shop.service;
 
 import com.shlyapoff.shop.model.Cart;
 import com.shlyapoff.shop.model.CartItem;
+import com.shlyapoff.shop.model.Customer;
 import com.shlyapoff.shop.model.Order;
 import com.shlyapoff.shop.model.Product;
 import com.shlyapoff.shop.repository.OrderRepository;
@@ -40,6 +41,9 @@ class OrderServiceTest {
     @Mock
     private TelegramNotificationService telegramNotificationService;
 
+    @Mock
+    private CustomerService customerService;
+
     @InjectMocks
     private OrderService orderService;
 
@@ -77,7 +81,14 @@ class OrderServiceTest {
     @Test
     @DisplayName("создаёт заказ из корзины, верно считает сумму, очищает корзину и шлёт уведомление")
     void createsOrderFromCartSuccessfully() {
+        Customer customer = new Customer();
+        customer.setId(7L);
+        customer.setTelegramUserId(12345L);
+        customer.setDiscountPercent(0);
+
         when(cartService.getCartBySessionId(SESSION_ID)).thenReturn(Optional.of(cartWithItems));
+        when(customerService.findOrCreateByTelegram(12345L, "ivan_the_customer", null, null))
+                .thenReturn(customer);
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> {
             Order order = invocation.getArgument(0);
             order.setId(99L);
@@ -89,19 +100,63 @@ class OrderServiceTest {
                 12345L, "ivan_the_customer");
 
         // Сумма = 100.00*2 + 250.50*1 = 450.50
+        assertThat(result.getSubtotalAmount()).isEqualByComparingTo("450.50");
+        assertThat(result.getDiscountPercent()).isEqualTo(0);
         assertThat(result.getTotalAmount()).isEqualByComparingTo("450.50");
         assertThat(result.getCustomerName()).isEqualTo("Иван Иванов");
         assertThat(result.getItems()).hasSize(2);
         assertThat(result.getId()).isEqualTo(99L);
         assertThat(result.getTelegramUsername()).isEqualTo("ivan_the_customer");
         assertThat(result.getTelegramUserId()).isEqualTo(12345L);
+        assertThat(result.getCustomer()).isEqualTo(customer);
 
         verify(cartService).clearCart(SESSION_ID);
         verify(telegramNotificationService).notifyAdminAboutNewOrder(result);
+        verify(customerService).registerOrderAndRecalculateDiscount(eq(customer), eq(new BigDecimal("450.50")));
 
         ArgumentCaptor<Order> captor = ArgumentCaptor.forClass(Order.class);
         verify(orderRepository).save(captor.capture());
         assertThat(captor.getValue().getPhone()).isEqualTo("+79990001122");
+    }
+
+    @Test
+    @DisplayName("применяет накопленную скидку клиента к сумме заказа")
+    void appliesCustomerDiscountToOrderTotal() {
+        Customer customer = new Customer();
+        customer.setId(8L);
+        customer.setTelegramUserId(999L);
+        customer.setDiscountPercent(10);
+
+        when(cartService.getCartBySessionId(SESSION_ID)).thenReturn(Optional.of(cartWithItems));
+        when(customerService.findOrCreateByTelegram(999L, "vip_client", null, null)).thenReturn(customer);
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Order result = orderService.createOrderFromCart(
+                SESSION_ID, "Пётр", "+7000", "PICKUP", null, 999L, "vip_client");
+
+        // 450.50 - 10% = 405.45
+        assertThat(result.getSubtotalAmount()).isEqualByComparingTo("450.50");
+        assertThat(result.getDiscountPercent()).isEqualTo(10);
+        assertThat(result.getTotalAmount()).isEqualByComparingTo("405.45");
+
+        verify(customerService).registerOrderAndRecalculateDiscount(eq(customer), eq(new BigDecimal("450.50")));
+    }
+
+    @Test
+    @DisplayName("не создаёт клиента и не применяет скидку, если заказ оформлен без Telegram")
+    void doesNotCreateCustomerWithoutTelegramUserId() {
+        when(cartService.getCartBySessionId(SESSION_ID)).thenReturn(Optional.of(cartWithItems));
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Order result = orderService.createOrderFromCart(
+                SESSION_ID, "Гость", "+7000", "PICKUP", null, null, null);
+
+        assertThat(result.getCustomer()).isNull();
+        assertThat(result.getDiscountPercent()).isEqualTo(0);
+        assertThat(result.getTotalAmount()).isEqualByComparingTo("450.50");
+
+        verify(customerService, never()).findOrCreateByTelegram(any(), any(), any(), any());
+        verify(customerService, never()).registerOrderAndRecalculateDiscount(any(), any());
     }
 
     @Test

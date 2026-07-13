@@ -34,6 +34,7 @@ public class SecurityConfig {
                         .requestMatchers("/", "/catalog", "/product/**", "/css/**", "/js/**", "/images/**", "/login", "/error").permitAll()
                         .requestMatchers("/cart/**").permitAll()
                         .requestMatchers("/checkout", "/success").permitAll()
+                        .requestMatchers("/profile", "/api/profile/**").permitAll() // Mini App профиль: доступ проверяется подписью initData, а не сессией
                         .requestMatchers("/auth/telegram-login").permitAll() // <-- ДОБАВЛЯЕМ ЭТУ СТРОКУ
                         .requestMatchers("/admin/**").hasAuthority("ROLE_ADMIN")
                         .anyRequest().authenticated()
