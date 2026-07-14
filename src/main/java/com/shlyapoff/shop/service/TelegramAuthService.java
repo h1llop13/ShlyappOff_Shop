@@ -28,7 +28,7 @@ public class TelegramAuthService {
         TelegramLoginToken newToken = new TelegramLoginToken();
         newToken.setToken(token);
         newToken.setTelegramChatId(telegramChatId);
-        newToken.setExpiresAt(LocalDateTime.now().plusMinutes(5)); // Токен живет 5 минут
+        newToken.setExpiresAt(LocalDateTime.now().plusMinutes(60)); // Токен живет 5 минут
         newToken.setUsed(false);
 
         tokenRepository.save(newToken);
