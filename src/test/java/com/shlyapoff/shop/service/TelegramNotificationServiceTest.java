@@ -4,9 +4,8 @@ import com.shlyapoff.shop.bot.ShlyapOffBot;
 import com.shlyapoff.shop.model.Order;
 import com.shlyapoff.shop.model.OrderItem;
 import com.shlyapoff.shop.repository.AdminRepository;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
@@ -17,7 +16,6 @@ import java.math.BigDecimal;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -31,24 +29,12 @@ class TelegramNotificationServiceTest {
     @Mock
     private AdminRepository adminRepository;
 
-    @Mock
-    private TelegramAuthService telegramAuthService;
-
     private static final Long ADMIN_CHAT_ID = 999L;
 
-    @BeforeEach
-    void setUp() {
-        // Заглушка для генерации токена, чтобы ссылка не содержала null
-        when(telegramAuthService.generateLoginToken(any())).thenReturn("test-magic-token");
-    }
-
     private TelegramNotificationService buildService() {
-        // Передаем все 3 зависимости в конструктор
-        TelegramNotificationService service = new TelegramNotificationService(bot, adminRepository, telegramAuthService);
-
+        TelegramNotificationService service = new TelegramNotificationService(bot, adminRepository);
         ReflectionTestUtils.setField(service, "superAdminChatId", ADMIN_CHAT_ID);
         ReflectionTestUtils.setField(service, "baseUrl", "https://test-shop.ru");
-
         return service;
     }
 
@@ -78,23 +64,10 @@ class TelegramNotificationServiceTest {
 
         when(adminRepository.findAll()).thenReturn(List.of());
         TelegramNotificationService service = buildService();
-
         service.notifyAdminAboutNewOrder(order);
 
-        // --- ИЗМЕНЕНИЕ ЗДЕСЬ ---
         ArgumentCaptor<String> messageCaptor = ArgumentCaptor.forClass(String.class);
-
-        // Проверяем вызов sendMessageWithButton.
-        // 1-й аргумент: точное совпадение chatId
-        // 2-й аргумент: захватываем текст сообщения в messageCaptor
-        // 3-й и 4-й аргументы: нам не важно, что там за текст кнопки и URL в этом конкретном тесте,
-        // поэтому используем anyString(), чтобы Mockito не ругался.
-        verify(bot).sendMessageWithButton(
-                eq(ADMIN_CHAT_ID),
-                messageCaptor.capture(),
-                anyString(),
-                anyString()
-        );
+        verify(bot).sendMessageWithButton(eq(ADMIN_CHAT_ID), messageCaptor.capture(), anyString(), anyString());
 
         String message = messageCaptor.getValue();
         assertThat(message).contains("https://t.me/ivan_the_customer");
@@ -110,17 +83,10 @@ class TelegramNotificationServiceTest {
 
         when(adminRepository.findAll()).thenReturn(List.of());
         TelegramNotificationService service = buildService();
-
         service.notifyAdminAboutNewOrder(order);
 
-        // --- ИЗМЕНЕНИЕ ЗДЕСЬ ---
         ArgumentCaptor<String> messageCaptor = ArgumentCaptor.forClass(String.class);
-        verify(bot).sendMessageWithButton(
-                eq(ADMIN_CHAT_ID),
-                messageCaptor.capture(),
-                anyString(),
-                anyString()
-        );
+        verify(bot).sendMessageWithButton(eq(ADMIN_CHAT_ID), messageCaptor.capture(), anyString(), anyString());
 
         String message = messageCaptor.getValue();
         assertThat(message).contains("12345");
@@ -136,17 +102,10 @@ class TelegramNotificationServiceTest {
 
         when(adminRepository.findAll()).thenReturn(List.of());
         TelegramNotificationService service = buildService();
-
         service.notifyAdminAboutNewOrder(order);
 
-        // --- ИЗМЕНЕНИЕ ЗДЕСЬ ---
         ArgumentCaptor<String> messageCaptor = ArgumentCaptor.forClass(String.class);
-        verify(bot).sendMessageWithButton(
-                eq(ADMIN_CHAT_ID),
-                messageCaptor.capture(),
-                anyString(),
-                anyString()
-        );
+        verify(bot).sendMessageWithButton(eq(ADMIN_CHAT_ID), messageCaptor.capture(), anyString(), anyString());
 
         assertThat(messageCaptor.getValue()).doesNotContain("Telegram");
     }
