@@ -81,10 +81,10 @@ public class OrderService {
         // Очищаем корзину
         cartService.clearCart(sessionId);
 
-        // Обновляем накопленную сумму клиента и пересчитываем скидку на СЛЕДУЮЩИЙ заказ
-        if (customer != null) {
-            customerService.registerOrderAndRecalculateDiscount(customer, subtotal);
-        }
+        // ВАЖНО: сумма заказа НЕ прибавляется к totalSpent клиента здесь!
+        // Заказ ещё не подтверждён администратором, поэтому он не должен
+        // ни попадать в историю профиля, ни влиять на скидку по программе лояльности.
+        // Начисление происходит в updateStatus(), когда админ подтверждает статус COMPLETED.
 
         telegramNotificationService.notifyAdminAboutNewOrder(savedOrder);
 
@@ -107,16 +107,38 @@ public class OrderService {
         return orderRepository.findByCustomerIdWithItems(customerId);
     }
 
+    /**
+     * История заказов для профиля клиента: показываем только заказы,
+     * подтверждённые администратором (статус COMPLETED). Пока заказ не подтверждён,
+     * он не должен быть виден клиенту в истории и не должен влиять на скидку.
+     */
+    public List<Order> findConfirmedByCustomerId(Long customerId) {
+        return orderRepository.findByCustomerIdAndStatusWithItems(customerId, STATUS_COMPLETED);
+    }
+
     public Optional<Order> findById(Long id) {
         return orderRepository.findById(id);
     }
+
+    public static final String STATUS_COMPLETED = "COMPLETED";
 
     @Transactional
     public void updateStatus(Long orderId, String status) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Заказ не найден"));
+
+        String previousStatus = order.getStatus();
         order.setStatus(status);
         orderRepository.save(order);
+
+        // Начисляем сумму заказа в totalSpent клиента и пересчитываем скидку
+        // ТОЛЬКО в момент, когда админ впервые подтверждает заказ статусом COMPLETED.
+        // Проверка previousStatus защищает от повторного начисления,
+        // если админ случайно ещё раз сохранит тот же статус.
+        boolean justCompleted = STATUS_COMPLETED.equals(status) && !STATUS_COMPLETED.equals(previousStatus);
+        if (justCompleted && order.getCustomer() != null) {
+            customerService.registerOrderAndRecalculateDiscount(order.getCustomer(), order.getSubtotalAmount());
+        }
     }
 
     public Optional<Cart> getCartForCheckout(String sessionId) {

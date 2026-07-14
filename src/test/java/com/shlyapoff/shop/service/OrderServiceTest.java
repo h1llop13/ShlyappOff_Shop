@@ -112,7 +112,8 @@ class OrderServiceTest {
 
         verify(cartService).clearCart(SESSION_ID);
         verify(telegramNotificationService).notifyAdminAboutNewOrder(result);
-        verify(customerService).registerOrderAndRecalculateDiscount(eq(customer), eq(new BigDecimal("450.50")));
+        // Заказ ещё не подтверждён администратором — сумма НЕ должна начисляться клиенту сразу.
+        verify(customerService, never()).registerOrderAndRecalculateDiscount(any(), any());
 
         ArgumentCaptor<Order> captor = ArgumentCaptor.forClass(Order.class);
         verify(orderRepository).save(captor.capture());
@@ -139,7 +140,8 @@ class OrderServiceTest {
         assertThat(result.getDiscountPercent()).isEqualTo(10);
         assertThat(result.getTotalAmount()).isEqualByComparingTo("405.45");
 
-        verify(customerService).registerOrderAndRecalculateDiscount(eq(customer), eq(new BigDecimal("450.50")));
+        // Заказ ещё не подтверждён администратором — сумма НЕ должна начисляться клиенту сразу.
+        verify(customerService, never()).registerOrderAndRecalculateDiscount(any(), any());
     }
 
     @Test

@@ -47,7 +47,8 @@ public class ProfileApiController {
         Customer customer = customerService.findOrCreateByTelegram(
                 tgUser.id(), tgUser.username(), tgUser.firstName(), tgUser.lastName());
 
-        List<Order> orders = orderService.findByCustomerId(customer.getId());
+        // Только подтверждённые администратором заказы попадают в историю профиля.
+        List<Order> orders = orderService.findConfirmedByCustomerId(customer.getId());
 
         List<ProfileDto.OrderView> orderViews = orders.stream()
                 .map(o -> new ProfileDto.OrderView(
