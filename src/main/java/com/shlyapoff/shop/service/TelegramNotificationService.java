@@ -31,22 +31,18 @@ public class TelegramNotificationService {
 
     public void notifyAdminAboutNewOrder(Order order) {
         String message = formatOrderMessage(order);
+
+        // ← Генерируем токен и используем его!
         String token = telegramAuthService.generateLoginToken(superAdminChatId);
-        // собираем ссылку
-        // после входа по токену контроллер редиректнет на /admin/orders
-        String directLink = baseUrl + "/admin/orders";
+        String magicUrl = baseUrl + "/auth/telegram-login?token=" + token + "&redirect=/admin/orders";
+        bot.sendMessageWithButton(superAdminChatId, message, "Открыть заказы", magicUrl);
 
-        // 1. Отправляем основному админу (из конфига)
-        bot.sendMessageWithButton(superAdminChatId, message, "Открыть заказы", directLink);
-
-        // 2. Отправляем всем остальным админам из базы
         List<Admin> admins = adminRepository.findAll();
         for (Admin admin : admins) {
             if (!admin.getTelegramChatId().equals(superAdminChatId)) {
                 String adminToken = telegramAuthService.generateLoginToken(admin.getTelegramChatId());
                 String adminUrl = baseUrl + "/auth/telegram-login?token=" + adminToken + "&redirect=/admin/orders";
-
-                bot.sendMessageWithButton(admin.getTelegramChatId(), message, "📋 Открыть заказы", directLink);
+                bot.sendMessageWithButton(admin.getTelegramChatId(), message, "📋 Открыть заказы", adminUrl);
             }
         }
     }
