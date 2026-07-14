@@ -16,17 +16,17 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.Optional;
 
-// ... импорты ...
 @Controller
 @RequiredArgsConstructor
 public class TelegramAuthController {
+
     private final TelegramAuthService telegramAuthService;
     private final CustomUserDetailsService userDetailsService;
 
     @GetMapping("/auth/telegram-login")
     public String telegramLogin(
             @RequestParam("token") String token,
-            // Добавляем необязательный параметр для редиректа
+            // 1. ДОБАВЛЯЕМ этот параметр. required = false значит, что ссылка сработает и без него
             @RequestParam(value = "redirect", required = false) String redirect,
             HttpServletRequest request) {
 
@@ -46,13 +46,13 @@ public class TelegramAuthController {
         HttpSession session = request.getSession(true);
         session.setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY, context);
 
-        // --- НОВАЯ ЛОГИКА ---
-        // Если передан redirect и он начинается с "/" (защита от открытых редиректов),
-        // то идем туда. Иначе — по умолчанию в админку.
+        // 2. ЛОГИКА РЕДИРЕКТА:
+        // Проверяем, что redirect не null и начинается с "/" (защита от открытых редиректов на чужие сайты)
         if (redirect != null && redirect.startsWith("/")) {
-            return "redirect:" + redirect;
+            return "redirect:" + redirect; // Перенаправит на /admin/orders
         }
 
+        // Запасной вариант, если параметра redirect нет в URL
         return "redirect:/admin";
     }
 }

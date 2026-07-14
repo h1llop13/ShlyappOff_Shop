@@ -34,7 +34,7 @@ public class TelegramNotificationService {
         String token = telegramAuthService.generateLoginToken(superAdminChatId);
         // собираем ссылку
         // после входа по токену контроллер редиректнет на /admin/orders
-        String magicUrl = baseUrl + "/auth/telegram-login?token=" + token + "&redirect/admin/orders";
+        String magicUrl = baseUrl + "/auth/telegram-login?token=" + token + "&redirect=/admin/orders";
 
         // 1. Отправляем основному админу (из конфига)
         bot.sendMessageWithButton(superAdminChatId, message, "Открыть заказы", magicUrl);
