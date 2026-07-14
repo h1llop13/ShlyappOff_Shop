@@ -3,15 +3,13 @@ package com.shlyapoff.shop.controller;
 import com.shlyapoff.shop.service.CustomUserDetailsService;
 import com.shlyapoff.shop.service.TelegramAuthService;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse; // <-- 1. Добавляем импорт
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
-// <-- 2. Добавляем импорт репозитория контекста
-import org.springframework.security.web.context.SecurityContextRepository;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository; // <-- Используем этот класс
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -25,15 +23,11 @@ public class TelegramAuthController {
     private final TelegramAuthService telegramAuthService;
     private final CustomUserDetailsService userDetailsService;
 
-    // <-- 3. Внедряем SecurityContextRepository (Spring Boot автоматически создаст этот бин)
-    private final SecurityContextRepository securityContextRepository;
-
     @GetMapping("/auth/telegram-login")
     public String telegramLogin(
             @RequestParam("token") String token,
             @RequestParam(value = "redirect", required = false) String redirect,
-            HttpServletRequest request,
-            HttpServletResponse response) { // <-- 4. Добавляем response в параметры
+            HttpServletRequest request) {
 
         Optional<Long> chatIdOpt = telegramAuthService.validateAndConsumeToken(token);
         if (chatIdOpt.isEmpty()) {
@@ -48,14 +42,10 @@ public class TelegramAuthController {
         context.setAuthentication(authentication);
         SecurityContextHolder.setContext(context);
 
-        // --- ГЛАВНОЕ ИСПРАВЛЕНИЕ ---
-        // Вместо ручного session.setAttribute(...) используем официальный метод сохранения.
-        // Это гарантирует, что Spring Security 6+ корректно запишет сессию и отправит
-        // заголовок Set-Cookie браузеру ДО того, как мы сделаем редирект.
-        securityContextRepository.saveContext(context, request, response);
-
-        // HttpSession session = request.getSession(true); // Можно удалить эту строку, она больше не нужна
-        // session.setAttribute(...); // И эту тоже
+        // Сохраняем контекст в сессию вручную.
+        // В Spring Security 6 это все еще самый надежный способ для "магических ссылок".
+        HttpSession session = request.getSession(true);
+        session.setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY, context);
 
         // Логика редиректа
         if (redirect != null && redirect.startsWith("/")) {
