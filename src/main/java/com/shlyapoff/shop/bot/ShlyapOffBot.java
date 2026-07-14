@@ -11,9 +11,16 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import lombok.RequiredArgsConstructor;
 import com.shlyapoff.shop.service.TelegramAuthService;
 import org.springframework.beans.factory.annotation.Value;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
+import lombok.extern.slf4j.Slf4j;
+import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
+
+import java.util.List;
 
 @Component
 @RequiredArgsConstructor // Используем конструктор для внедрения зависимостей
+@Slf4j
 public class ShlyapOffBot extends TelegramLongPollingBot {
 
     private final AdminRepository adminRepository;
@@ -133,7 +140,32 @@ public class ShlyapOffBot extends TelegramLongPollingBot {
         try {
             execute(message);
         } catch (TelegramApiException e) {
-            e.printStackTrace();
+            // 3. Заменяем плохое e.printStackTrace() на правильное логирование
+            log.error("Ошибка отправки простого сообщения в чат {}", chatId, e);
+        }
+    }
+
+    public void sendMessageWithButton(Long chatId, String text, String buttonText, String buttonUrl) {
+        SendMessage message = new SendMessage();
+        message.setChatId(String.valueOf(chatId));
+        message.setText(text);
+        message.enableHtml(true);
+
+        // Создаем кнопку
+        InlineKeyboardButton urlButton = new InlineKeyboardButton();
+        urlButton.setText(buttonText);
+        urlButton.setUrl(buttonUrl); // Именно setUrl делает её кликабельной ссылкой
+
+        // Клавиатура — это список рядов кнопок. У нас 1 ряд и 1 кнопка.
+        InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
+        markup.setKeyboard(List.of(List.of(urlButton)));
+
+        message.setReplyMarkup(markup);
+
+        try {
+            execute(message);
+        } catch (TelegramApiException e) {
+            log.error("Ошибка отправки сообщения с кнопкой в чат {}", chatId, e);
         }
     }
 }

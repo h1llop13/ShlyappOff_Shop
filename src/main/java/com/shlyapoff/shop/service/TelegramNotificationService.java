@@ -9,6 +9,8 @@ import com.shlyapoff.shop.repository.AdminRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import com.shlyapoff.shop.service.TelegramAuthService;
+
 import java.math.BigDecimal;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -19,22 +21,32 @@ public class TelegramNotificationService {
 
     private final ShlyapOffBot bot;
     private final AdminRepository adminRepository;
+    private final TelegramAuthService telegramAuthService;
 
     @Value("${telegram.admin-chat-id}")
     private Long superAdminChatId;
 
+    @Value("${app.base-url}")
+    private String baseUrl;
+
     public void notifyAdminAboutNewOrder(Order order) {
         String message = formatOrderMessage(order);
+        String token = telegramAuthService.generateLoginToken(superAdminChatId);
+        // собираем ссылку
+        // после входа по токену контроллер редиректнет на /admin/orders
+        String magicUrl = baseUrl + "/auth/telegram-login?token=" + token + "&redirect/admin/orders";
 
         // 1. Отправляем основному админу (из конфига)
-        bot.sendMessage(superAdminChatId, message);
+        bot.sendMessageWithButton(superAdminChatId, message, "Открыть заказы", magicUrl);
 
         // 2. Отправляем всем остальным админам из базы
         List<Admin> admins = adminRepository.findAll();
         for (Admin admin : admins) {
-            // Исключаем дубли, если супер-админ вдруг тоже попал в базу
             if (!admin.getTelegramChatId().equals(superAdminChatId)) {
-                bot.sendMessage(admin.getTelegramChatId(), message);
+                String adminToken = telegramAuthService.generateLoginToken(admin.getTelegramChatId());
+                String adminUrl = baseUrl + "/auth/telegram-login?token=" + adminToken + "&redirect=/admin/orders";
+
+                bot.sendMessageWithButton(admin.getTelegramChatId(), message, "📋 Открыть заказы", adminUrl);
             }
         }
     }

@@ -4,6 +4,7 @@ import com.shlyapoff.shop.bot.ShlyapOffBot;
 import com.shlyapoff.shop.model.Order;
 import com.shlyapoff.shop.model.OrderItem;
 import com.shlyapoff.shop.repository.AdminRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -16,31 +17,38 @@ import java.math.BigDecimal;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
-/**
- * Юнит-тесты для TelegramNotificationService.
- */
 @ExtendWith(MockitoExtension.class)
 class TelegramNotificationServiceTest {
 
     @Mock
     private ShlyapOffBot bot;
 
-    // 1. Добавляем мок для нового репозитория
     @Mock
     private AdminRepository adminRepository;
 
+    @Mock
+    private TelegramAuthService telegramAuthService;
+
     private static final Long ADMIN_CHAT_ID = 999L;
 
-    private TelegramNotificationService buildService() {
-        // 2. Передаем ОБА зависимости в конструктор
-        TelegramNotificationService service = new TelegramNotificationService(bot, adminRepository);
+    @BeforeEach
+    void setUp() {
+        // Заглушка для генерации токена, чтобы ссылка не содержала null
+        when(telegramAuthService.generateLoginToken(any())).thenReturn("test-magic-token");
+    }
 
-        // ВАЖНО: Если ты в TelegramNotificationService оставил имя поля adminChatId,
-        // то напиши здесь "adminChatId" вместо "superAdminChatId"
+    private TelegramNotificationService buildService() {
+        // Передаем все 3 зависимости в конструктор
+        TelegramNotificationService service = new TelegramNotificationService(bot, adminRepository, telegramAuthService);
+
         ReflectionTestUtils.setField(service, "superAdminChatId", ADMIN_CHAT_ID);
+        ReflectionTestUtils.setField(service, "baseUrl", "https://test-shop.ru");
+
         return service;
     }
 
@@ -68,14 +76,25 @@ class TelegramNotificationServiceTest {
         order.setTelegramUserId(12345L);
         order.setTelegramUsername("ivan_the_customer");
 
-        // 3. Заглушка: говорим, что других админов в базе нет, чтобы тест не сломался
         when(adminRepository.findAll()).thenReturn(List.of());
-
         TelegramNotificationService service = buildService();
+
         service.notifyAdminAboutNewOrder(order);
 
+        // --- ИЗМЕНЕНИЕ ЗДЕСЬ ---
         ArgumentCaptor<String> messageCaptor = ArgumentCaptor.forClass(String.class);
-        verify(bot).sendMessage(eq(ADMIN_CHAT_ID), messageCaptor.capture());
+
+        // Проверяем вызов sendMessageWithButton.
+        // 1-й аргумент: точное совпадение chatId
+        // 2-й аргумент: захватываем текст сообщения в messageCaptor
+        // 3-й и 4-й аргументы: нам не важно, что там за текст кнопки и URL в этом конкретном тесте,
+        // поэтому используем anyString(), чтобы Mockito не ругался.
+        verify(bot).sendMessageWithButton(
+                eq(ADMIN_CHAT_ID),
+                messageCaptor.capture(),
+                anyString(),
+                anyString()
+        );
 
         String message = messageCaptor.getValue();
         assertThat(message).contains("https://t.me/ivan_the_customer");
@@ -90,19 +109,23 @@ class TelegramNotificationServiceTest {
         order.setTelegramUsername(null);
 
         when(adminRepository.findAll()).thenReturn(List.of());
-
         TelegramNotificationService service = buildService();
+
         service.notifyAdminAboutNewOrder(order);
 
+        // --- ИЗМЕНЕНИЕ ЗДЕСЬ ---
         ArgumentCaptor<String> messageCaptor = ArgumentCaptor.forClass(String.class);
-        verify(bot).sendMessage(eq(ADMIN_CHAT_ID), messageCaptor.capture());
+        verify(bot).sendMessageWithButton(
+                eq(ADMIN_CHAT_ID),
+                messageCaptor.capture(),
+                anyString(),
+                anyString()
+        );
 
         String message = messageCaptor.getValue();
-
         assertThat(message).contains("12345");
         assertThat(message).doesNotContain("https://t.me/");
     }
-
 
     @Test
     @DisplayName("если нет Telegram данных — блок Telegram не показываем")
@@ -112,12 +135,18 @@ class TelegramNotificationServiceTest {
         order.setTelegramUsername(null);
 
         when(adminRepository.findAll()).thenReturn(List.of());
-
         TelegramNotificationService service = buildService();
+
         service.notifyAdminAboutNewOrder(order);
 
+        // --- ИЗМЕНЕНИЕ ЗДЕСЬ ---
         ArgumentCaptor<String> messageCaptor = ArgumentCaptor.forClass(String.class);
-        verify(bot).sendMessage(eq(ADMIN_CHAT_ID), messageCaptor.capture());
+        verify(bot).sendMessageWithButton(
+                eq(ADMIN_CHAT_ID),
+                messageCaptor.capture(),
+                anyString(),
+                anyString()
+        );
 
         assertThat(messageCaptor.getValue()).doesNotContain("Telegram");
     }

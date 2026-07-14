@@ -16,45 +16,43 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.Optional;
 
+// ... импорты ...
 @Controller
 @RequiredArgsConstructor
 public class TelegramAuthController {
-
     private final TelegramAuthService telegramAuthService;
     private final CustomUserDetailsService userDetailsService;
 
     @GetMapping("/auth/telegram-login")
     public String telegramLogin(
             @RequestParam("token") String token,
+            // Добавляем необязательный параметр для редиректа
+            @RequestParam(value = "redirect", required = false) String redirect,
             HttpServletRequest request) {
 
-        // 1. Проверяем и "сжигаем" токен
         Optional<Long> chatIdOpt = telegramAuthService.validateAndConsumeToken(token);
-
         if (chatIdOpt.isEmpty()) {
-            // Если токен невалиден, протух или уже использован
             return "redirect:/login?error=expired";
         }
 
-        // 2. Токен валиден. Находим нашего веб-пользователя (админа) в БД.
-        // Так как у нас пока один базовый админ, логинимся под ним.
-        // (В будущем можно связать chatId и username в таблице users)
         UserDetails userDetails = userDetailsService.loadUserByUsername("admin");
-
-        // 3. Создаем объект авторизации для Spring Security
         UsernamePasswordAuthenticationToken authentication =
                 new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
 
-        // 4. Сохраняем авторизацию в контекст безопасности и в сессию
         SecurityContext context = SecurityContextHolder.createEmptyContext();
         context.setAuthentication(authentication);
         SecurityContextHolder.setContext(context);
 
         HttpSession session = request.getSession(true);
-        // Стандартный атрибут, который читает Spring Security Filter
         session.setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY, context);
 
-        // 5. Успешный вход! Редиректим в админку
+        // --- НОВАЯ ЛОГИКА ---
+        // Если передан redirect и он начинается с "/" (защита от открытых редиректов),
+        // то идем туда. Иначе — по умолчанию в админку.
+        if (redirect != null && redirect.startsWith("/")) {
+            return "redirect:" + redirect;
+        }
+
         return "redirect:/admin";
     }
 }
