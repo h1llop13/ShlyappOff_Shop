@@ -1,4 +1,3 @@
-// src/main/java/com/shlyapoff/shop/service/TelegramNotificationService.java
 package com.shlyapoff.shop.service;
 
 import com.shlyapoff.shop.bot.ShlyapOffBot;
@@ -9,7 +8,6 @@ import com.shlyapoff.shop.repository.AdminRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import com.shlyapoff.shop.service.TelegramAuthService;
 
 import java.math.BigDecimal;
 import java.time.format.DateTimeFormatter;
@@ -21,7 +19,7 @@ public class TelegramNotificationService {
 
     private final ShlyapOffBot bot;
     private final AdminRepository adminRepository;
-    private final TelegramAuthService telegramAuthService;
+    // ← TelegramAuthService убран полностью
 
     @Value("${telegram.admin-chat-id}")
     private Long superAdminChatId;
@@ -31,18 +29,15 @@ public class TelegramNotificationService {
 
     public void notifyAdminAboutNewOrder(Order order) {
         String message = formatOrderMessage(order);
+        String ordersUrl = baseUrl + "/admin/orders";
 
-        // ← Генерируем токен и используем его!
-        String token = telegramAuthService.generateLoginToken(superAdminChatId);
-        String magicUrl = baseUrl + "/auth/telegram-login?token=" + token + "&redirect=/admin/orders";
-        bot.sendMessageWithButton(superAdminChatId, message, "Открыть заказы", magicUrl);
+        // Просто кнопка со ссылкой — открывать в обычном браузере
+        bot.sendMessageWithButton(superAdminChatId, message, "📋 Открыть заказы", ordersUrl);
 
         List<Admin> admins = adminRepository.findAll();
         for (Admin admin : admins) {
             if (!admin.getTelegramChatId().equals(superAdminChatId)) {
-                String adminToken = telegramAuthService.generateLoginToken(admin.getTelegramChatId());
-                String adminUrl = baseUrl + "/auth/telegram-login?token=" + adminToken + "&redirect=/admin/orders";
-                bot.sendMessageWithButton(admin.getTelegramChatId(), message, "📋 Открыть заказы", adminUrl);
+                bot.sendMessageWithButton(admin.getTelegramChatId(), message, "📋 Открыть заказы", ordersUrl);
             }
         }
     }
@@ -79,7 +74,7 @@ public class TelegramNotificationService {
         }
 
         if (order.getDiscountPercent() != null && order.getDiscountPercent() > 0) {
-            sb.append("\n🎁 <b>Скидка по программе лояльности:</b> -").append(order.getDiscountPercent()).append("%")
+            sb.append("\n🎁 <b>Скидка:</b> -").append(order.getDiscountPercent()).append("%")
                     .append(" (было ").append(order.getSubtotalAmount()).append(" ₽)\n");
         }
 
