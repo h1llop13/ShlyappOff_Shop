@@ -1,5 +1,16 @@
 # ShlyapOff E-Commerce Platform
 
+<div align="center">
+
+![Repository Stars](https://img.shields.io/github/stars/h1llop13/ShlyappOff_Shop?style=flat-square)
+![Repository Forks](https://img.shields.io/github/forks/h1llop13/ShlyappOff_Shop?style=flat-square)
+![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)
+![Last Commit](https://img.shields.io/github/last-commit/h1llop13/ShlyappOff_Shop?style=flat-square)
+![Issues](https://img.shields.io/github/issues/h1llop13/ShlyappOff_Shop?style=flat-square)
+![Pull Requests](https://img.shields.io/github/issues-pr/h1llop13/ShlyappOff_Shop?style=flat-square)
+
+</div>
+
 [![Java](https://img.shields.io/badge/Java-21-orange?style=flat-square&logo=openjdk)](https://www.java.com/)
 [![Spring Boot](https://img.shields.io/badge/Spring_Boot-4.0.7-brightgreen?style=flat-square&logo=springboot)](https://spring.io/projects/spring-boot)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue?style=flat-square&logo=postgresql)](https://www.postgresql.org/)
