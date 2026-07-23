@@ -8,7 +8,7 @@ RUN mvn dependency:go-offline -B
 
 # Копируем исходный код и собираем jar
 COPY src ./src
-RUN mvn clean package -DskipTests
+RUN mvn clean verify
 
 # ЭТАП 2: Запуск (используем только JRE, образ будет легким)
 FROM eclipse-temurin:21-jre-alpine

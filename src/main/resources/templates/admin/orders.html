@@ -33,6 +33,7 @@
     <h1 class="mb-4">Заказы</h1>
 
     <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
+    <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
 
     <p class="text-white-50">
         Пока заказ не переведён в статус «Выполнен», он не отображается в истории заказов клиента
@@ -61,7 +62,7 @@
             <td th:text="${order.discountPercent} + '%'">0%</td>
             <td th:text="${order.totalAmount} + ' ₽'">0 ₽</td>
             <td>
-                <span th:switch="${order.status}">
+                <span th:switch="${order.status.name()}">
                     <span th:case="'NEW'" class="badge bg-secondary">Новый</span>
                     <span th:case="'PROCESSING'" class="badge bg-warning text-dark">В обработке</span>
                     <span th:case="'COMPLETED'" class="badge bg-success">Выполнен</span>
@@ -70,15 +71,18 @@
                 </span>
             </td>
             <td>
-                <form th:action="@{/admin/orders/{id}/status(id=${order.id})}" method="post" class="d-flex gap-2">
-                    <select name="status" class="form-select form-select-sm bg-dark text-white border-secondary">
-                        <option value="NEW" th:selected="${order.status == 'NEW'}">Новый</option>
-                        <option value="PROCESSING" th:selected="${order.status == 'PROCESSING'}">В обработке</option>
-                        <option value="COMPLETED" th:selected="${order.status == 'COMPLETED'}">Выполнен</option>
-                        <option value="CANCELLED" th:selected="${order.status == 'CANCELLED'}">Отменён</option>
+                <form th:if="${order.status.name() == 'NEW' or order.status.name() == 'PROCESSING'}"
+                      th:action="@{/admin/orders/{id}/status(id=${order.id})}" method="post" class="d-flex gap-2">
+                    <select name="status" required class="form-select form-select-sm bg-dark text-white border-secondary">
+                        <option value="" selected disabled>Новый статус</option>
+                        <option th:if="${order.status.name() == 'NEW'}" value="PROCESSING">В обработке</option>
+                        <option value="COMPLETED">Выполнен</option>
+                        <option value="CANCELLED">Отменён</option>
                     </select>
                     <button type="submit" class="btn btn-sm btn-outline-light">Сохранить</button>
                 </form>
+                <span th:if="${order.status.name() == 'COMPLETED' or order.status.name() == 'CANCELLED'}"
+                      class="text-white-50">Изменение недоступно</span>
             </td>
         </tr>
         <tr th:if="${orders.isEmpty()}">

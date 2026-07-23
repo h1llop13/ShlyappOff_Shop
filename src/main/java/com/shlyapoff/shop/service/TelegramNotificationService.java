@@ -19,7 +19,6 @@ public class TelegramNotificationService {
 
     private final ShlyapOffBot bot;
     private final AdminRepository adminRepository;
-    // ← TelegramAuthService убран полностью
 
     @Value("${telegram.admin-chat-id}")
     private Long superAdminChatId;

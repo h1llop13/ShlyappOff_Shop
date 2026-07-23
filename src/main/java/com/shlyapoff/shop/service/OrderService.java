@@ -4,6 +4,7 @@ import com.shlyapoff.shop.model.Cart;
 import com.shlyapoff.shop.model.Customer;
 import com.shlyapoff.shop.model.Order;
 import com.shlyapoff.shop.model.OrderItem;
+import com.shlyapoff.shop.model.OrderStatus;
 import com.shlyapoff.shop.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -113,30 +114,37 @@ public class OrderService {
      * он не должен быть виден клиенту в истории и не должен влиять на скидку.
      */
     public List<Order> findConfirmedByCustomerId(Long customerId) {
-        return orderRepository.findByCustomerIdAndStatusWithItems(customerId, STATUS_COMPLETED);
+        return orderRepository.findByCustomerIdAndStatusWithItems(customerId, OrderStatus.COMPLETED);
     }
 
     public Optional<Order> findById(Long id) {
         return orderRepository.findById(id);
     }
 
-    public static final String STATUS_COMPLETED = "COMPLETED";
-
     @Transactional
     public void updateStatus(Long orderId, String status) {
+        OrderStatus nextStatus = OrderStatus.from(status);
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Заказ не найден"));
 
-        String previousStatus = order.getStatus();
-        order.setStatus(status);
+        OrderStatus previousStatus = order.getStatus();
+        if (previousStatus == nextStatus) {
+            return;
+        }
+        if (!previousStatus.canTransitionTo(nextStatus)) {
+            throw new IllegalStateException(
+                    "Недопустимый переход статуса: " + previousStatus + " -> " + nextStatus
+            );
+        }
+
+        order.setStatus(nextStatus);
         orderRepository.save(order);
 
         // Начисляем сумму заказа в totalSpent клиента и пересчитываем скидку
         // ТОЛЬКО в момент, когда админ впервые подтверждает заказ статусом COMPLETED.
         // Проверка previousStatus защищает от повторного начисления,
         // если админ случайно ещё раз сохранит тот же статус.
-        boolean justCompleted = STATUS_COMPLETED.equals(status) && !STATUS_COMPLETED.equals(previousStatus);
-        if (justCompleted && order.getCustomer() != null) {
+        if (nextStatus == OrderStatus.COMPLETED && order.getCustomer() != null) {
             customerService.registerOrderAndRecalculateDiscount(order.getCustomer(), order.getSubtotalAmount());
         }
     }

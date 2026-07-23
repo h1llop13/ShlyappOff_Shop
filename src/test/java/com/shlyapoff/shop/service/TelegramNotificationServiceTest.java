@@ -109,4 +109,12 @@ class TelegramNotificationServiceTest {
 
         assertThat(messageCaptor.getValue()).doesNotContain("Telegram");
     }
+
+    @Test
+    void acceptsOnlyPublicHttpsUrlsForInlineButtons() {
+        assertThat(ShlyapOffBot.isPublicHttpsUrl("https://shop.example.com/admin/orders")).isTrue();
+        assertThat(ShlyapOffBot.isPublicHttpsUrl("http://localhost:8080/admin/orders")).isFalse();
+        assertThat(ShlyapOffBot.isPublicHttpsUrl("https://127.0.0.1/admin/orders")).isFalse();
+        assertThat(ShlyapOffBot.isPublicHttpsUrl("not a URL")).isFalse();
+    }
 }

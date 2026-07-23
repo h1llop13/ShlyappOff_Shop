@@ -24,7 +24,8 @@ import java.util.*;
 public class TelegramWebAppAuthService {
 
     private static final String HMAC_SHA256 = "HmacSHA256";
-    private static final long MAX_AUTH_AGE_SECONDS = 24 * 60 * 60; // 24 часа
+    private static final long MAX_AUTH_AGE_SECONDS = 60 * 60;
+    private static final long MAX_FUTURE_CLOCK_SKEW_SECONDS = 30;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -64,11 +65,14 @@ public class TelegramWebAppAuthService {
             }
 
             String authDateStr = params.get("auth_date");
-            if (authDateStr != null) {
-                long authDate = Long.parseLong(authDateStr);
-                if (Instant.now().getEpochSecond() - authDate > MAX_AUTH_AGE_SECONDS) {
-                    return Optional.empty(); // ссылка/сессия слишком старая
-                }
+            if (authDateStr == null) {
+                return Optional.empty();
+            }
+
+            long authDate = Long.parseLong(authDateStr);
+            long ageSeconds = Instant.now().getEpochSecond() - authDate;
+            if (ageSeconds > MAX_AUTH_AGE_SECONDS || ageSeconds < -MAX_FUTURE_CLOCK_SKEW_SECONDS) {
+                return Optional.empty();
             }
 
             String userJson = params.get("user");

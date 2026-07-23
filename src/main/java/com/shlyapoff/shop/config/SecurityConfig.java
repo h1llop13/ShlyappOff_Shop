@@ -41,7 +41,6 @@ public class SecurityConfig {
                         .requestMatchers("/cart/**").permitAll()
                         .requestMatchers("/checkout", "/success").permitAll()
                         .requestMatchers("/profile", "/api/profile/**").permitAll()
-                        .requestMatchers("/auth/telegram-login").permitAll()
                         .requestMatchers("/admin/**").hasAuthority("ROLE_ADMIN")
                         .anyRequest().authenticated()
                 )

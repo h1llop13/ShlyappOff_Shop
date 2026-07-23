@@ -231,6 +231,10 @@
 
     <!-- FORM -->
     <form th:action="@{/checkout}" method="post" th:object="${orderDto}" id="checkoutForm">
+        <div th:if="${#fields.hasGlobalErrors()}" class="section form-error">
+            <div th:each="error : ${#fields.globalErrors()}" th:text="${error.defaultMessage}">Ошибка оформления заказа</div>
+        </div>
+
         <!-- CUSTOMER NAME -->
         <div class="section">
             <h2 class="section-title">Контактные данные</h2>
@@ -286,10 +290,7 @@
             </div>
         </div>
 
-        <!-- Hidden field for Telegram user ID -->
-        <input type="hidden" name="telegramUserId" id="telegramUserId">
-        <!-- Hidden field for Telegram username (для связи с клиентом) -->
-        <input type="hidden" name="telegramUsername" id="telegramUsername">
+        <input type="hidden" name="telegramInitData" id="telegramInitData">
 
         <!-- BOTTOM BAR (HTML Fallback) -->
         <div class="bottom-bar" id="htmlBottomBar">
@@ -305,6 +306,11 @@
         tg.expand();
         tg.ready();
 
+        const tgInitDataInput = document.getElementById('telegramInitData');
+        if (tgInitDataInput) {
+            tgInitDataInput.value = tg.initData || '';
+        }
+
         // Автозаполнение имени из Telegram
         if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
             const user = tg.initDataUnsafe.user;
@@ -315,18 +321,6 @@
                 }
             }
 
-            // Сохраняем Telegram ID
-            const tgIdInput = document.getElementById('telegramUserId');
-            if (tgIdInput && user.id) {
-                tgIdInput.value = user.id;
-            }
-
-            // Сохраняем Telegram username (если пользователь его установил —
-            // не у всех он есть, тогда поле останется пустым)
-            const tgUsernameInput = document.getElementById('telegramUsername');
-            if (tgUsernameInput && user.username) {
-                tgUsernameInput.value = user.username;
-            }
         }
 
         // Нативная кнопка Telegram

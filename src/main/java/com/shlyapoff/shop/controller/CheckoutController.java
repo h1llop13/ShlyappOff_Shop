@@ -3,11 +3,13 @@ package com.shlyapoff.shop.controller;
 import com.shlyapoff.shop.dto.OrderDto;
 import com.shlyapoff.shop.model.Order;
 import com.shlyapoff.shop.service.OrderService;
+import com.shlyapoff.shop.service.TelegramWebAppAuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.util.StringUtils;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -20,6 +22,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class CheckoutController {
 
     private final OrderService orderService;
+    private final TelegramWebAppAuthService telegramWebAppAuthService;
 
     /**
      * Показываем форму оформления заказа
@@ -30,11 +33,7 @@ public class CheckoutController {
             @RequestParam(required = false) String tgName, // Имя из Telegram (если есть)
             Model model) {
 
-        String sessionId = request.getSession().getId();
-
-        // Проверяем, что корзина не пуста
-        var cartOpt = orderService.getCartForCheckout(sessionId);
-        if (cartOpt.isEmpty()) {
+        if (!populateCheckoutModel(request.getSession().getId(), model)) {
             return "redirect:/cart";
         }
 
@@ -45,13 +44,6 @@ public class CheckoutController {
         }
 
         model.addAttribute("orderDto", orderDto);
-        model.addAttribute("cart", cartOpt.get());
-
-        // Считаем итоговую сумму
-        double total = cartOpt.get().getItems().stream()
-                .mapToDouble(item -> item.getProduct().getPrice().doubleValue() * item.getQuantity())
-                .sum();
-        model.addAttribute("total", total);
 
         return "checkout";
     }
@@ -64,22 +56,24 @@ public class CheckoutController {
             @Valid @ModelAttribute("orderDto") OrderDto orderDto,
             BindingResult bindingResult,
             HttpServletRequest request,
-            @RequestParam(required = false) Long telegramUserId,
-            @RequestParam(required = false) String telegramUsername,
+            @RequestParam(required = false) String telegramInitData,
             Model model,
             RedirectAttributes redirectAttributes) {
 
+        TelegramWebAppAuthService.TelegramWebAppUser telegramUser = null;
+        if (StringUtils.hasText(telegramInitData)) {
+            telegramUser = telegramWebAppAuthService.validate(telegramInitData).orElse(null);
+            if (telegramUser == null) {
+                bindingResult.reject(
+                        "telegram.auth.invalid",
+                        "Не удалось подтвердить данные Telegram. Откройте магазин заново через бота."
+                );
+            }
+        }
+
         // Если есть ошибки валидации — возвращаем на форму
         if (bindingResult.hasErrors()) {
-            String sessionId = request.getSession().getId();
-            var cartOpt = orderService.getCartForCheckout(sessionId);
-            if (cartOpt.isPresent()) {
-                model.addAttribute("cart", cartOpt.get());
-                double total = cartOpt.get().getItems().stream()
-                        .mapToDouble(item -> item.getProduct().getPrice().doubleValue() * item.getQuantity())
-                        .sum();
-                model.addAttribute("total", total);
-            }
+            populateCheckoutModel(request.getSession().getId(), model);
             return "checkout";
         }
 
@@ -91,8 +85,8 @@ public class CheckoutController {
                     orderDto.getPhone(),
                     orderDto.getDeliveryType(),
                     orderDto.getComment(),
-                    telegramUserId,
-                    telegramUsername
+                    telegramUser != null ? telegramUser.id() : null,
+                    telegramUser != null ? telegramUser.username() : null
             );
 
             // TODO: Здесь будет отправка уведомления в Telegram
@@ -118,5 +112,20 @@ public class CheckoutController {
         }
         model.addAttribute("orderId", orderId);
         return "success";
+    }
+
+    private boolean populateCheckoutModel(String sessionId, Model model) {
+        var cartOpt = orderService.getCartForCheckout(sessionId);
+        if (cartOpt.isEmpty()) {
+            return false;
+        }
+
+        var cart = cartOpt.get();
+        model.addAttribute("cart", cart);
+        double total = cart.getItems().stream()
+                .mapToDouble(item -> item.getProduct().getPrice().doubleValue() * item.getQuantity())
+                .sum();
+        model.addAttribute("total", total);
+        return true;
     }
 }

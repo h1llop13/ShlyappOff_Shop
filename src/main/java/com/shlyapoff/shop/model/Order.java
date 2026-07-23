@@ -51,7 +51,8 @@ public class Order {
     private BigDecimal totalAmount;
 
     @Column(name = "status", nullable = false)
-    private String status = "NEW";
+    @Enumerated(EnumType.STRING)
+    private OrderStatus status = OrderStatus.NEW;
 
     @Column(name = "telegram_user_id")
     private Long telegramUserId;

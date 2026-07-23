@@ -9,13 +9,12 @@ import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import lombok.RequiredArgsConstructor;
-import com.shlyapoff.shop.service.TelegramAuthService;
-import org.springframework.beans.factory.annotation.Value;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import lombok.extern.slf4j.Slf4j;
-import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.List;
 
 @Component
@@ -24,7 +23,6 @@ import java.util.List;
 public class ShlyapOffBot extends TelegramLongPollingBot {
 
     private final AdminRepository adminRepository;
-    private final TelegramAuthService telegramAuthService;
 
     @Value("${telegram.bot-token}")
     private String botToken;
@@ -32,9 +30,6 @@ public class ShlyapOffBot extends TelegramLongPollingBot {
     // Твой основной ID админа из конфига (как "супер-админ")
     @Value("${telegram.admin-chat-id}")
     private Long superAdminChatId;
-
-    @Value("${app.base-url}")
-    private String baseUrl;
 
     @Override
     public String getBotUsername() {
@@ -56,39 +51,12 @@ public class ShlyapOffBot extends TelegramLongPollingBot {
                 sendMessage(chatId, "Привет! Я бот магазина ShlyapOff.");
             }
 
-            else if (messageText.equals("/admin_login")) {
-                handleAdminLogin(chatId);
-            }
-
             // Логика добавления админа
             else if (messageText.startsWith("/add_admin")) {
                 handleAddAdmin(chatId, messageText);
             }
         }
     }
-
-    private void handleAdminLogin(long chatId) {
-        // Проверяем, есть ли у пользователя права (супер-админ или есть в БД)
-        boolean isAuthorized = chatId == superAdminChatId || adminRepository.existsByTelegramChatId(chatId);
-
-        if (!isAuthorized) {
-            sendMessage(chatId, "❌ У вас нет прав для входа в админку.");
-            return;
-        }
-
-        // Генерируем токен
-        String token = telegramAuthService.generateLoginToken(chatId);
-        String loginUrl = baseUrl + "/auth/telegram-login?token=" + token;
-
-        // Отправляем красивую HTML-ссылку
-        String text = "🔐 <b>Вход в админ-панель</b>\n\n" +
-                "Ссылка действительна 5 минут и сгорит после первого использования:\n" +
-                "<a href=\"" + loginUrl + "\">👉 Войти в админку</a>";
-
-        sendMessage(chatId, text);
-    }
-
-    // ... внутри класса ShlyapOffBot
 
     private void handleAddAdmin(long requesterChatId, String command) {
         // 1. Проверка прав: может ли этот человек добавлять админов?
@@ -146,6 +114,12 @@ public class ShlyapOffBot extends TelegramLongPollingBot {
     }
 
     public void sendMessageWithButton(Long chatId, String text, String buttonText, String buttonUrl) {
+        if (!isPublicHttpsUrl(buttonUrl)) {
+            log.warn("Refusing to send Telegram inline button with non-public URL: {}", buttonUrl);
+            sendMessage(chatId, text);
+            return;
+        }
+
         SendMessage message = new SendMessage();
         message.setChatId(String.valueOf(chatId));
         message.setText(text);
@@ -166,6 +140,19 @@ public class ShlyapOffBot extends TelegramLongPollingBot {
             execute(message);
         } catch (TelegramApiException e) {
             log.error("Ошибка отправки сообщения с кнопкой в чат {}", chatId, e);
+        }
+    }
+
+    public static boolean isPublicHttpsUrl(String url) {
+        try {
+            URI uri = new URI(url);
+            return "https".equalsIgnoreCase(uri.getScheme())
+                    && uri.getHost() != null
+                    && !"localhost".equalsIgnoreCase(uri.getHost())
+                    && !"127.0.0.1".equals(uri.getHost())
+                    && !"::1".equals(uri.getHost());
+        } catch (URISyntaxException | NullPointerException ex) {
+            return false;
         }
     }
 }

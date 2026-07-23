@@ -27,8 +27,12 @@ public class AdminOrderController {
     public String updateStatus(@PathVariable Long id,
                                 @RequestParam String status,
                                 RedirectAttributes redirectAttributes) {
-        orderService.updateStatus(id, status);
-        redirectAttributes.addFlashAttribute("successMessage", "Статус заказа обновлён!");
+        try {
+            orderService.updateStatus(id, status);
+            redirectAttributes.addFlashAttribute("successMessage", "Статус заказа обновлён!");
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            redirectAttributes.addFlashAttribute("errorMessage", exception.getMessage());
+        }
         return "redirect:/admin/orders";
     }
 }

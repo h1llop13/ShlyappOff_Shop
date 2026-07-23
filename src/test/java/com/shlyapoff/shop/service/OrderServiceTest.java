@@ -4,6 +4,7 @@ import com.shlyapoff.shop.model.Cart;
 import com.shlyapoff.shop.model.CartItem;
 import com.shlyapoff.shop.model.Customer;
 import com.shlyapoff.shop.model.Order;
+import com.shlyapoff.shop.model.OrderStatus;
 import com.shlyapoff.shop.model.Product;
 import com.shlyapoff.shop.repository.OrderRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -197,14 +198,62 @@ class OrderServiceTest {
     void updatesOrderStatus() {
         Order order = new Order();
         order.setId(1L);
-        order.setStatus("NEW");
+        order.setStatus(OrderStatus.NEW);
 
         when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
 
         orderService.updateStatus(1L, "COMPLETED");
 
-        assertThat(order.getStatus()).isEqualTo("COMPLETED");
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.COMPLETED);
         verify(orderRepository).save(order);
+    }
+
+    @Test
+    @DisplayName("отклоняет неизвестный статус до обращения к базе")
+    void rejectsUnknownOrderStatus() {
+        assertThatThrownBy(() -> orderService.updateStatus(1L, "HACKED"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Недопустимый статус заказа");
+
+        verify(orderRepository, never()).findById(any());
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("не позволяет изменить завершённый заказ")
+    void rejectsTransitionFromCompletedStatus() {
+        Order order = new Order();
+        order.setId(1L);
+        order.setStatus(OrderStatus.COMPLETED);
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+
+        assertThatThrownBy(() -> orderService.updateStatus(1L, "CANCELLED"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("COMPLETED -> CANCELLED");
+
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.COMPLETED);
+        verify(orderRepository, never()).save(any());
+        verify(customerService, never()).registerOrderAndRecalculateDiscount(any(), any());
+    }
+
+    @Test
+    @DisplayName("повторный статус COMPLETED не начисляет сумму ещё раз")
+    void completesOrderOnlyOnce() {
+        Customer customer = new Customer();
+        Order order = new Order();
+        order.setId(1L);
+        order.setStatus(OrderStatus.NEW);
+        order.setCustomer(customer);
+        order.setSubtotalAmount(new BigDecimal("450.50"));
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+
+        orderService.updateStatus(1L, "COMPLETED");
+        orderService.updateStatus(1L, "COMPLETED");
+
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.COMPLETED);
+        verify(orderRepository, times(1)).save(order);
+        verify(customerService, times(1))
+                .registerOrderAndRecalculateDiscount(customer, new BigDecimal("450.50"));
     }
 
     @Test

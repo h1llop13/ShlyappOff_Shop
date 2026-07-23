@@ -54,7 +54,7 @@ public class ProfileApiController {
                 .map(o -> new ProfileDto.OrderView(
                         o.getId(),
                         o.getCreatedAt(),
-                        o.getStatus(),
+                        o.getStatus().name(),
                         o.getDeliveryType(),
                         o.getSubtotalAmount() != null ? o.getSubtotalAmount() : o.getTotalAmount(),
                         o.getDiscountPercent(),
