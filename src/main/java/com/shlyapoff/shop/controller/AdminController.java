@@ -3,6 +3,7 @@ package com.shlyapoff.shop.controller;
 import com.shlyapoff.shop.model.Brand;
 import com.shlyapoff.shop.model.Category;
 import com.shlyapoff.shop.model.Product;
+import com.shlyapoff.shop.model.ProductField;
 import com.shlyapoff.shop.model.VariantType;
 import com.shlyapoff.shop.service.BrandService;
 import com.shlyapoff.shop.service.CategoryService;
@@ -23,8 +24,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/admin")
@@ -51,8 +54,7 @@ public class AdminController {
     @GetMapping("/product/create")
     public String createProductForm(Model model) {
         model.addAttribute("product", new Product());
-        model.addAttribute("categories", categoryService.findAll());
-        model.addAttribute("brands", brandService.findAll());
+        addProductFormData(model);
         return "admin/product-form";
     }
 
@@ -94,8 +96,7 @@ public class AdminController {
             return "redirect:/admin";
         }
         model.addAttribute("product", product.get());
-        model.addAttribute("categories", categoryService.findAll());
-        model.addAttribute("brands", brandService.findAll());
+        addProductFormData(model);
         return "admin/product-form";
     }
 
@@ -123,6 +124,11 @@ public class AdminController {
         productToUpdate.setPrice(product.getPrice());
         productToUpdate.setNicotineStrength(product.getNicotineStrength());
         productToUpdate.setVolume(product.getVolume());
+        productToUpdate.setBatteryCapacity(product.getBatteryCapacity());
+        productToUpdate.setPuffCount(product.getPuffCount());
+        productToUpdate.setCartridgeVolume(product.getCartridgeVolume());
+        productToUpdate.setMaxPower(product.getMaxPower());
+        productToUpdate.setPackageQuantity(product.getPackageQuantity());
         productToUpdate.setActive(true);
 
         // Обновляем категорию и бренд
@@ -361,5 +367,14 @@ public class AdminController {
                 productVariantService.save(productId, value.trim(), true);
             }
         }
+    }
+
+    private void addProductFormData(Model model) {
+        List<Category> categories = categoryService.findAll();
+        Map<Long, List<ProductField>> fieldsByCategory = categories.stream()
+                .collect(Collectors.toMap(Category::getId, ProductField::forCategory));
+        model.addAttribute("categories", categories);
+        model.addAttribute("brands", brandService.findAll());
+        model.addAttribute("fieldsByCategory", fieldsByCategory);
     }
 }

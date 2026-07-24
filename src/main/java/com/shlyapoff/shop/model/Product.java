@@ -35,6 +35,16 @@ public class Product {
 
     private String volume;
 
+    private String batteryCapacity;
+
+    private String puffCount;
+
+    private String cartridgeVolume;
+
+    private String maxPower;
+
+    private String packageQuantity;
+
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<ProductVariant> variants = new ArrayList<>();
 

@@ -21,3 +21,5 @@ databaseChangeLog:
       file: db/changelog/changes/010-constrain-order-status.sql
   - include:
       file: db/changelog/changes/011-add-category-variant-types.sql
+  - include:
+      file: db/changelog/changes/012-add-product-characteristics.sql

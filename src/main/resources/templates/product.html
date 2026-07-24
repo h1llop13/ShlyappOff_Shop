@@ -118,13 +118,9 @@
     <!-- SPECS -->
     <h3 class="section-title">Характеристики</h3>
     <div class="specs-list">
-        <div class="spec-item">
-            <span class="spec-label">Крепость</span>
-            <span class="spec-value" th:text="${product.nicotineStrength ?: 'Не указана'}">-</span>
-        </div>
-        <div class="spec-item">
-            <span class="spec-label">Объем</span>
-            <span class="spec-value" th:text="${product.volume ?: 'Не указан'}">-</span>
+        <div class="spec-item" th:each="field : ${productFields}">
+            <span class="spec-label" th:text="${field.displayName}">Характеристика</span>
+            <span class="spec-value" th:text="${field.getValue(product) ?: 'Не указано'}">-</span>
         </div>
         <div class="spec-item">
             <span class="spec-label">Категория</span>

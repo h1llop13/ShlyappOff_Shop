@@ -2,6 +2,7 @@ package com.shlyapoff.shop.controller;
 
 import com.shlyapoff.shop.model.Cart;
 import com.shlyapoff.shop.model.Product;
+import com.shlyapoff.shop.model.ProductField;
 import com.shlyapoff.shop.model.ProductVariant;
 import com.shlyapoff.shop.repository.ProductRepository;
 import com.shlyapoff.shop.service.BrandService;
@@ -85,6 +86,7 @@ public class HomeController {
 
         Product prod = product.get();
         model.addAttribute("product", prod);
+        model.addAttribute("productFields", ProductField.forCategory(prod.getCategory()));
 
         // Варианты уже загружены через JOIN FETCH, но можно явно передать
         model.addAttribute("variants", prod.getVariants());
