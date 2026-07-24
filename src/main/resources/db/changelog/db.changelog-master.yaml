@@ -19,3 +19,5 @@ databaseChangeLog:
       file: db/changelog/changes/009-drop-telegram-login-tokens.sql
   - include:
       file: db/changelog/changes/010-constrain-order-status.sql
+  - include:
+      file: db/changelog/changes/011-add-category-variant-types.sql

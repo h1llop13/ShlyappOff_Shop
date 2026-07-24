@@ -22,6 +22,17 @@
             <input type="text" class="form-control bg-dark text-white" id="name" name="name"
                    th:value="${category.name}" required>
         </div>
+        <div class="mb-3">
+            <label for="variantType" class="form-label">Тип вариантов товара</label>
+            <select class="form-select bg-dark text-white" id="variantType" name="variantType" required>
+                <option th:each="variantType : ${variantTypes}"
+                        th:value="${variantType}"
+                        th:text="${variantType.displayName}"
+                        th:selected="${category.variantType == variantType}">
+                </option>
+            </select>
+            <div class="form-text text-white-50">Определяет, что указывается для товаров этой категории.</div>
+        </div>
         <div class="d-flex gap-2">
             <button type="submit" class="btn btn-warning">Сохранить</button>
             <a href="/admin/categories" class="btn btn-outline-light">Отмена</a>

@@ -53,6 +53,7 @@
                     <option th:each="category : ${categories}"
                             th:value="${category.id}"
                             th:text="${category.name}"
+                            th:attr="data-variant-type=${category.variantType},data-variant-title=${category.variantType.displayTitle},data-variant-singular=${category.variantType.singularAccusative}"
                             th:selected="${product.category != null && product.category.id == category.id}">
                     </option>
                 </select>
@@ -85,6 +86,18 @@
             </div>
         </div>
 
+        <section id="variantsSection" class="card bg-black mb-3" th:if="${product.id == null}" hidden>
+            <div class="card-body">
+                <h5 id="variantsTitle" class="mb-3">Варианты</h5>
+                <div id="variantRows" class="d-grid gap-2"></div>
+                <button type="button" id="addVariantButton" class="btn btn-outline-info mt-3">Добавить вариант</button>
+            </div>
+        </section>
+
+        <div th:if="${product.id != null && product.category != null && product.category.variantType.name() != 'NONE'}" class="mb-3">
+            <a th:href="@{/admin/product/{id}/variants(id=${product.id})}" class="btn btn-outline-info">Управлять вариантами товара</a>
+        </div>
+
         <div class="mb-3">
             <label for="imageFile" class="form-label">Изображение товара</label>
             <input type="file" class="form-control bg-dark text-white" id="imageFile" name="imageFile" accept="image/*">
@@ -100,6 +113,45 @@
         </div>
     </form>
 </div>
+
+<script th:if="${product.id == null}">
+    const categorySelect = document.getElementById('category_id');
+    const variantsSection = document.getElementById('variantsSection');
+    const variantsTitle = document.getElementById('variantsTitle');
+    const variantRows = document.getElementById('variantRows');
+    const addVariantButton = document.getElementById('addVariantButton');
+
+    function selectedVariantType() {
+        return categorySelect.options[categorySelect.selectedIndex];
+    }
+
+    function addVariantRow() {
+        const option = selectedVariantType();
+        const singular = option.dataset.variantSingular || 'вариант';
+        const row = document.createElement('div');
+        row.className = 'input-group';
+        row.innerHTML = `<input type="text" name="variantValues" class="form-control bg-dark text-white" placeholder="Укажите ${singular}" required>
+                         <button type="button" class="btn btn-outline-danger">Удалить</button>`;
+        row.querySelector('button').addEventListener('click', () => row.remove());
+        variantRows.appendChild(row);
+    }
+
+    function updateVariantsSection() {
+        const option = selectedVariantType();
+        const hasVariants = option && option.dataset.variantType && option.dataset.variantType !== 'NONE';
+        variantsSection.hidden = !hasVariants;
+        if (!hasVariants) {
+            variantRows.replaceChildren();
+            return;
+        }
+        variantsTitle.textContent = option.dataset.variantTitle || 'Варианты';
+        addVariantButton.textContent = `Добавить ${option.dataset.variantSingular || 'вариант'}`;
+    }
+
+    categorySelect.addEventListener('change', updateVariantsSection);
+    addVariantButton.addEventListener('click', addVariantRow);
+    updateVariantsSection();
+</script>
 
 </body>
 </html>

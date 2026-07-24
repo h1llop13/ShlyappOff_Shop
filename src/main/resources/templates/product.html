@@ -105,11 +105,11 @@
 
     <!-- VARIANTS (FLAVORS) -->
     <div th:if="${variants != null && !variants.isEmpty()}">
-        <h3 class="section-title">Вкусы и варианты</h3>
+        <h3 class="section-title" th:text="${product.category != null ? product.category.variantType.displayTitle : 'Варианты'}">Варианты</h3>
         <div class="variants-grid">
             <div th:each="variant : ${variants}"
                  th:class="${variant.inStock} ? 'variant-chip in-stock' : 'variant-chip out-of-stock'">
-                <span th:text="${variant.flavorName}">Вкус</span>
+                <span th:text="${variant.value}">Вариант</span>
                 <span th:if="${!variant.inStock}">✕</span>
             </div>
         </div>

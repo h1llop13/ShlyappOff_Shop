@@ -20,6 +20,10 @@ public class Category {
     @Column(nullable = false, unique = true)
     private String name;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "variant_type", nullable = false)
+    private VariantType variantType = VariantType.NONE;
+
     @CreatedDate
     @Column(updatable = false)
     private LocalDateTime createdAt;

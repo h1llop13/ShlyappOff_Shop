@@ -27,13 +27,13 @@ public class ProductVariantService {
     }
 
     @Transactional
-    public ProductVariant save(Long productId, String flavorName, Boolean inStock) {
+    public ProductVariant save(Long productId, String value, Boolean inStock) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new RuntimeException("Товар не найден"));
 
         ProductVariant variant = new ProductVariant();
         variant.setProduct(product);
-        variant.setFlavorName(flavorName);
+        variant.setValue(value);
         variant.setInStock(inStock);
 
         return productVariantRepository.save(variant);

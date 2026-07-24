@@ -2,6 +2,7 @@ package com.shlyapoff.shop.config;
 
 import com.shlyapoff.shop.model.Brand;
 import com.shlyapoff.shop.model.Category;
+import com.shlyapoff.shop.model.VariantType;
 import com.shlyapoff.shop.model.User;
 import com.shlyapoff.shop.repository.BrandRepository;
 import com.shlyapoff.shop.repository.CategoryRepository;
@@ -60,10 +61,12 @@ public class DataInitializer implements CommandLineRunner {
         if (categoryRepository.count() == 0) {
             Category cat1 = new Category();
             cat1.setName("Одноразки");
+            cat1.setVariantType(VariantType.FLAVOR);
             categoryRepository.save(cat1);
 
             Category cat2 = new Category();
             cat2.setName("Жидкости");
+            cat2.setVariantType(VariantType.FLAVOR);
             categoryRepository.save(cat2);
 
             Brand brand1 = new Brand();

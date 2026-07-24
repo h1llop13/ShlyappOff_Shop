@@ -25,8 +25,8 @@ public class ProductVariant {
     @JoinColumn(name = "product_id", nullable = false)
     private Product product;
 
-    @Column(name = "flavor_name", nullable = false)
-    private String flavorName;
+    @Column(name = "variant_value", nullable = false)
+    private String value;
 
     @Column(name = "in_stock", nullable = false)
     private Boolean inStock = true;

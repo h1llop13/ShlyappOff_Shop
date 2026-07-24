@@ -3,6 +3,7 @@ package com.shlyapoff.shop.controller;
 import com.shlyapoff.shop.model.Brand;
 import com.shlyapoff.shop.model.Category;
 import com.shlyapoff.shop.model.Product;
+import com.shlyapoff.shop.model.VariantType;
 import com.shlyapoff.shop.service.BrandService;
 import com.shlyapoff.shop.service.CategoryService;
 import com.shlyapoff.shop.service.ProductService;
@@ -10,6 +11,7 @@ import com.shlyapoff.shop.service.ProductVariantService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -56,11 +58,13 @@ public class AdminController {
 
     // Обработка формы добавления товара
     @PostMapping("/product/create")
+    @Transactional
     public String createProduct(
             @ModelAttribute("product") Product product,
             @RequestParam("category_id") Long categoryId,
             @RequestParam("brand_id") Long brandId,
             @RequestParam("imageFile") MultipartFile imageFile,
+            @RequestParam(required = false) List<String> variantValues,
             RedirectAttributes redirectAttributes) {
 
         // Устанавливаем категорию и бренд
@@ -76,7 +80,8 @@ public class AdminController {
             product.setImageUrl(imageUrl);
         }
 
-        productService.save(product);
+        Product savedProduct = productService.save(product);
+        saveProductVariants(savedProduct.getId(), variantValues);
         redirectAttributes.addFlashAttribute("successMessage", "Товар успешно добавлен!");
         return "redirect:/admin";
     }
@@ -196,6 +201,7 @@ public class AdminController {
     @GetMapping("/category/create")
     public String createCategoryForm(Model model) {
         model.addAttribute("category", new Category());
+        model.addAttribute("variantTypes", VariantType.values());
         return "admin/category-form";
     }
 
@@ -211,6 +217,7 @@ public class AdminController {
         Optional<Category> category = categoryService.findById(id);
         if (category.isEmpty()) return "redirect:/admin/categories";
         model.addAttribute("category", category.get());
+        model.addAttribute("variantTypes", VariantType.values());
         return "admin/category-form";
     }
 
@@ -221,6 +228,7 @@ public class AdminController {
 
         Category categoryToUpdate = existingCategory.get();
         categoryToUpdate.setName(category.getName());
+        categoryToUpdate.setVariantType(category.getVariantType());
         categoryService.save(categoryToUpdate);
 
         redirectAttributes.addFlashAttribute("successMessage", "Категория успешно обновлена!");
@@ -288,19 +296,27 @@ public class AdminController {
         if (product.isEmpty()) {
             return "redirect:/admin";
         }
+        if (getVariantType(product.get()) == VariantType.NONE) {
+            return "redirect:/admin";
+        }
 
         model.addAttribute("product", product.get());
         model.addAttribute("variants", productVariantService.findByProductId(id));
+        model.addAttribute("variantType", getVariantType(product.get()));
         return "admin/variants";
     }
 
     @PostMapping("/product/{id}/variant/add")
     public String addVariant(@PathVariable Long id,
-                             @RequestParam String flavorName,
+                             @RequestParam String value,
                              @RequestParam(defaultValue = "true") Boolean inStock,
                              RedirectAttributes redirectAttributes) {
-        productVariantService.save(id, flavorName, inStock);
-        redirectAttributes.addFlashAttribute("successMessage", "Вкус добавлен!");
+        Optional<Product> product = productService.findById(id);
+        if (product.isEmpty() || getVariantType(product.get()) == VariantType.NONE) {
+            return "redirect:/admin";
+        }
+        productVariantService.save(id, value, inStock);
+        redirectAttributes.addFlashAttribute("successMessage", "Вариант добавлен!");
         return "redirect:/admin/product/" + id + "/variants";
     }
 
@@ -322,9 +338,28 @@ public class AdminController {
         if (variantOpt.isPresent()) {
             Long productId = variantOpt.get().getProduct().getId();
             productVariantService.deleteById(variantId);
-            redirectAttributes.addFlashAttribute("successMessage", "Вкус удален!");
+            redirectAttributes.addFlashAttribute("successMessage", "Вариант удален!");
             return "redirect:/admin/product/" + productId + "/variants";
         }
         return "redirect:/admin";
+    }
+
+    private VariantType getVariantType(Product product) {
+        if (product.getCategory() == null || product.getCategory().getVariantType() == null) {
+            return VariantType.NONE;
+        }
+        return product.getCategory().getVariantType();
+    }
+
+    private void saveProductVariants(Long productId, List<String> variantValues) {
+        if (variantValues == null) {
+            return;
+        }
+
+        for (String value : variantValues) {
+            if (value != null && !value.isBlank()) {
+                productVariantService.save(productId, value.trim(), true);
+            }
+        }
     }
 }
