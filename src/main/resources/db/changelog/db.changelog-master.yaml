@@ -23,3 +23,5 @@ databaseChangeLog:
       file: db/changelog/changes/011-add-category-variant-types.sql
   - include:
       file: db/changelog/changes/012-add-product-characteristics.sql
+  - include:
+      file: db/changelog/changes/013-set-plastinki-variant-type.sql
