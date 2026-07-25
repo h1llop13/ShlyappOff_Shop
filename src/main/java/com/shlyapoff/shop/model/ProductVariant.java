@@ -31,6 +31,9 @@ public class ProductVariant {
     @Column(name = "in_stock", nullable = false)
     private Boolean inStock = true;
 
+    @Column(name = "stock_quantity", nullable = false)
+    private Integer stockQuantity = 0;
+
     @CreatedDate
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
@@ -42,5 +45,14 @@ public class ProductVariant {
 
     public Boolean getInStock() {
         return inStock;
+    }
+
+    public void setStockQuantity(Integer stockQuantity) {
+        int normalizedQuantity = stockQuantity == null ? 0 : stockQuantity;
+        if (normalizedQuantity < 0) {
+            throw new IllegalArgumentException("Количество варианта не может быть отрицательным");
+        }
+        this.stockQuantity = normalizedQuantity;
+        this.inStock = normalizedQuantity > 0;
     }
 }

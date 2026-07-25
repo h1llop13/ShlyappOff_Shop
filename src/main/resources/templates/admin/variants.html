@@ -31,6 +31,10 @@
         <span th:text="${successMessage}"></span>
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
+    <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show">
+        <span th:text="${errorMessage}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
 
     <h1 class="mb-4"><span th:text="${'Управление: ' + variantType.displayName}">Управление вариантами</span>: <span th:text="${product.name}">Товар</span></h1>
 
@@ -44,10 +48,7 @@
                            th:placeholder="${'Укажите ' + variantType.singularAccusative}" required>
                 </div>
                 <div class="col-md-3">
-                    <select name="inStock" class="form-select bg-dark text-white">
-                        <option value="true">В наличии</option>
-                        <option value="false">Нет в наличии</option>
-                    </select>
+                    <input type="number" min="0" name="stockQuantity" value="0" class="form-control bg-dark text-white" aria-label="Остаток">
                 </div>
                 <div class="col-md-3">
                     <button type="submit" class="btn btn-warning w-100">Добавить</button>
@@ -66,16 +67,17 @@
             <div th:if="${!#lists.isEmpty(variants)}" class="list-group">
                 <div th:each="variant : ${variants}" class="list-group-item bg-dark text-white d-flex justify-content-between align-items-center">
                     <div>
-                        <span th:if="${variant.inStock}" class="text-success me-2">✓</span>
-                        <span th:if="${!variant.inStock}" class="text-danger me-2">✗</span>
+                        <span th:if="${variant.stockQuantity > 0}" class="text-success me-2">✓</span>
+                        <span th:if="${variant.stockQuantity == 0}" class="text-danger me-2">✗</span>
                         <span th:text="${variant.value}">Вариант</span>
-                        <span th:if="${!variant.inStock}" class="badge bg-secondary ms-2">Нет в наличии</span>
+                        <span class="badge bg-secondary ms-2" th:text="${variant.stockQuantity} + ' шт.'">0 шт.</span>
+                        <span th:if="${variant.stockQuantity == 0}" class="badge bg-danger ms-2">Нет в наличии</span>
                     </div>
                     <div class="d-flex gap-2">
-                        <form th:action="@{/admin/product/variant/{id}/toggle(id=${variant.id})}" method="post">
-                            <button type="submit" class="btn btn-sm btn-outline-light">
-                                <span th:text="${variant.inStock} ? 'Скрыть' : 'Показать'">Переключить</span>
-                            </button>
+                        <form th:action="@{/admin/product/variant/{id}/stock(id=${variant.id})}" method="post" class="d-flex gap-2">
+                            <input type="number" min="0" name="stockQuantity" th:value="${variant.stockQuantity}"
+                                   class="form-control form-control-sm bg-dark text-white" style="width: 90px;">
+                            <button type="submit" class="btn btn-sm btn-outline-light">Сохранить</button>
                         </form>
                         <form th:action="@{/admin/product/variant/{id}/delete(id=${variant.id})}" method="post">
                             <button type="submit" class="btn btn-sm btn-outline-danger"

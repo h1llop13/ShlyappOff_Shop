@@ -49,6 +49,7 @@
             <th>ID</th>
             <th>Название</th>
             <th>Варианты</th>
+            <th>Остаток</th>
             <th>Цена</th>
             <th>Действия</th>
         </tr>
@@ -64,6 +65,7 @@
                 </a>
                 <span th:unless="${product.category != null && product.category.variantType.name() != 'NONE'}">—</span>
             </td>
+            <td th:text="${product.availableStockQuantity} + ' шт.'">0 шт.</td>
             <td th:text="${product.price} + ' ₽'">0 ₽</td>
             <td>
                 <a th:href="@{/admin/product/edit/{id}(id=${product.id})}" class="btn btn-sm btn-outline-light">Редактировать</a>

@@ -75,6 +75,13 @@
                 </select>
             </div>
 
+            <div class="col-md-6 mb-3" id="productStockSection">
+                <label for="stockQuantity" class="form-label">Остаток на складе (шт.)</label>
+                <input type="number" min="0" class="form-control bg-dark text-white" id="stockQuantity" name="stockQuantity"
+                       th:value="${product.stockQuantity}">
+                <div class="form-text text-white-50">Для товара с вариантами остатки указываются отдельно.</div>
+            </div>
+
         </div>
 
         <div id="productFieldsContainer" class="row"></div>
@@ -149,6 +156,7 @@
         const row = document.createElement('div');
         row.className = 'input-group';
         row.innerHTML = `<input type="text" name="variantValues" class="form-control bg-dark text-white" placeholder="Укажите ${singular}" required>
+                         <input type="number" min="0" name="variantStockQuantities" value="0" class="form-control bg-dark text-white" aria-label="Остаток" required>
                          <button type="button" class="btn btn-outline-danger">Удалить</button>`;
         row.querySelector('button').addEventListener('click', () => row.remove());
         variantRows.appendChild(row);
@@ -166,8 +174,16 @@
         addVariantButton.textContent = `Добавить ${option.dataset.variantSingular || 'вариант'}`;
     }
 
+    function updateProductStockSection() {
+        const option = selectedVariantType();
+        const hasVariants = option && option.dataset.variantType && option.dataset.variantType !== 'NONE';
+        document.getElementById('productStockSection').hidden = hasVariants;
+    }
+
     categorySelect.addEventListener('change', updateProductFields);
+    categorySelect.addEventListener('change', updateProductStockSection);
     updateProductFields();
+    updateProductStockSection();
 
     if (variantsSection) {
         categorySelect.addEventListener('change', updateVariantsSection);

@@ -5,7 +5,11 @@ import com.shlyapoff.shop.model.Customer;
 import com.shlyapoff.shop.model.Order;
 import com.shlyapoff.shop.model.OrderItem;
 import com.shlyapoff.shop.model.OrderStatus;
+import com.shlyapoff.shop.model.Product;
+import com.shlyapoff.shop.model.ProductVariant;
 import com.shlyapoff.shop.repository.OrderRepository;
+import com.shlyapoff.shop.repository.ProductRepository;
+import com.shlyapoff.shop.repository.ProductVariantRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,6 +18,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
 import java.util.Optional;
+import java.util.Comparator;
 
 @Service
 @RequiredArgsConstructor
@@ -23,6 +28,8 @@ public class OrderService {
     private final CartService cartService;
     private final TelegramNotificationService telegramNotificationService;
     private final CustomerService customerService;
+    private final ProductRepository productRepository;
+    private final ProductVariantRepository productVariantRepository;
 
     @Transactional
     public Order createOrderFromCart(String sessionId, String customerName, String phone,
@@ -54,6 +61,7 @@ public class OrderService {
             orderItem.setProduct(cartItem.getProduct());
             orderItem.setProductName(cartItem.getProduct().getName());
             if (cartItem.getProductVariant() != null) {
+                orderItem.setProductVariant(cartItem.getProductVariant());
                 orderItem.setVariantValue(cartItem.getProductVariant().getValue());
             }
             orderItem.setQuantity(cartItem.getQuantity());
@@ -142,6 +150,10 @@ public class OrderService {
             );
         }
 
+        if (nextStatus == OrderStatus.COMPLETED) {
+            deductInventory(order);
+        }
+
         order.setStatus(nextStatus);
         orderRepository.save(order);
 
@@ -152,6 +164,43 @@ public class OrderService {
         if (nextStatus == OrderStatus.COMPLETED && order.getCustomer() != null) {
             customerService.registerOrderAndRecalculateDiscount(order.getCustomer(), order.getSubtotalAmount());
         }
+    }
+
+    private void deductInventory(Order order) {
+        List<OrderItem> items = order.getItems().stream()
+                .sorted(Comparator.comparing((OrderItem item) -> item.getProduct().getId())
+                        .thenComparing(item -> item.getProductVariant() == null ? 0L : item.getProductVariant().getId()))
+                .toList();
+
+        for (OrderItem item : items) {
+            if (item.getProductVariant() != null) {
+                ProductVariant variant = productVariantRepository.findByIdForUpdate(item.getProductVariant().getId())
+                        .orElseThrow(() -> new IllegalStateException("Вариант товара для списания не найден"));
+                deductVariantQuantity(variant, item.getQuantity());
+            } else if (item.getVariantValue() != null) {
+                throw new IllegalStateException("Нельзя списать остаток: у позиции заказа не указан вариант товара");
+            } else {
+                Product product = productRepository.findByIdForUpdate(item.getProduct().getId())
+                        .orElseThrow(() -> new IllegalStateException("Товар для списания не найден"));
+                deductProductQuantity(product, item.getQuantity());
+            }
+        }
+    }
+
+    private void deductProductQuantity(Product product, int quantity) {
+        int currentQuantity = product.getStockQuantity() == null ? 0 : product.getStockQuantity();
+        if (currentQuantity < quantity) {
+            throw new IllegalStateException("Недостаточно остатка для товара: " + product.getName());
+        }
+        product.setStockQuantity(currentQuantity - quantity);
+    }
+
+    private void deductVariantQuantity(ProductVariant variant, int quantity) {
+        int currentQuantity = variant.getStockQuantity() == null ? 0 : variant.getStockQuantity();
+        if (currentQuantity < quantity) {
+            throw new IllegalStateException("Недостаточно остатка для варианта: " + variant.getValue());
+        }
+        variant.setStockQuantity(currentQuantity - quantity);
     }
 
     public Optional<Cart> getCartForCheckout(String sessionId) {

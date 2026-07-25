@@ -46,7 +46,7 @@ public class AdminController {
     // Список товаров в админке
     @GetMapping
     public String adminPage(Model model) {
-        model.addAttribute("products", productService.findAllActive());
+        model.addAttribute("products", productService.findAllActiveWithVariants());
         return "admin/products";
     }
 
@@ -67,6 +67,7 @@ public class AdminController {
             @RequestParam("brand_id") Long brandId,
             @RequestParam("imageFile") MultipartFile imageFile,
             @RequestParam(required = false) List<String> variantValues,
+            @RequestParam(required = false) List<Integer> variantStockQuantities,
             Model model,
             RedirectAttributes redirectAttributes) {
 
@@ -97,7 +98,7 @@ public class AdminController {
         }
 
         Product savedProduct = productService.save(product);
-        saveProductVariants(savedProduct.getId(), variantValues);
+        saveProductVariants(savedProduct.getId(), variantValues, variantStockQuantities);
         redirectAttributes.addFlashAttribute("successMessage", "Товар успешно добавлен!");
         return "redirect:/admin";
     }
@@ -156,6 +157,7 @@ public class AdminController {
         productToUpdate.setCartridgeVolume(product.getCartridgeVolume());
         productToUpdate.setMaxPower(product.getMaxPower());
         productToUpdate.setPackageQuantity(product.getPackageQuantity());
+        productToUpdate.setStockQuantity(product.getStockQuantity());
         productToUpdate.setActive(true);
 
         // Обновляем категорию и бренд
@@ -339,23 +341,33 @@ public class AdminController {
     @PostMapping("/product/{id}/variant/add")
     public String addVariant(@PathVariable Long id,
                              @RequestParam String value,
-                             @RequestParam(defaultValue = "true") Boolean inStock,
+                             @RequestParam(defaultValue = "0") Integer stockQuantity,
                              RedirectAttributes redirectAttributes) {
         Optional<Product> product = productService.findById(id);
         if (product.isEmpty() || getVariantType(product.get()) == VariantType.NONE) {
             return "redirect:/admin";
         }
-        productVariantService.save(id, value, inStock);
+        if (stockQuantity == null || stockQuantity < 0) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Остаток варианта не может быть отрицательным");
+            return "redirect:/admin/product/" + id + "/variants";
+        }
+        productVariantService.save(id, value, stockQuantity);
         redirectAttributes.addFlashAttribute("successMessage", "Вариант добавлен!");
         return "redirect:/admin/product/" + id + "/variants";
     }
 
-    @PostMapping("/product/variant/{variantId}/toggle")
-    public String toggleVariantStock(@PathVariable Long variantId, RedirectAttributes redirectAttributes) {
+    @PostMapping("/product/variant/{variantId}/stock")
+    public String updateVariantStock(@PathVariable Long variantId,
+                                     @RequestParam Integer stockQuantity,
+                                     RedirectAttributes redirectAttributes) {
         Optional<ProductVariant> variantOpt = productVariantRepository.findById(variantId);
         if (variantOpt.isPresent()) {
             ProductVariant variant = variantOpt.get();
-            productVariantService.updateStock(variantId, !variant.getInStock());
+            if (stockQuantity == null || stockQuantity < 0) {
+                redirectAttributes.addFlashAttribute("errorMessage", "Остаток варианта не может быть отрицательным");
+                return "redirect:/admin/product/" + variant.getProduct().getId() + "/variants";
+            }
+            productVariantService.updateStockQuantity(variantId, stockQuantity);
             redirectAttributes.addFlashAttribute("successMessage", "Наличие обновлено!");
             return "redirect:/admin/product/" + variant.getProduct().getId() + "/variants";
         }
@@ -381,14 +393,18 @@ public class AdminController {
         return product.getCategory().getVariantType();
     }
 
-    private void saveProductVariants(Long productId, List<String> variantValues) {
+    private void saveProductVariants(Long productId, List<String> variantValues, List<Integer> variantStockQuantities) {
         if (variantValues == null) {
             return;
         }
 
-        for (String value : variantValues) {
+        for (int index = 0; index < variantValues.size(); index++) {
+            String value = variantValues.get(index);
             if (value != null && !value.isBlank()) {
-                productVariantService.save(productId, value.trim(), true);
+                Integer stockQuantity = variantStockQuantities != null && index < variantStockQuantities.size()
+                        ? variantStockQuantities.get(index)
+                        : 0;
+                productVariantService.save(productId, value.trim(), stockQuantity);
             }
         }
     }
@@ -408,6 +424,9 @@ public class AdminController {
         }
         if (product.getPrice() == null || product.getPrice().signum() < 0) {
             return "Цена товара не может быть отрицательной";
+        }
+        if (product.getStockQuantity() == null || product.getStockQuantity() < 0) {
+            return "Остаток товара не может быть отрицательным";
         }
         if (product.getCategory() == null || product.getBrand() == null) {
             return "Выберите существующие категорию и бренд";

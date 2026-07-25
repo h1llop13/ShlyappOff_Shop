@@ -88,6 +88,8 @@
             font-size: 13px; color: var(--hint); margin-bottom: 12px; line-height: 1.4; height: 55px;
             display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
         }
+        .stock-status { font-size: 13px; margin-bottom: 12px; color: var(--hint); }
+        .stock-status.out-of-stock { color: #ef4444; }
 
         .product-footer { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: auto; }
         .product-price { font-size: 20px; font-weight: 700; color: var(--text); }
@@ -165,6 +167,10 @@
             <div class="product-content">
                 <h3 class="product-title" th:text="${product.name}">Название</h3>
                 <p class="product-description" th:text="${product.description}">Описание...</p>
+                <p th:if="${product.category == null || product.category.variantType == null || product.category.variantType.name() == 'NONE'}"
+                   th:classappend="${product.stockQuantity > 0} ? '' : ' out-of-stock'"
+                   class="stock-status"
+                   th:text="${product.stockQuantity > 0} ? 'В наличии: ' + product.stockQuantity + ' шт.' : 'Нет в наличии'">В наличии: 0 шт.</p>
 
                 <div class="product-footer">
                     <span class="product-price" th:text="${product.price} + ' ₽'">0 ₽</span>
@@ -174,7 +180,8 @@
                               th:action="@{/cart/add}" method="post" data-cart-form>
                             <input type="hidden" name="productId" th:value="${product.id}">
                             <input th:if="${_csrf != null}" type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-                            <button type="submit" class="btn-cart">В корзину</button>
+                            <button type="submit" class="btn-cart" th:disabled="${product.stockQuantity == null || product.stockQuantity <= 0}"
+                                    th:text="${product.stockQuantity != null && product.stockQuantity > 0} ? 'В корзину' : 'Нет в наличии'">В корзину</button>
                         </form>
                     </div>
                 </div>

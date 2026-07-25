@@ -27,14 +27,14 @@ public class ProductVariantService {
     }
 
     @Transactional
-    public ProductVariant save(Long productId, String value, Boolean inStock) {
+    public ProductVariant save(Long productId, String value, Integer stockQuantity) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new RuntimeException("Товар не найден"));
 
         ProductVariant variant = new ProductVariant();
         variant.setProduct(product);
         variant.setValue(value);
-        variant.setInStock(inStock);
+        variant.setStockQuantity(stockQuantity);
 
         return productVariantRepository.save(variant);
     }
@@ -45,10 +45,10 @@ public class ProductVariantService {
     }
 
     @Transactional
-    public void updateStock(Long id, Boolean inStock) {
+    public void updateStockQuantity(Long id, Integer stockQuantity) {
         ProductVariant variant = productVariantRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Вариант не найден"));
-        variant.setInStock(inStock);
+        variant.setStockQuantity(stockQuantity);
         productVariantRepository.save(variant);
     }
 }

@@ -99,7 +99,7 @@ public class HomeController {
                 && prod.getCategory().getVariantType() != VariantType.NONE;
         model.addAttribute("requiresVariant", requiresVariant);
         model.addAttribute("hasInStockVariants", prod.getVariants().stream()
-                .anyMatch(variant -> Boolean.TRUE.equals(variant.getInStock())));
+                .anyMatch(variant -> variant.getStockQuantity() != null && variant.getStockQuantity() > 0));
 
         return "product";
     }
@@ -180,9 +180,14 @@ public class HomeController {
     public String updateQuantity(@RequestParam Long productId,
                                  @RequestParam(required = false) Long variantId,
                                  @RequestParam int quantity,
-                                 HttpServletRequest request) {
+                                 HttpServletRequest request,
+                                 org.springframework.web.servlet.mvc.support.RedirectAttributes redirectAttributes) {
         String sessionId = request.getSession().getId();
-        cartService.updateQuantity(sessionId, productId, variantId, quantity);
+        try {
+            cartService.updateQuantity(sessionId, productId, variantId, quantity);
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            redirectAttributes.addFlashAttribute("error", exception.getMessage());
+        }
         return "redirect:/cart";
     }
 

@@ -22,6 +22,11 @@ public class ProductService {
         return productRepository.findByActiveTrue();
     }
 
+    @Transactional(readOnly = true)
+    public List<Product> findAllActiveWithVariants() {
+        return productRepository.findAllActiveWithVariants();
+    }
+
     public List<Product> findByCategory(long categoryId) {
         return productRepository.findByCategory_Id(categoryId);
     }

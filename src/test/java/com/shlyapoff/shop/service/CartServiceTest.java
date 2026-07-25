@@ -65,6 +65,7 @@ class CartServiceTest {
         product = new Product();
         product.setId(PRODUCT_ID);
         product.setName("Test Product");
+        product.setStockQuantity(10);
     }
 
     @Nested
@@ -137,7 +138,7 @@ class CartServiceTest {
             ProductVariant variant = new ProductVariant();
             variant.setId(7L);
             variant.setProduct(product);
-            variant.setInStock(true);
+            variant.setStockQuantity(10);
 
             when(cartRepository.findBySessionId(SESSION_ID)).thenReturn(Optional.of(cart));
             when(cartItemRepository.findByCartIdAndProductIdAndVariantId(cart.getId(), PRODUCT_ID, variant.getId()))

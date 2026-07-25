@@ -4,9 +4,13 @@ import com.shlyapoff.shop.model.Cart;
 import com.shlyapoff.shop.model.CartItem;
 import com.shlyapoff.shop.model.Customer;
 import com.shlyapoff.shop.model.Order;
+import com.shlyapoff.shop.model.OrderItem;
 import com.shlyapoff.shop.model.OrderStatus;
 import com.shlyapoff.shop.model.Product;
+import com.shlyapoff.shop.model.ProductVariant;
 import com.shlyapoff.shop.repository.OrderRepository;
+import com.shlyapoff.shop.repository.ProductRepository;
+import com.shlyapoff.shop.repository.ProductVariantRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -44,6 +48,12 @@ class OrderServiceTest {
 
     @Mock
     private CustomerService customerService;
+
+    @Mock
+    private ProductRepository productRepository;
+
+    @Mock
+    private ProductVariantRepository productVariantRepository;
 
     @InjectMocks
     private OrderService orderService;
@@ -206,6 +216,83 @@ class OrderServiceTest {
 
         assertThat(order.getStatus()).isEqualTo(OrderStatus.COMPLETED);
         verify(orderRepository).save(order);
+    }
+
+    @Test
+    @DisplayName("списывает остаток обычного товара при подтверждении заказа")
+    void deductsProductStockWhenOrderIsCompleted() {
+        Product product = new Product();
+        product.setId(1L);
+        product.setName("Товар");
+        product.setStockQuantity(5);
+        OrderItem item = new OrderItem();
+        item.setProduct(product);
+        item.setQuantity(2);
+        Order order = new Order();
+        order.setId(1L);
+        order.setStatus(OrderStatus.NEW);
+        order.addItem(item);
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(productRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(product));
+
+        orderService.updateStatus(1L, "COMPLETED");
+
+        assertThat(product.getStockQuantity()).isEqualTo(3);
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.COMPLETED);
+        verify(productRepository).findByIdForUpdate(1L);
+    }
+
+    @Test
+    @DisplayName("списывает остаток конкретного варианта при подтверждении заказа")
+    void deductsVariantStockWhenOrderIsCompleted() {
+        Product product = new Product();
+        product.setId(1L);
+        ProductVariant variant = new ProductVariant();
+        variant.setId(7L);
+        variant.setProduct(product);
+        variant.setValue("Манго");
+        variant.setStockQuantity(4);
+        OrderItem item = new OrderItem();
+        item.setProduct(product);
+        item.setProductVariant(variant);
+        item.setQuantity(3);
+        Order order = new Order();
+        order.setId(1L);
+        order.setStatus(OrderStatus.NEW);
+        order.addItem(item);
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(productVariantRepository.findByIdForUpdate(7L)).thenReturn(Optional.of(variant));
+
+        orderService.updateStatus(1L, "COMPLETED");
+
+        assertThat(variant.getStockQuantity()).isEqualTo(1);
+        assertThat(variant.getInStock()).isTrue();
+        verify(productVariantRepository).findByIdForUpdate(7L);
+    }
+
+    @Test
+    @DisplayName("не завершает заказ, если для списания недостаточно остатка")
+    void doesNotCompleteOrderWhenStockIsInsufficient() {
+        Product product = new Product();
+        product.setId(1L);
+        product.setName("Товар");
+        product.setStockQuantity(1);
+        OrderItem item = new OrderItem();
+        item.setProduct(product);
+        item.setQuantity(2);
+        Order order = new Order();
+        order.setId(1L);
+        order.setStatus(OrderStatus.NEW);
+        order.addItem(item);
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(productRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(product));
+
+        assertThatThrownBy(() -> orderService.updateStatus(1L, "COMPLETED"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Недостаточно остатка");
+
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.NEW);
+        verify(orderRepository, never()).save(order);
     }
 
     @Test

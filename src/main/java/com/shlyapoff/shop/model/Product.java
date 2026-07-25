@@ -55,6 +55,10 @@ public class Product {
     @Column(name = "is_active", nullable = false)
     private Boolean active = true;
 
+    @PositiveOrZero
+    @Column(name = "stock_quantity", nullable = false)
+    private Integer stockQuantity = 0;
+
     @CreatedDate
     @Column(updatable = false)
     private LocalDateTime createdAt;
@@ -66,4 +70,15 @@ public class Product {
     @ManyToOne
     @JoinColumn(name = "brand_id")
     private Brand brand;
+
+    public int getAvailableStockQuantity() {
+        if (variants == null || variants.isEmpty()) {
+            return stockQuantity == null ? 0 : stockQuantity;
+        }
+        return variants.stream()
+                .map(ProductVariant::getStockQuantity)
+                .filter(java.util.Objects::nonNull)
+                .mapToInt(Integer::intValue)
+                .sum();
+    }
 }

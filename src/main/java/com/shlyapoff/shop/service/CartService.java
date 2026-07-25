@@ -46,13 +46,14 @@ public class CartService {
 
         if (existingItem.isPresent()) {
             CartItem item = existingItem.get();
-            validateProductAvailability(item.getProduct(), variantId);
-            item.setQuantity(item.getQuantity() + quantity);
+            int requestedQuantity = item.getQuantity() + quantity;
+            validateProductAvailability(item.getProduct(), variantId, requestedQuantity);
+            item.setQuantity(requestedQuantity);
             cartItemRepository.save(item);
         } else {
             Product product = productRepository.findById(productId)
                     .orElseThrow(() -> new IllegalArgumentException("Товар не найден"));
-            ProductVariant variant = validateProductAvailability(product, variantId);
+            ProductVariant variant = validateProductAvailability(product, variantId, quantity);
             CartItem newItem = new CartItem();
             newItem.setCart(cart);
             newItem.setProduct(product);
@@ -79,6 +80,7 @@ public class CartService {
         if (quantity <= 0) {
             cartItemRepository.delete(item);
         } else {
+            validateProductAvailability(item.getProduct(), variantId, quantity);
             item.setQuantity(quantity);
             cartItemRepository.save(item);
         }
@@ -123,10 +125,11 @@ public class CartService {
         Product product = productRepository.findById(item.getProduct().getId())
                 .orElseThrow(() -> new IllegalStateException("Товар больше недоступен"));
         validateProductAvailability(product,
-                item.getProductVariant() == null ? null : item.getProductVariant().getId());
+                item.getProductVariant() == null ? null : item.getProductVariant().getId(),
+                item.getQuantity());
     }
 
-    private ProductVariant validateProductAvailability(Product product, Long variantId) {
+    private ProductVariant validateProductAvailability(Product product, Long variantId, int requestedQuantity) {
         if (!Boolean.TRUE.equals(product.getActive())) {
             throw new IllegalStateException("Товар больше недоступен");
         }
@@ -137,6 +140,10 @@ public class CartService {
         if (!requiresVariant) {
             if (variantId != null) {
                 throw new IllegalArgumentException("Для этого товара вариант не выбирается");
+            }
+            int availableQuantity = product.getStockQuantity() == null ? 0 : product.getStockQuantity();
+            if (availableQuantity < requestedQuantity) {
+                throw new IllegalStateException("Недостаточно товара на складе. Доступно: " + availableQuantity);
             }
             return null;
         }
@@ -150,8 +157,9 @@ public class CartService {
         if (!variant.getProduct().getId().equals(product.getId())) {
             throw new IllegalArgumentException("Выбранный вариант не принадлежит товару");
         }
-        if (!Boolean.TRUE.equals(variant.getInStock())) {
-            throw new IllegalStateException("Выбранного варианта нет в наличии");
+        int availableQuantity = variant.getStockQuantity() == null ? 0 : variant.getStockQuantity();
+        if (availableQuantity < requestedQuantity) {
+            throw new IllegalStateException("Выбранного варианта недостаточно. Доступно: " + availableQuantity);
         }
         return variant;
     }
