@@ -3,9 +3,12 @@ package com.shlyapoff.shop.service;
 import com.shlyapoff.shop.model.Cart;
 import com.shlyapoff.shop.model.CartItem;
 import com.shlyapoff.shop.model.Product;
+import com.shlyapoff.shop.model.ProductVariant;
+import com.shlyapoff.shop.model.VariantType;
 import com.shlyapoff.shop.repository.CartItemRepository;
 import com.shlyapoff.shop.repository.CartRepository;
 import com.shlyapoff.shop.repository.ProductRepository;
+import com.shlyapoff.shop.repository.ProductVariantRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,9 +22,19 @@ public class CartService {
     private final CartRepository cartRepository;
     private final CartItemRepository cartItemRepository;
     private final ProductRepository productRepository;
+    private final ProductVariantRepository productVariantRepository;
 
     @Transactional
     public void addToCart(String sessionId, Long productId, int quantity) {
+        addToCart(sessionId, productId, null, quantity);
+    }
+
+    @Transactional
+    public void addToCart(String sessionId, Long productId, Long variantId, int quantity) {
+        if (quantity <= 0) {
+            throw new IllegalArgumentException("Количество товара должно быть больше нуля");
+        }
+
         Cart cart = cartRepository.findBySessionId(sessionId)
                 .orElseGet(() -> {
                     Cart newCart = new Cart();
@@ -29,19 +42,22 @@ public class CartService {
                     return cartRepository.save(newCart);
                 });
 
-        Optional<CartItem> existingItem = cartItemRepository.findByCartIdAndProductId(cart.getId(), productId);
+        Optional<CartItem> existingItem = findCartItem(cart.getId(), productId, variantId);
 
         if (existingItem.isPresent()) {
             CartItem item = existingItem.get();
+            validateProductAvailability(item.getProduct(), variantId);
             item.setQuantity(item.getQuantity() + quantity);
             cartItemRepository.save(item);
         } else {
             Product product = productRepository.findById(productId)
-                    .orElseThrow(() -> new RuntimeException("Товар не найден"));
-
+                    .orElseThrow(() -> new IllegalArgumentException("Товар не найден"));
+            ProductVariant variant = validateProductAvailability(product, variantId);
             CartItem newItem = new CartItem();
             newItem.setCart(cart);
             newItem.setProduct(product);
+            newItem.setProductVariant(variant);
+            newItem.setVariantKey(variant == null ? 0L : variant.getId());
             newItem.setQuantity(quantity);
             cartItemRepository.save(newItem);
         }
@@ -49,10 +65,15 @@ public class CartService {
 
     @Transactional
     public void updateQuantity(String sessionId, Long productId, int quantity) {
+        updateQuantity(sessionId, productId, null, quantity);
+    }
+
+    @Transactional
+    public void updateQuantity(String sessionId, Long productId, Long variantId, int quantity) {
         Cart cart = cartRepository.findBySessionId(sessionId)
                 .orElseThrow(() -> new RuntimeException("Корзина не найдена"));
 
-        CartItem item = cartItemRepository.findByCartIdAndProductId(cart.getId(), productId)
+        CartItem item = findCartItem(cart.getId(), productId, variantId)
                 .orElseThrow(() -> new RuntimeException("Товар не найден в корзине"));
 
         if (quantity <= 0) {
@@ -65,10 +86,15 @@ public class CartService {
 
     @Transactional
     public void removeFromCart(String sessionId, Long productId) {
+        removeFromCart(sessionId, productId, null);
+    }
+
+    @Transactional
+    public void removeFromCart(String sessionId, Long productId, Long variantId) {
         Cart cart = cartRepository.findBySessionId(sessionId)
                 .orElseThrow(() -> new RuntimeException("Корзина не найдена"));
 
-        CartItem item = cartItemRepository.findByCartIdAndProductId(cart.getId(), productId)
+        CartItem item = findCartItem(cart.getId(), productId, variantId)
                 .orElseThrow(() -> new RuntimeException("Товар не найден в корзине"));
 
         cartItemRepository.delete(item);
@@ -80,11 +106,60 @@ public class CartService {
     }
 
     @Transactional
+    public Optional<Cart> getCartBySessionIdForCheckout(String sessionId) {
+        return cartRepository.findBySessionIdWithItemsForUpdate(sessionId);
+    }
+
+    @Transactional
     public void clearCart(String sessionId) {
         Cart cart = cartRepository.findBySessionId(sessionId)
                 .orElse(null);
         if (cart != null) {
             cartRepository.delete(cart);
         }
+    }
+
+    public void validateCartItemAvailability(CartItem item) {
+        Product product = productRepository.findById(item.getProduct().getId())
+                .orElseThrow(() -> new IllegalStateException("Товар больше недоступен"));
+        validateProductAvailability(product,
+                item.getProductVariant() == null ? null : item.getProductVariant().getId());
+    }
+
+    private ProductVariant validateProductAvailability(Product product, Long variantId) {
+        if (!Boolean.TRUE.equals(product.getActive())) {
+            throw new IllegalStateException("Товар больше недоступен");
+        }
+
+        boolean requiresVariant = product.getCategory() != null
+                && product.getCategory().getVariantType() != null
+                && product.getCategory().getVariantType() != VariantType.NONE;
+        if (!requiresVariant) {
+            if (variantId != null) {
+                throw new IllegalArgumentException("Для этого товара вариант не выбирается");
+            }
+            return null;
+        }
+
+        if (variantId == null) {
+            throw new IllegalArgumentException("Выберите вариант товара");
+        }
+
+        ProductVariant variant = productVariantRepository.findById(variantId)
+                .orElseThrow(() -> new IllegalArgumentException("Вариант товара не найден"));
+        if (!variant.getProduct().getId().equals(product.getId())) {
+            throw new IllegalArgumentException("Выбранный вариант не принадлежит товару");
+        }
+        if (!Boolean.TRUE.equals(variant.getInStock())) {
+            throw new IllegalStateException("Выбранного варианта нет в наличии");
+        }
+        return variant;
+    }
+
+    private Optional<CartItem> findCartItem(Long cartId, Long productId, Long variantId) {
+        if (variantId == null) {
+            return cartItemRepository.findByCartIdAndProductId(cartId, productId);
+        }
+        return cartItemRepository.findByCartIdAndProductIdAndVariantId(cartId, productId, variantId);
     }
 }

@@ -2,10 +2,14 @@ package com.shlyapoff.shop.service;
 
 import com.shlyapoff.shop.model.Cart;
 import com.shlyapoff.shop.model.CartItem;
+import com.shlyapoff.shop.model.Category;
 import com.shlyapoff.shop.model.Product;
+import com.shlyapoff.shop.model.ProductVariant;
+import com.shlyapoff.shop.model.VariantType;
 import com.shlyapoff.shop.repository.CartItemRepository;
 import com.shlyapoff.shop.repository.CartRepository;
 import com.shlyapoff.shop.repository.ProductRepository;
+import com.shlyapoff.shop.repository.ProductVariantRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -39,6 +43,9 @@ class CartServiceTest {
 
     @Mock
     private ProductRepository productRepository;
+
+    @Mock
+    private ProductVariantRepository productVariantRepository;
 
     @InjectMocks
     private CartService cartService;
@@ -116,6 +123,50 @@ class CartServiceTest {
             assertThatThrownBy(() -> cartService.addToCart(SESSION_ID, PRODUCT_ID, 1))
                     .isInstanceOf(RuntimeException.class)
                     .hasMessageContaining("Товар не найден");
+
+            verify(cartItemRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("сохраняет выбранный вариант отдельной позицией корзины")
+        void savesSelectedVariantInCartItem() {
+            Category category = new Category();
+            category.setVariantType(VariantType.FLAVOR);
+            product.setCategory(category);
+
+            ProductVariant variant = new ProductVariant();
+            variant.setId(7L);
+            variant.setProduct(product);
+            variant.setInStock(true);
+
+            when(cartRepository.findBySessionId(SESSION_ID)).thenReturn(Optional.of(cart));
+            when(cartItemRepository.findByCartIdAndProductIdAndVariantId(cart.getId(), PRODUCT_ID, variant.getId()))
+                    .thenReturn(Optional.empty());
+            when(productRepository.findById(PRODUCT_ID)).thenReturn(Optional.of(product));
+            when(productVariantRepository.findById(variant.getId())).thenReturn(Optional.of(variant));
+
+            cartService.addToCart(SESSION_ID, PRODUCT_ID, variant.getId(), 1);
+
+            ArgumentCaptor<CartItem> captor = ArgumentCaptor.forClass(CartItem.class);
+            verify(cartItemRepository).save(captor.capture());
+            assertThat(captor.getValue().getProductVariant()).isEqualTo(variant);
+            assertThat(captor.getValue().getVariantKey()).isEqualTo(variant.getId());
+        }
+
+        @Test
+        @DisplayName("не добавляет товар с вариантами без выбора варианта")
+        void rejectsProductWithMissingVariantSelection() {
+            Category category = new Category();
+            category.setVariantType(VariantType.FLAVOR);
+            product.setCategory(category);
+
+            when(cartRepository.findBySessionId(SESSION_ID)).thenReturn(Optional.of(cart));
+            when(cartItemRepository.findByCartIdAndProductId(cart.getId(), PRODUCT_ID)).thenReturn(Optional.empty());
+            when(productRepository.findById(PRODUCT_ID)).thenReturn(Optional.of(product));
+
+            assertThatThrownBy(() -> cartService.addToCart(SESSION_ID, PRODUCT_ID, 1))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("вариант");
 
             verify(cartItemRepository, never()).save(any());
         }

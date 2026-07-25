@@ -29,7 +29,7 @@ public class OrderService {
                                      String deliveryType, String comment, Long telegramUserId,
                                      String telegramUsername) {
         // Получаем корзину
-        Optional<Cart> cartOpt = cartService.getCartBySessionId(sessionId);
+        Optional<Cart> cartOpt = cartService.getCartBySessionIdForCheckout(sessionId);
         if (cartOpt.isEmpty() || cartOpt.get().getItems().isEmpty()) {
             throw new IllegalStateException("Корзина пуста");
         }
@@ -48,9 +48,14 @@ public class OrderService {
         // Рассчитываем сумму товаров (без скидки) и добавляем товары
         BigDecimal subtotal = BigDecimal.ZERO;
         for (var cartItem : cart.getItems()) {
+            cartService.validateCartItemAvailability(cartItem);
+
             OrderItem orderItem = new OrderItem();
             orderItem.setProduct(cartItem.getProduct());
             orderItem.setProductName(cartItem.getProduct().getName());
+            if (cartItem.getProductVariant() != null) {
+                orderItem.setVariantValue(cartItem.getProductVariant().getValue());
+            }
             orderItem.setQuantity(cartItem.getQuantity());
             orderItem.setPriceAtMoment(cartItem.getProduct().getPrice());
 

@@ -103,15 +103,19 @@
     <h2 class="product-name" th:text="${product.name}">Название товара</h2>
     <p class="product-desc" th:text="${product.description}">Описание товара...</p>
 
+    <p th:if="${errorMessage}" class="product-desc" th:text="${errorMessage}"></p>
+
     <!-- VARIANTS (FLAVORS) -->
     <div th:if="${variants != null && !variants.isEmpty()}">
         <h3 class="section-title" th:text="${product.category != null ? product.category.variantType.displayTitle : 'Варианты'}">Варианты</h3>
         <div class="variants-grid">
-            <div th:each="variant : ${variants}"
+            <label th:each="variant : ${variants}"
                  th:class="${variant.inStock} ? 'variant-chip in-stock' : 'variant-chip out-of-stock'">
+                <input th:if="${requiresVariant}" type="radio" name="variantId" th:value="${variant.id}"
+                       form="addToCartForm" th:disabled="${!variant.inStock}" required>
                 <span th:text="${variant.value}">Вариант</span>
                 <span th:if="${!variant.inStock}">✕</span>
-            </div>
+            </label>
         </div>
     </div>
 

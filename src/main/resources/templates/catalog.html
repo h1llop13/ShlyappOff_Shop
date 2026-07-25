@@ -165,7 +165,8 @@
                     <span class="product-price" th:text="${product.price} + ' ₽'">0 ₽</span>
                     <div style="display: flex; gap: 8px;">
                         <a th:href="@{/product/{id}(id=${product.id})}" class="btn-details">Подробнее</a>
-                        <form th:action="@{/cart/add}" method="post">
+                        <form th:if="${product.category == null || product.category.variantType == null || product.category.variantType.name() == 'NONE'}"
+                              th:action="@{/cart/add}" method="post">
                             <input type="hidden" name="productId" th:value="${product.id}">
                             <button type="submit" class="btn-cart">В корзину</button>
                         </form>

@@ -16,6 +16,8 @@
 <div class="container mt-5">
     <h1 th:text="${tier.id != null ? 'Редактировать порог' : 'Добавить порог лояльности'}">Форма</h1>
 
+    <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+
     <form th:action="${tier.id != null ? '/admin/loyalty/edit/' + tier.id : '/admin/loyalty/create'}" method="post" style="max-width: 420px;">
         <div class="mb-3">
             <label for="minAmount" class="form-label">Сумма всех заказов, при которой даётся скидка (₽)</label>

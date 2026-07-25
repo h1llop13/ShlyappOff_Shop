@@ -137,6 +137,8 @@
     </form>
 </header>
 
+<div th:if="${error}" class="empty-state" style="padding: 16px; color: var(--danger);" th:text="${error}"></div>
+
 <!-- EMPTY STATE -->
 <div th:if="${cart == null || #lists.isEmpty(cart.items)}" class="empty-state">
     <div class="empty-icon">🛒</div>
@@ -157,16 +159,21 @@
                 <p class="item-price-hint" th:text="${item.product.price} + ' ₽ / шт'">0 ₽ / шт</p>
             </div>
 
+            <p th:if="${item.productVariant != null}" class="item-price-hint"
+               th:text="${item.productVariant.value}">Вариант</p>
+
             <!-- QUANTITY CONTROL -->
             <div class="qty-control">
                 <!-- Если количество 1, кнопка "-" превращается в Удалить (красную корзину) -->
                 <form th:if="${item.quantity <= 1}" th:action="@{/cart/remove}" method="post" class="qty-form">
                     <input type="hidden" name="productId" th:value="${item.product.id}">
+                    <input th:if="${item.productVariant != null}" type="hidden" name="variantId" th:value="${item.productVariant.id}">
                     <button type="submit" class="qty-btn danger" title="Удалить">🗑</button>
                 </form>
                 <!-- Иначе обычная кнопка минуса -->
                 <form th:if="${item.quantity > 1}" th:action="@{/cart/update}" method="post" class="qty-form">
                     <input type="hidden" name="productId" th:value="${item.product.id}">
+                    <input th:if="${item.productVariant != null}" type="hidden" name="variantId" th:value="${item.productVariant.id}">
                     <button type="submit" name="quantity" th:value="${item.quantity - 1}" class="qty-btn">−</button>
                 </form>
 
@@ -174,6 +181,7 @@
 
                 <form th:action="@{/cart/update}" method="post" class="qty-form">
                     <input type="hidden" name="productId" th:value="${item.product.id}">
+                    <input th:if="${item.productVariant != null}" type="hidden" name="variantId" th:value="${item.productVariant.id}">
                     <button type="submit" name="quantity" th:value="${item.quantity + 1}" class="qty-btn">+</button>
                 </form>
             </div>
@@ -182,6 +190,7 @@
         <div class="item-actions">
             <form th:action="@{/cart/remove}" method="post" class="delete-form">
                 <input type="hidden" name="productId" th:value="${item.product.id}">
+                <input th:if="${item.productVariant != null}" type="hidden" name="variantId" th:value="${item.productVariant.id}">
                 <button type="submit" class="delete-btn" title="Удалить">×</button>
             </form>
             <div class="item-total" th:text="${item.product.price.doubleValue() * item.quantity} + ' ₽'">0 ₽</div>

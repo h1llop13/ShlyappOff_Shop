@@ -217,6 +217,8 @@
         <div class="order-summary">
             <div th:each="item : ${cart.items}" class="summary-item">
                 <span class="item-name" th:text="${item.product.name}">Товар</span>
+                <span th:if="${item.productVariant != null}" class="item-name"
+                      th:text="${item.productVariant.value}">Вариант</span>
                 <span class="item-details">
                         <span th:text="${item.quantity}">1</span> ×
                         <span th:text="${item.product.price}">0</span> ₽

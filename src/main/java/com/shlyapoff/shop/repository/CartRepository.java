@@ -5,6 +5,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.data.jpa.repository.Lock;
+import jakarta.persistence.LockModeType;
 
 import java.util.Optional;
 
@@ -19,9 +21,21 @@ public interface CartRepository extends JpaRepository<Cart, Long> {
     SELECT DISTINCT c FROM Cart c
     LEFT JOIN FETCH c.items i
     LEFT JOIN FETCH i.product p
+    LEFT JOIN FETCH i.productVariant
     LEFT JOIN FETCH p.category
     LEFT JOIN FETCH p.brand
     WHERE c.sessionId = :sessionId
 """)
     Optional<Cart> findBySessionIdWithItems(@Param("sessionId") String sessionId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+    SELECT DISTINCT c FROM Cart c
+    LEFT JOIN FETCH c.items i
+    LEFT JOIN FETCH i.product p
+    LEFT JOIN FETCH i.productVariant
+    LEFT JOIN FETCH p.category
+    WHERE c.sessionId = :sessionId
+""")
+    Optional<Cart> findBySessionIdWithItemsForUpdate(@Param("sessionId") String sessionId);
 }

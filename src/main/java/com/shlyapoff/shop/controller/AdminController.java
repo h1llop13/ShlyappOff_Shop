@@ -67,6 +67,7 @@ public class AdminController {
             @RequestParam("brand_id") Long brandId,
             @RequestParam("imageFile") MultipartFile imageFile,
             @RequestParam(required = false) List<String> variantValues,
+            Model model,
             RedirectAttributes redirectAttributes) {
 
         // Устанавливаем категорию и бренд
@@ -75,6 +76,19 @@ public class AdminController {
 
         category.ifPresent(product::setCategory);
         brand.ifPresent(product::setBrand);
+
+        String validationError = validateProduct(product);
+        if (validationError != null) {
+            model.addAttribute("errorMessage", validationError);
+            addProductFormData(model);
+            return "admin/product-form";
+        }
+        if (getVariantType(product) != VariantType.NONE
+                && (variantValues == null || variantValues.stream().allMatch(value -> value == null || value.isBlank()))) {
+            model.addAttribute("errorMessage", "Добавьте хотя бы один вариант товара");
+            addProductFormData(model);
+            return "admin/product-form";
+        }
 
         // Обрабатываем загрузку картинки
         if (!imageFile.isEmpty()) {
@@ -108,6 +122,7 @@ public class AdminController {
             @RequestParam("category_id") Long categoryId,
             @RequestParam("brand_id") Long brandId,
             @RequestParam("imageFile") MultipartFile imageFile,
+            Model model,
             RedirectAttributes redirectAttributes) {
 
         // Находим существующий товар
@@ -117,6 +132,18 @@ public class AdminController {
         }
 
         Product productToUpdate = existingProduct.get();
+
+        Optional<Category> category = categoryService.findById(categoryId);
+        Optional<Brand> brand = brandService.findById(brandId);
+        category.ifPresent(product::setCategory);
+        brand.ifPresent(product::setBrand);
+
+        String validationError = validateProduct(product);
+        if (validationError != null) {
+            model.addAttribute("errorMessage", validationError);
+            addProductFormData(model);
+            return "admin/product-form";
+        }
 
         // Обновляем поля
         productToUpdate.setName(product.getName());
@@ -132,9 +159,6 @@ public class AdminController {
         productToUpdate.setActive(true);
 
         // Обновляем категорию и бренд
-        Optional<Category> category = categoryService.findById(categoryId);
-        Optional<Brand> brand = brandService.findById(brandId);
-
         category.ifPresent(productToUpdate::setCategory);
         brand.ifPresent(productToUpdate::setBrand);
 
@@ -376,5 +400,24 @@ public class AdminController {
         model.addAttribute("categories", categories);
         model.addAttribute("brands", brandService.findAll());
         model.addAttribute("fieldsByCategory", fieldsByCategory);
+    }
+
+    private String validateProduct(Product product) {
+        if (product.getName() == null || product.getName().isBlank()) {
+            return "Укажите название товара";
+        }
+        if (product.getPrice() == null || product.getPrice().signum() < 0) {
+            return "Цена товара не может быть отрицательной";
+        }
+        if (product.getCategory() == null || product.getBrand() == null) {
+            return "Выберите существующие категорию и бренд";
+        }
+        for (ProductField field : ProductField.forCategory(product.getCategory())) {
+            String value = field.getValue(product);
+            if (value == null || value.isBlank()) {
+                return "Заполните поле: " + field.getDisplayName();
+            }
+        }
+        return null;
     }
 }

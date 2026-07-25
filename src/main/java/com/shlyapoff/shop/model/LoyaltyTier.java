@@ -2,6 +2,9 @@ package com.shlyapoff.shop.model;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.PositiveOrZero;
 
 import java.math.BigDecimal;
 
@@ -20,9 +23,12 @@ public class LoyaltyTier {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @PositiveOrZero
     @Column(name = "min_amount", nullable = false, unique = true)
     private BigDecimal minAmount;
 
+    @Min(0)
+    @Max(100)
     @Column(name = "discount_percent", nullable = false)
     private Integer discountPercent;
 }

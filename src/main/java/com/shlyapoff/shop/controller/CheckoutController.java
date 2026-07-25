@@ -94,8 +94,8 @@ public class CheckoutController {
             // Передаем ID заказа прямо в URL
             return "redirect:/success?orderId=" + savedOrder.getId();
 
-        } catch (IllegalStateException e) {
-            redirectAttributes.addFlashAttribute("error", "Корзина пуста");
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
             return "redirect:/cart";
         }
     }

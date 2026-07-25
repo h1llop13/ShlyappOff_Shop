@@ -87,7 +87,7 @@ class OrderServiceTest {
         customer.setTelegramUserId(12345L);
         customer.setDiscountPercent(0);
 
-        when(cartService.getCartBySessionId(SESSION_ID)).thenReturn(Optional.of(cartWithItems));
+        when(cartService.getCartBySessionIdForCheckout(SESSION_ID)).thenReturn(Optional.of(cartWithItems));
         when(customerService.findOrCreateByTelegram(12345L, "ivan_the_customer", null, null))
                 .thenReturn(customer);
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> {
@@ -129,7 +129,7 @@ class OrderServiceTest {
         customer.setTelegramUserId(999L);
         customer.setDiscountPercent(10);
 
-        when(cartService.getCartBySessionId(SESSION_ID)).thenReturn(Optional.of(cartWithItems));
+        when(cartService.getCartBySessionIdForCheckout(SESSION_ID)).thenReturn(Optional.of(cartWithItems));
         when(customerService.findOrCreateByTelegram(999L, "vip_client", null, null)).thenReturn(customer);
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -148,7 +148,7 @@ class OrderServiceTest {
     @Test
     @DisplayName("не создаёт клиента и не применяет скидку, если заказ оформлен без Telegram")
     void doesNotCreateCustomerWithoutTelegramUserId() {
-        when(cartService.getCartBySessionId(SESSION_ID)).thenReturn(Optional.of(cartWithItems));
+        when(cartService.getCartBySessionIdForCheckout(SESSION_ID)).thenReturn(Optional.of(cartWithItems));
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         Order result = orderService.createOrderFromCart(
@@ -165,7 +165,7 @@ class OrderServiceTest {
     @Test
     @DisplayName("выбрасывает исключение и не сохраняет заказ, если корзина отсутствует")
     void throwsWhenCartMissing() {
-        when(cartService.getCartBySessionId(SESSION_ID)).thenReturn(Optional.empty());
+        when(cartService.getCartBySessionIdForCheckout(SESSION_ID)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> orderService.createOrderFromCart(
                 SESSION_ID, "Иван", "+7000", "PICKUP", null, null, null))
@@ -183,7 +183,7 @@ class OrderServiceTest {
         Cart emptyCart = new Cart();
         emptyCart.setSessionId(SESSION_ID);
 
-        when(cartService.getCartBySessionId(SESSION_ID)).thenReturn(Optional.of(emptyCart));
+        when(cartService.getCartBySessionIdForCheckout(SESSION_ID)).thenReturn(Optional.of(emptyCart));
 
         assertThatThrownBy(() -> orderService.createOrderFromCart(
                 SESSION_ID, "Иван", "+7000", "PICKUP", null, null, null))

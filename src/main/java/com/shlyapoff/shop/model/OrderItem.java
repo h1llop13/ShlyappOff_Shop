@@ -25,6 +25,9 @@ public class OrderItem {
     @Column(name = "product_name", nullable = false)
     private String productName;
 
+    @Column(name = "variant_value")
+    private String variantValue;
+
     @Column(name = "quantity", nullable = false)
     private Integer quantity;
 

@@ -4,6 +4,7 @@ import com.shlyapoff.shop.model.Cart;
 import com.shlyapoff.shop.model.Product;
 import com.shlyapoff.shop.model.ProductField;
 import com.shlyapoff.shop.model.ProductVariant;
+import com.shlyapoff.shop.model.VariantType;
 import com.shlyapoff.shop.repository.ProductRepository;
 import com.shlyapoff.shop.service.BrandService;
 import com.shlyapoff.shop.service.CartService;
@@ -90,14 +91,28 @@ public class HomeController {
 
         // Варианты уже загружены через JOIN FETCH, но можно явно передать
         model.addAttribute("variants", prod.getVariants());
+        boolean requiresVariant = prod.getCategory() != null
+                && prod.getCategory().getVariantType() != null
+                && prod.getCategory().getVariantType() != VariantType.NONE;
+        model.addAttribute("requiresVariant", requiresVariant);
+        model.addAttribute("hasInStockVariants", prod.getVariants().stream()
+                .anyMatch(variant -> Boolean.TRUE.equals(variant.getInStock())));
 
         return "product";
     }
 
     @PostMapping("/cart/add")
-    public String addToCart(@RequestParam Long productId, HttpServletRequest request) {
+    public String addToCart(@RequestParam Long productId,
+                            @RequestParam(required = false) Long variantId,
+                            HttpServletRequest request,
+                            org.springframework.web.servlet.mvc.support.RedirectAttributes redirectAttributes) {
         String sessionId = request.getSession().getId();
-        cartService.addToCart(sessionId, productId, 1);
+        try {
+            cartService.addToCart(sessionId, productId, variantId, 1);
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            redirectAttributes.addFlashAttribute("errorMessage", exception.getMessage());
+            return "redirect:/product/" + productId;
+        }
         return "redirect:/catalog";
     }
 
@@ -122,16 +137,21 @@ public class HomeController {
     }
 
     @PostMapping("/cart/remove")
-    public String removeFromCart(@RequestParam Long productId, HttpServletRequest request) {
+    public String removeFromCart(@RequestParam Long productId,
+                                 @RequestParam(required = false) Long variantId,
+                                 HttpServletRequest request) {
         String sessionId = request.getSession().getId();
-        cartService.removeFromCart(sessionId, productId);
+        cartService.removeFromCart(sessionId, productId, variantId);
         return "redirect:/cart";
     }
 
     @PostMapping("/cart/update")
-    public String updateQuantity(@RequestParam Long productId, @RequestParam int quantity, HttpServletRequest request) {
+    public String updateQuantity(@RequestParam Long productId,
+                                 @RequestParam(required = false) Long variantId,
+                                 @RequestParam int quantity,
+                                 HttpServletRequest request) {
         String sessionId = request.getSession().getId();
-        cartService.updateQuantity(sessionId, productId, quantity);
+        cartService.updateQuantity(sessionId, productId, variantId, quantity);
         return "redirect:/cart";
     }
 
