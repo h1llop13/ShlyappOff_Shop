@@ -38,7 +38,11 @@
             padding-bottom: 80px;
         }
 
-        .header { padding: 20px 16px; position: sticky; top: 0; background: var(--bg); z-index: 100; border-bottom: 1px solid var(--border); }
+        .header {
+            padding: 20px 16px; position: sticky; top: 0; background: var(--bg); z-index: 100;
+            border-bottom: 1px solid var(--border); transition: transform .25s ease; will-change: transform;
+        }
+        .header.header--hidden { transform: translateY(-100%); }
         .header h1 { font-size: 28px; font-weight: 700; margin-bottom: 16px; }
 
         .filters { display: flex; flex-direction: column; gap: 12px; }
@@ -122,6 +126,7 @@
             .filter-row { grid-template-columns: 1fr; }
         }
     </style>
+    <link rel="stylesheet" href="/css/cart-feedback.css">
 </head>
 <body>
 <div class="header">
@@ -166,8 +171,9 @@
                     <div style="display: flex; gap: 8px;">
                         <a th:href="@{/product/{id}(id=${product.id})}" class="btn-details">Подробнее</a>
                         <form th:if="${product.category == null || product.category.variantType == null || product.category.variantType.name() == 'NONE'}"
-                              th:action="@{/cart/add}" method="post">
+                              th:action="@{/cart/add}" method="post" data-cart-form>
                             <input type="hidden" name="productId" th:value="${product.id}">
+                            <input th:if="${_csrf != null}" type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
                             <button type="submit" class="btn-cart">В корзину</button>
                         </form>
                     </div>
@@ -212,6 +218,7 @@
     </a>
 </nav>
 
+<script src="/js/cart-feedback.js"></script>
 <script>
     // БЕЗОПАСНАЯ инициализация (не падает в обычном браузере)
     if (window.Telegram && window.Telegram.WebApp) {
@@ -219,6 +226,29 @@
         tg.expand();
         tg.ready();
     }
+
+    const catalogHeader = document.querySelector('.header');
+    let lastScrollY = window.scrollY;
+    let isScrollUpdateScheduled = false;
+
+    window.addEventListener('scroll', () => {
+        if (isScrollUpdateScheduled) return;
+        isScrollUpdateScheduled = true;
+
+        window.requestAnimationFrame(() => {
+            const currentScrollY = window.scrollY;
+            const scrollDelta = currentScrollY - lastScrollY;
+
+            if (currentScrollY <= 8 || scrollDelta < -2) {
+                catalogHeader.classList.remove('header--hidden');
+            } else if (currentScrollY > 80 && scrollDelta > 2) {
+                catalogHeader.classList.add('header--hidden');
+            }
+
+            lastScrollY = currentScrollY;
+            isScrollUpdateScheduled = false;
+        });
+    }, { passive: true });
 </script>
 </body>
 </html>

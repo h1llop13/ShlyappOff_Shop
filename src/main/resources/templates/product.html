@@ -82,6 +82,7 @@
             border: none; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer;
         }
     </style>
+    <link rel="stylesheet" href="/css/cart-feedback.css">
 </head>
 <body>
 
@@ -139,12 +140,14 @@
 
 <!-- BOTTOM BAR (HTML Fallback) -->
 <div class="bottom-bar" id="htmlBottomBar">
-    <form th:action="@{/cart/add}" method="post" id="addToCartForm" style="width: 100%;">
+    <form th:action="@{/cart/add}" method="post" id="addToCartForm" style="width: 100%;" data-cart-form>
         <input type="hidden" name="productId" th:value="${product.id}">
+        <input th:if="${_csrf != null}" type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
         <button type="submit" class="add-to-cart-btn">Добавить в корзину</button>
     </form>
 </div>
 
+<script src="/js/cart-feedback.js"></script>
 <script>
     // === TELEGRAM WEBAPP MAGIC ===
     if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) {
@@ -164,7 +167,12 @@
             tg.MainButton.setText('Добавить в корзину');
             tg.MainButton.show();
             tg.MainButton.onClick(() => {
-                document.getElementById('addToCartForm').submit();
+                const form = document.getElementById('addToCartForm');
+                if (form.requestSubmit) {
+                    form.requestSubmit();
+                } else {
+                    form.submit();
+                }
             });
 
             // Скрываем нашу HTML-кнопку, так как есть нативная

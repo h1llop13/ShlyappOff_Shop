@@ -14,8 +14,11 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -101,7 +104,32 @@ public class HomeController {
         return "product";
     }
 
-    @PostMapping("/cart/add")
+    @PostMapping(value = "/cart/add", headers = "X-Requested-With=XMLHttpRequest")
+    @ResponseBody
+    public ResponseEntity<CartAddResponse> addToCartAsync(@RequestParam Long productId,
+                                                           @RequestParam(required = false) Long variantId,
+                                                           HttpServletRequest request) {
+        String sessionId = request.getSession().getId();
+        try {
+            cartService.addToCart(sessionId, productId, variantId, 1);
+
+            int itemCount = cartService.getCartBySessionId(sessionId)
+                    .map(cart -> cart.getItems().stream()
+                            .mapToInt(item -> item.getQuantity())
+                            .sum())
+                    .orElse(0);
+            String productName = productService.findById(productId)
+                    .map(Product::getName)
+                    .orElse("Товар");
+
+            return ResponseEntity.ok(new CartAddResponse(true, productName, itemCount, null));
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new CartAddResponse(false, null, 0, exception.getMessage()));
+        }
+    }
+
+    @PostMapping(value = "/cart/add", headers = "!X-Requested-With")
     public String addToCart(@RequestParam Long productId,
                             @RequestParam(required = false) Long variantId,
                             HttpServletRequest request,
@@ -114,6 +142,9 @@ public class HomeController {
             return "redirect:/product/" + productId;
         }
         return "redirect:/catalog";
+    }
+
+    public record CartAddResponse(boolean success, String productName, int itemCount, String message) {
     }
 
     @GetMapping("/cart")
