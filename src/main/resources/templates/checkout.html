@@ -301,6 +301,7 @@
     </form>
 </div>
 
+<script src="/js/haptic-feedback.js"></script>
 <script>
     // === TELEGRAM WEBAPP ===
     if (window.Telegram && window.Telegram.WebApp) {
@@ -330,7 +331,15 @@
         tg.MainButton.setText(`Подтвердить • ${totalText}`);
         tg.MainButton.show();
         tg.MainButton.onClick(() => {
-            document.getElementById('checkoutForm').submit();
+            if (window.MiniAppHaptics) {
+                window.MiniAppHaptics.impact('medium');
+            }
+            const form = document.getElementById('checkoutForm');
+            if (form.requestSubmit) {
+                form.requestSubmit();
+            } else {
+                form.submit();
+            }
         });
 
         // Скрываем HTML-кнопку

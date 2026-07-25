@@ -209,11 +209,19 @@
     </a>
 </div>
 
+<script src="/js/haptic-feedback.js"></script>
 <script>
     if (window.Telegram && window.Telegram.WebApp) {
         const tg = window.Telegram.WebApp;
         tg.expand();
         tg.ready();
+        tg.BackButton.show();
+        tg.BackButton.onClick(() => {
+            if (window.MiniAppHaptics) {
+                window.MiniAppHaptics.impact('light');
+            }
+            window.location.replace('/catalog');
+        });
 
         const hasItems = document.getElementById('htmlBottomBar') !== null;
 
@@ -224,6 +232,9 @@
             tg.MainButton.setText(`Оформить • ${totalText}`);
             tg.MainButton.show();
             tg.MainButton.onClick(() => {
+                if (window.MiniAppHaptics) {
+                    window.MiniAppHaptics.impact('medium');
+                }
                 window.location.href = '/checkout';
             });
 

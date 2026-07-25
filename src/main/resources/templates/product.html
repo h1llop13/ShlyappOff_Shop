@@ -147,6 +147,7 @@
     </form>
 </div>
 
+<script src="/js/haptic-feedback.js"></script>
 <script src="/js/cart-feedback.js"></script>
 <script>
     // === TELEGRAM WEBAPP MAGIC ===
@@ -158,6 +159,9 @@
         // 1. Нативная кнопка "Назад" в шапке Telegram
         tg.BackButton.show();
         tg.BackButton.onClick(() => {
+            if (window.MiniAppHaptics) {
+                window.MiniAppHaptics.impact('light');
+            }
             window.history.back();
         });
 
@@ -167,6 +171,9 @@
             tg.MainButton.setText('Добавить в корзину');
             tg.MainButton.show();
             tg.MainButton.onClick(() => {
+                if (window.MiniAppHaptics) {
+                    window.MiniAppHaptics.impact('soft');
+                }
                 const form = document.getElementById('addToCartForm');
                 if (form.requestSubmit) {
                     form.requestSubmit();

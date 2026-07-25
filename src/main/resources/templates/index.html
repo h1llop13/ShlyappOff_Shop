@@ -275,6 +275,7 @@
             }
         }
     </style>
+    <link rel="stylesheet" href="/css/cart-feedback.css">
 </head>
 <body>
 <!-- HERO SECTION -->
@@ -327,8 +328,9 @@
                 <div class="product-actions">
                     <a th:href="@{/product/{id}(id=${product.id})}" class="btn-details">Подробнее</a>
                     <form th:if="${product.category == null || product.category.variantType == null || product.category.variantType.name() == 'NONE'}"
-                          th:action="@{/cart/add}" method="post" style="flex: 1;">
+                          th:action="@{/cart/add}" method="post" style="flex: 1;" data-cart-form>
                         <input type="hidden" name="productId" th:value="${product.id}">
+                        <input th:if="${_csrf != null}" type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
                         <button type="submit" class="btn-cart">В корзину</button>
                     </form>
                 </div>
@@ -357,6 +359,8 @@
     </a>
 </nav>
 
+<script src="/js/haptic-feedback.js"></script>
+<script src="/js/cart-feedback.js"></script>
 <script>
     // === TELEGRAM WEBAPP ===
     if (window.Telegram && window.Telegram.WebApp) {
