@@ -38,7 +38,7 @@ public class HomeController {
 
     @GetMapping("/")
     public String homePage(Model model) {
-        List<Product> products = productService.findAllActive();
+        List<Product> products = productService.findLatestActive();
 
         model.addAttribute("products", products);
 

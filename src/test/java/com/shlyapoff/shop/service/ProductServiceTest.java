@@ -34,18 +34,18 @@ class ProductServiceTest {
     private ProductService productService;
 
     @Test
-    @DisplayName("findAllActive возвращает только активные товары")
-    void findAllActiveReturnsOnlyActiveProducts() {
+    @DisplayName("findLatestActive возвращает до двенадцати последних активных товаров")
+    void findLatestActiveReturnsProductsFromRepository() {
         Product active = new Product();
         active.setId(1L);
         active.setActive(true);
 
-        when(productRepository.findByActiveTrue()).thenReturn(List.of(active));
+        when(productRepository.findTop12ByActiveTrueOrderByCreatedAtDesc()).thenReturn(List.of(active));
 
-        List<Product> result = productService.findAllActive();
+        List<Product> result = productService.findLatestActive();
 
         assertThat(result).hasSize(1).containsExactly(active);
-        verify(productRepository).findByActiveTrue();
+        verify(productRepository).findTop12ByActiveTrueOrderByCreatedAtDesc();
     }
 
     @Test

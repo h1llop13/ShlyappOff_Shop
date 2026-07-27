@@ -326,8 +326,8 @@
     <!-- Products Grid -->
     <div th:if="${!#lists.isEmpty(products)}" class="products-grid">
         <div class="product-card" th:each="product : ${products}">
-            <img th:if="${product.imageUrl != null}" th:src="${product.imageUrl}" class="product-image" alt="Фото">
-            <img th:if="${product.imageUrl == null}" src="https://via.placeholder.com/300x200?text=No+Image" class="product-image" alt="Нет фото">
+            <img th:if="${product.imageUrl != null}" th:src="${product.imageUrl}" class="product-image" alt="Фото" loading="lazy" decoding="async">
+            <img th:if="${product.imageUrl == null}" src="/img/placeholder.svg" class="product-image" alt="Нет фото" loading="lazy" decoding="async">
 
             <div class="product-content">
                 <h3 class="product-title" th:text="${product.name}">Название товара</h3>

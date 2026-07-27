@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400" role="img" aria-labelledby="title description">
+  <title id="title">Нет фотографии товара</title>
+  <desc id="description">Серый фон с иконкой изображения</desc>
+  <rect width="600" height="400" fill="#f1f1f1"/>
+  <path d="M165 290h270L350 180l-55 68-38-43z" fill="#b5b5b5"/>
+  <circle cx="255" cy="145" r="28" fill="#b5b5b5"/>
+</svg>

@@ -18,8 +18,9 @@ public class ProductService {
 
     private final ProductRepository productRepository;
 
-    public List<Product> findAllActive() {
-        return productRepository.findByActiveTrue();
+    @Transactional(readOnly = true)
+    public List<Product> findLatestActive() {
+        return productRepository.findTop12ByActiveTrueOrderByCreatedAtDesc();
     }
 
     @Transactional(readOnly = true)

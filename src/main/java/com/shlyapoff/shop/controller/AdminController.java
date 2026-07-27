@@ -20,9 +20,19 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import com.shlyapoff.shop.model.ProductVariant;
 import com.shlyapoff.shop.repository.ProductVariantRepository;
 import java.io.IOException;
+import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.awt.image.BufferedImage;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import javax.imageio.IIOImage;
+import javax.imageio.ImageIO;
+import javax.imageio.ImageWriteParam;
+import javax.imageio.ImageWriter;
+import javax.imageio.stream.ImageOutputStream;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -33,6 +43,9 @@ import java.util.stream.Collectors;
 @RequestMapping("/admin")
 @RequiredArgsConstructor
 public class AdminController {
+
+    private static final int MAX_IMAGE_DIMENSION = 1200;
+    private static final float JPEG_QUALITY = 0.85f;
 
     private final ProductService productService;
     private final CategoryService categoryService;
@@ -205,21 +218,63 @@ public class AdminController {
                 extension = originalFilename.substring(originalFilename.lastIndexOf("."));
             }
 
-            if (!extension.matches("(?i)\\.(jpg|jpeg|png|webp|gif)")) {
-                throw new IllegalArgumentException("Недопустимый формат файла. Используйте JPG, PNG или WEBP.");
+            if (!extension.matches("(?i)\\.(jpg|jpeg|png)")) {
+                throw new IllegalArgumentException("Недопустимый формат файла. Используйте JPG или PNG.");
             }
 
-            String newFilename = UUID.randomUUID().toString() + extension;
+            String newFilename = UUID.randomUUID() + ".jpg";
 
             // Сохраняем файл
             Path filePath = uploadPath.resolve(newFilename);
-            Files.copy(imageFile.getInputStream(), filePath);
+            BufferedImage source;
+            try (InputStream inputStream = imageFile.getInputStream()) {
+                source = ImageIO.read(inputStream);
+            }
+            if (source == null) {
+                throw new IllegalArgumentException("Не удалось прочитать изображение. Загрузите JPG или PNG.");
+            }
+            writeJpeg(resizeImage(source), filePath);
 
             // Возвращаем URL для доступа к файлу
             return "/images/" + newFilename;
         } catch (IOException e) {
-            e.printStackTrace();
-            return null;
+            throw new IllegalStateException("Не удалось сохранить изображение", e);
+        }
+    }
+
+    private BufferedImage resizeImage(BufferedImage source) {
+        int sourceWidth = source.getWidth();
+        int sourceHeight = source.getHeight();
+        double scale = Math.min(1.0, (double) MAX_IMAGE_DIMENSION / Math.max(sourceWidth, sourceHeight));
+        int targetWidth = Math.max(1, (int) Math.round(sourceWidth * scale));
+        int targetHeight = Math.max(1, (int) Math.round(sourceHeight * scale));
+
+        BufferedImage target = new BufferedImage(targetWidth, targetHeight, BufferedImage.TYPE_INT_RGB);
+        Graphics2D graphics = target.createGraphics();
+        try {
+            graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+            graphics.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+            graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            graphics.setColor(Color.WHITE);
+            graphics.fillRect(0, 0, targetWidth, targetHeight);
+            graphics.drawImage(source, 0, 0, targetWidth, targetHeight, null);
+        } finally {
+            graphics.dispose();
+        }
+        return target;
+    }
+
+    private void writeJpeg(BufferedImage image, Path path) throws IOException {
+        ImageWriter writer = ImageIO.getImageWritersByFormatName("jpeg").next();
+        ImageWriteParam parameters = writer.getDefaultWriteParam();
+        parameters.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
+        parameters.setCompressionQuality(JPEG_QUALITY);
+
+        try (ImageOutputStream output = ImageIO.createImageOutputStream(Files.newOutputStream(path))) {
+            writer.setOutput(output);
+            writer.write(null, new IIOImage(image, null, null), parameters);
+        } finally {
+            writer.dispose();
         }
     }
 

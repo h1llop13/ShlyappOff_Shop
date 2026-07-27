@@ -16,7 +16,7 @@ import java.util.Optional;
 @Repository
 public interface ProductRepository extends JpaRepository<Product, Long> {
 
-    List<Product> findByActiveTrue();
+    List<Product> findTop12ByActiveTrueOrderByCreatedAtDesc();
     List<Product> findByCategory_Id(Long categoryId);
 
     @Query("SELECT DISTINCT p FROM Product p LEFT JOIN FETCH p.variants WHERE p.active = true")

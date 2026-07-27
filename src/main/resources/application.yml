@@ -18,7 +18,7 @@ spring:
     open-in-view: false
 
   thymeleaf:
-    cache: false
+    cache: true
 
   servlet:
     multipart:

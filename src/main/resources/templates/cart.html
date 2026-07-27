@@ -150,8 +150,8 @@
 <!-- CART LIST -->
 <div th:if="${cart != null && !#lists.isEmpty(cart.items)}" class="cart-list">
     <div class="cart-item" th:each="item : ${cart.items}">
-        <img th:if="${item.product.imageUrl != null}" th:src="${item.product.imageUrl}" class="item-image" alt="Фото">
-        <img th:if="${item.product.imageUrl == null}" src="https://via.placeholder.com/80?text=No" class="item-image" alt="Нет фото">
+        <img th:if="${item.product.imageUrl != null}" th:src="${item.product.imageUrl}" class="item-image" alt="Фото" loading="lazy" decoding="async">
+        <img th:if="${item.product.imageUrl == null}" src="/img/placeholder.svg" class="item-image" alt="Нет фото" loading="lazy" decoding="async">
 
         <div class="item-info">
             <div>
