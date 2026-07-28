@@ -105,6 +105,28 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
                                                           @Param("categoryId") Long categoryId,
                                                           @Param("brandId") Long brandId,
                                                           Pageable pageable);
+
+    @Query("""
+            SELECT new com.shlyapoff.shop.dto.ProductCard(p.id, p.name, p.description, p.price,
+                p.stockQuantity, p.imageUrl, p.imageThumbnailUrl, c.variantType)
+            FROM Product p LEFT JOIN p.category c
+            WHERE p.active = true
+              AND (:name IS NULL OR lower(p.name) LIKE lower(concat('%', :name, '%')))
+              AND (:categoryId IS NULL OR p.category.id = :categoryId)
+              AND (:brandId IS NULL OR p.brand.id = :brandId)
+              AND (:minPrice IS NULL OR p.price >= :minPrice)
+              AND (:maxPrice IS NULL OR p.price <= :maxPrice)
+              AND (:onlyInStock = false OR p.stockQuantity > 0 OR EXISTS (
+                    SELECT v.id FROM ProductVariant v WHERE v.product = p AND v.stockQuantity > 0
+              ))
+            """)
+    Page<ProductCard> findCardsWithFilters(@Param("name") String name,
+                                           @Param("categoryId") Long categoryId,
+                                           @Param("brandId") Long brandId,
+                                           @Param("minPrice") java.math.BigDecimal minPrice,
+                                           @Param("maxPrice") java.math.BigDecimal maxPrice,
+                                           @Param("onlyInStock") boolean onlyInStock,
+                                           Pageable pageable);
     List<Product> findByCategory_Id(Long categoryId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)

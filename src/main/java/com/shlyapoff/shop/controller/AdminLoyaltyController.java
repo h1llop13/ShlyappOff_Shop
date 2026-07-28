@@ -36,7 +36,7 @@ public class AdminLoyaltyController {
     @PostMapping("/loyalty/create")
     public String createTier(@ModelAttribute("tier") LoyaltyTier tier, RedirectAttributes redirectAttributes) {
         if (!isValidTier(tier)) {
-            redirectAttributes.addFlashAttribute("errorMessage", "Сумма должна быть неотрицательной, а скидка — от 0 до 100%");
+            redirectAttributes.addFlashAttribute("errorMessage", "Сумма должна быть неотрицательной, а кешбэк — от 0 до 100%");
             return "redirect:/admin/loyalty/create";
         }
         loyaltyTierService.save(tier);
@@ -59,13 +59,13 @@ public class AdminLoyaltyController {
         if (existing.isEmpty()) return "redirect:/admin/loyalty";
 
         if (!isValidTier(tier)) {
-            redirectAttributes.addFlashAttribute("errorMessage", "Сумма должна быть неотрицательной, а скидка — от 0 до 100%");
+            redirectAttributes.addFlashAttribute("errorMessage", "Сумма должна быть неотрицательной, а кешбэк — от 0 до 100%");
             return "redirect:/admin/loyalty/edit/" + id;
         }
 
         LoyaltyTier toUpdate = existing.get();
         toUpdate.setMinAmount(tier.getMinAmount());
-        toUpdate.setDiscountPercent(tier.getDiscountPercent());
+        toUpdate.setBonusPercent(tier.getBonusPercent());
         loyaltyTierService.save(toUpdate);
 
         redirectAttributes.addFlashAttribute("successMessage", "Порог лояльности обновлён!");
@@ -93,8 +93,8 @@ public class AdminLoyaltyController {
     private boolean isValidTier(LoyaltyTier tier) {
         return tier.getMinAmount() != null
                 && tier.getMinAmount().signum() >= 0
-                && tier.getDiscountPercent() != null
-                && tier.getDiscountPercent() >= 0
-                && tier.getDiscountPercent() <= 100;
+                && tier.getBonusPercent() != null
+                && tier.getBonusPercent() >= 0
+                && tier.getBonusPercent() <= 100;
     }
 }

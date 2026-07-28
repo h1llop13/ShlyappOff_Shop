@@ -40,22 +40,22 @@
     </div>
     <p class="text-white-50">
         Как только сумма всех заказов клиента достигает указанного порога, ему автоматически
-        присваивается скидка на все последующие заказы (действует до тех пор, пока не будет достигнут
-        следующий, более высокий порог).
+        начинает начисляться кешбэк в бонусах за каждый подтверждённый заказ. Один бонус равен одному рублю,
+        а покупатель может списать бонусы при оформлении.
     </p>
 
     <table class="table table-dark table-striped">
         <thead>
         <tr>
             <th>Порог (сумма заказов, ₽)</th>
-            <th>Скидка</th>
+            <th>Кешбэк</th>
             <th>Действия</th>
         </tr>
         </thead>
         <tbody>
         <tr th:each="tier : ${tiers}">
             <td th:text="${tier.minAmount} + ' ₽'">5000 ₽</td>
-            <td th:text="${tier.discountPercent} + '%'">5%</td>
+            <td th:text="${tier.bonusPercent} + '%'">5%</td>
             <td>
                 <a th:href="@{/admin/loyalty/edit/{id}(id=${tier.id})}" class="btn btn-sm btn-outline-light">Редактировать</a>
                 <form th:action="@{/admin/loyalty/delete/{id}(id=${tier.id})}" method="post" style="display: inline;">
@@ -64,7 +64,7 @@
             </td>
         </tr>
         <tr th:if="${tiers.isEmpty()}">
-            <td colspan="3" class="text-white-50">Пороги ещё не заданы — скидки по программе лояльности не начисляются.</td>
+            <td colspan="3" class="text-white-50">Пороги ещё не заданы — бонусы по программе лояльности не начисляются.</td>
         </tr>
         </tbody>
     </table>

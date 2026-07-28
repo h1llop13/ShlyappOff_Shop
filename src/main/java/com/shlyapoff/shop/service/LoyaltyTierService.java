@@ -35,12 +35,12 @@ public class LoyaltyTierService {
      * Скидка (в процентах), положенная клиенту с суммарной суммой заказов totalSpent.
      * Если клиент не достиг ни одного порога — скидка 0.
      */
-    public int resolveDiscountPercent(BigDecimal totalSpent) {
+    public int resolveBonusPercent(BigDecimal totalSpent) {
         if (totalSpent == null) {
             return 0;
         }
         return loyaltyTierRepository.findTopByMinAmountLessThanEqualOrderByMinAmountDesc(totalSpent)
-                .map(LoyaltyTier::getDiscountPercent)
+                .map(LoyaltyTier::getBonusPercent)
                 .orElse(0);
     }
 

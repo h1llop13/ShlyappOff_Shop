@@ -51,30 +51,30 @@ public class ProductService {
     }
 
     @Transactional(readOnly = true)
+    public Page<ProductCard> findWithFilters(String name, Long categoryId, Long brandId,
+                                             java.math.BigDecimal minPrice, java.math.BigDecimal maxPrice,
+                                             boolean onlyInStock, String sort, int page, int size) {
+        Sort order = switch (sort == null ? "newest" : sort) {
+            case "price_asc" -> Sort.by(Sort.Direction.ASC, "price");
+            case "price_desc" -> Sort.by(Sort.Direction.DESC, "price");
+            default -> Sort.by(Sort.Direction.DESC, "createdAt");
+        };
+        return productRepository.findCardsWithFilters(
+                name == null || name.isBlank() ? null : name.trim(), categoryId, brandId,
+                minPrice, maxPrice, onlyInStock, PageRequest.of(Math.max(page, 0), size, order));
+    }
+
+    /** Совместимость для внутренних вызовов без расширенных фильтров. */
     public Page<ProductCard> findWithFilters(String name, Long categoryId, Long brandId, int page, int size) {
         PageRequest pageable = PageRequest.of(Math.max(page, 0), size);
         boolean hasName = name != null && !name.isBlank();
-        if (hasName && categoryId != null && brandId != null) {
-            return productRepository.findCardsByNameAndCategoryAndBrand(name, categoryId, brandId, pageable);
-        }
-        if (hasName && categoryId != null) {
-            return productRepository.findCardsByNameAndCategory(name, categoryId, pageable);
-        }
-        if (hasName && brandId != null) {
-            return productRepository.findCardsByNameAndBrand(name, brandId, pageable);
-        }
-        if (categoryId != null && brandId != null) {
-            return productRepository.findCardsByCategoryAndBrand(categoryId, brandId, pageable);
-        }
-        if (hasName) {
-            return productRepository.findCardsByName(name, pageable);
-        }
-        if (categoryId != null) {
-            return productRepository.findCardsByCategory(categoryId, pageable);
-        }
-        if (brandId != null) {
-            return productRepository.findCardsByBrand(brandId, pageable);
-        }
+        if (hasName && categoryId != null && brandId != null) return productRepository.findCardsByNameAndCategoryAndBrand(name, categoryId, brandId, pageable);
+        if (hasName && categoryId != null) return productRepository.findCardsByNameAndCategory(name, categoryId, pageable);
+        if (hasName && brandId != null) return productRepository.findCardsByNameAndBrand(name, brandId, pageable);
+        if (categoryId != null && brandId != null) return productRepository.findCardsByCategoryAndBrand(categoryId, brandId, pageable);
+        if (hasName) return productRepository.findCardsByName(name, pageable);
+        if (categoryId != null) return productRepository.findCardsByCategory(categoryId, pageable);
+        if (brandId != null) return productRepository.findCardsByBrand(brandId, pageable);
         return productRepository.findAllActiveCards(pageable);
     }
 

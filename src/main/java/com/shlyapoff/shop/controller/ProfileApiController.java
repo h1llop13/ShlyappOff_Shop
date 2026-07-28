@@ -57,7 +57,8 @@ public class ProfileApiController {
                         o.getStatus().name(),
                         o.getDeliveryType(),
                         o.getSubtotalAmount() != null ? o.getSubtotalAmount() : o.getTotalAmount(),
-                        o.getDiscountPercent(),
+                        o.getBonusesSpent(),
+                        o.getBonusesEarned(),
                         o.getTotalAmount(),
                         o.getItems().stream()
                                 .map(i -> new ProfileDto.OrderItemView(i.getProductName(), i.getQuantity(), i.getPriceAtMoment()))
@@ -69,9 +70,10 @@ public class ProfileApiController {
         Optional<LoyaltyTier> nextTier = loyaltyTierService.findNextTier(totalSpent);
 
         ProfileDto.LoyaltyProgress loyalty = new ProfileDto.LoyaltyProgress(
+                customer.getBonusBalance() == null ? BigDecimal.ZERO : customer.getBonusBalance(),
                 totalSpent,
-                customer.getDiscountPercent(),
-                nextTier.map(LoyaltyTier::getDiscountPercent).orElse(null),
+                loyaltyTierService.resolveBonusPercent(totalSpent),
+                nextTier.map(LoyaltyTier::getBonusPercent).orElse(null),
                 nextTier.map(t -> t.getMinAmount().subtract(totalSpent)).orElse(null)
         );
 

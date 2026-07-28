@@ -66,6 +66,9 @@
         }
 
         try {
+            if (window.TelegramShop) {
+                await window.TelegramShop.bindPersistentCart();
+            }
             const response = await window.fetch(form.action, {
                 method: form.method || 'POST',
                 body: new FormData(form),

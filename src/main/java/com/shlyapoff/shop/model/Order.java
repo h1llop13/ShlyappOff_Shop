@@ -44,6 +44,12 @@ public class Order {
     @Column(name = "discount_percent", nullable = false)
     private Integer discountPercent = 0;
 
+    @Column(name = "bonuses_spent", nullable = false)
+    private BigDecimal bonusesSpent = BigDecimal.ZERO;
+
+    @Column(name = "bonuses_earned", nullable = false)
+    private BigDecimal bonusesEarned = BigDecimal.ZERO;
+
     /**
      * Итоговая сумма к оплате (subtotalAmount за вычетом скидки).
      */

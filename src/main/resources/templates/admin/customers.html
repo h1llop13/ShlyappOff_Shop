@@ -37,7 +37,7 @@
             <th>Telegram</th>
             <th>Имя</th>
             <th>Сумма всех заказов</th>
-            <th>Текущая скидка</th>
+            <th>Бонусы</th>
         </tr>
         </thead>
         <tbody>
@@ -50,8 +50,7 @@
             <td th:text="(${customer.firstName} ?: '') + ' ' + (${customer.lastName} ?: '')">Имя</td>
             <td th:text="${customer.totalSpent} + ' ₽'">0 ₽</td>
             <td>
-                <span th:if="${customer.discountPercent} > 0" class="badge bg-success" th:text="${customer.discountPercent} + '%'"></span>
-                <span th:if="${customer.discountPercent} == 0" class="text-white-50">—</span>
+                <span class="badge bg-success" th:text="${customer.bonusBalance} + ' бонусов'"></span>
             </td>
         </tr>
         <tr th:if="${customers.isEmpty()}">

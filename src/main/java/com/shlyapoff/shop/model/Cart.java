@@ -22,6 +22,9 @@ public class Cart {
     @Column(nullable = false, unique = true)
     private String sessionId;
 
+    @Column(name = "telegram_user_id", unique = true)
+    private Long telegramUserId;
+
     @CreatedDate
     @Column(updatable = false)
     private LocalDateTime createdAt;

@@ -11,6 +11,7 @@ import com.shlyapoff.shop.service.BrandService;
 import com.shlyapoff.shop.service.CartService;
 import com.shlyapoff.shop.service.CategoryService;
 import com.shlyapoff.shop.service.ProductService;
+import com.shlyapoff.shop.service.TelegramCartSessionService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +19,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,15 +29,32 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.List;
 import java.util.Optional;
+import java.math.BigDecimal;
 
 @Controller
-@RequiredArgsConstructor
 public class HomeController {
 
     private final ProductService productService;
     private final CategoryService categoryService;
     private final BrandService brandService;
     private final CartService cartService;
+    private final TelegramCartSessionService telegramCartSessionService;
+
+    @Autowired
+    public HomeController(ProductService productService, CategoryService categoryService, BrandService brandService,
+                          CartService cartService, TelegramCartSessionService telegramCartSessionService) {
+        this.productService = productService;
+        this.categoryService = categoryService;
+        this.brandService = brandService;
+        this.cartService = cartService;
+        this.telegramCartSessionService = telegramCartSessionService;
+    }
+
+    /** Совместимость с существующими изолированными тестами контроллера. */
+    public HomeController(ProductService productService, CategoryService categoryService, BrandService brandService,
+                          CartService cartService) {
+        this(productService, categoryService, brandService, cartService, new TelegramCartSessionService());
+    }
 
     @GetMapping("/")
     public String homePage(Model model) {
@@ -51,6 +70,10 @@ public class HomeController {
             @RequestParam(required = false) String search,
             @RequestParam(required = false) Long categoryId,
             @RequestParam(required = false) Long brandId,
+            @RequestParam(required = false) BigDecimal minPrice,
+            @RequestParam(required = false) BigDecimal maxPrice,
+            @RequestParam(defaultValue = "false") boolean onlyInStock,
+            @RequestParam(defaultValue = "newest") String sort,
             @RequestParam(defaultValue = "0") int page, // Номер страницы (начинается с 0)
             Model model) {
 
@@ -60,7 +83,8 @@ public class HomeController {
         }
 
         // Запрашиваем страницу товаров (по 12 штук на страницу)
-        Page<ProductCard> productPage = productService.findWithFilters(search, categoryId, brandId, page, 12);
+        Page<ProductCard> productPage = productService.findWithFilters(search, categoryId, brandId,
+                minPrice, maxPrice, onlyInStock, sort, page, 12);
 
         // Кладем в модель сам список товаров для текущей страницы
         model.addAttribute("products", productPage.getContent());
@@ -72,6 +96,10 @@ public class HomeController {
         model.addAttribute("search", search);
         model.addAttribute("categoryId", categoryId);
         model.addAttribute("brandId", brandId);
+        model.addAttribute("minPrice", minPrice);
+        model.addAttribute("maxPrice", maxPrice);
+        model.addAttribute("onlyInStock", onlyInStock);
+        model.addAttribute("sort", sort);
 
         // Списки для выпадающих меню фильтров
         model.addAttribute("categories", categoryService.findAll());
@@ -111,10 +139,12 @@ public class HomeController {
                                                            @RequestParam(required = false) Long variantId,
                                                            HttpServletRequest request) {
         String sessionId = request.getSession().getId();
+        Long telegramUserId = telegramCartSessionService.getTelegramUserId(request.getSession());
         try {
-            cartService.addToCart(sessionId, productId, variantId, 1);
+            if (telegramUserId == null) cartService.addToCart(sessionId, productId, variantId, 1);
+            else cartService.addToCart(sessionId, telegramUserId, productId, variantId, 1);
 
-            int itemCount = cartService.getCartBySessionId(sessionId)
+            int itemCount = (telegramUserId == null ? cartService.getCartBySessionId(sessionId) : cartService.getCart(sessionId, telegramUserId))
                     .map(cart -> cart.getItems().stream()
                             .mapToInt(item -> item.getQuantity())
                             .sum())
@@ -136,8 +166,10 @@ public class HomeController {
                             HttpServletRequest request,
                             org.springframework.web.servlet.mvc.support.RedirectAttributes redirectAttributes) {
         String sessionId = request.getSession().getId();
+        Long telegramUserId = telegramCartSessionService.getTelegramUserId(request.getSession());
         try {
-            cartService.addToCart(sessionId, productId, variantId, 1);
+            if (telegramUserId == null) cartService.addToCart(sessionId, productId, variantId, 1);
+            else cartService.addToCart(sessionId, telegramUserId, productId, variantId, 1);
         } catch (IllegalArgumentException | IllegalStateException exception) {
             redirectAttributes.addFlashAttribute("errorMessage", exception.getMessage());
             return "redirect:/product/" + productId;
@@ -151,7 +183,8 @@ public class HomeController {
     @GetMapping("/cart")
     public String cartPage(Model model, HttpServletRequest request) {
         String sessionId = request.getSession().getId();
-        Optional<Cart> cartOpt = cartService.getCartBySessionId(sessionId);
+        Long telegramUserId = telegramCartSessionService.getTelegramUserId(request.getSession());
+        Optional<Cart> cartOpt = telegramUserId == null ? cartService.getCartBySessionId(sessionId) : cartService.getCart(sessionId, telegramUserId);
 
         if (cartOpt.isPresent()) {
             Cart cart = cartOpt.get();
@@ -173,7 +206,9 @@ public class HomeController {
                                  @RequestParam(required = false) Long variantId,
                                  HttpServletRequest request) {
         String sessionId = request.getSession().getId();
-        cartService.removeFromCart(sessionId, productId, variantId);
+        Long telegramUserId = telegramCartSessionService.getTelegramUserId(request.getSession());
+        if (telegramUserId == null) cartService.removeFromCart(sessionId, productId, variantId);
+        else cartService.removeFromCart(sessionId, telegramUserId, productId, variantId);
         return "redirect:/cart";
     }
 
@@ -185,7 +220,9 @@ public class HomeController {
                                  org.springframework.web.servlet.mvc.support.RedirectAttributes redirectAttributes) {
         String sessionId = request.getSession().getId();
         try {
-            cartService.updateQuantity(sessionId, productId, variantId, quantity);
+            Long telegramUserId = telegramCartSessionService.getTelegramUserId(request.getSession());
+            if (telegramUserId == null) cartService.updateQuantity(sessionId, productId, variantId, quantity);
+            else cartService.updateQuantity(sessionId, telegramUserId, productId, variantId, quantity);
         } catch (IllegalArgumentException | IllegalStateException exception) {
             redirectAttributes.addFlashAttribute("error", exception.getMessage());
         }
@@ -195,7 +232,9 @@ public class HomeController {
     @PostMapping("/cart/clear")
     public String clearCart(HttpServletRequest request) {
         String sessionId = request.getSession().getId();
-        cartService.clearCart(sessionId);
+        Long telegramUserId = telegramCartSessionService.getTelegramUserId(request.getSession());
+        if (telegramUserId == null) cartService.clearCart(sessionId);
+        else cartService.clearCart(sessionId, telegramUserId);
         return "redirect:/cart";
     }
 }

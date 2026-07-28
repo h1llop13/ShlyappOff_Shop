@@ -292,6 +292,15 @@
             </div>
         </div>
 
+        <div class="section" th:if="${bonusBalance != null && bonusBalance > 0}">
+            <h2 class="section-title">Бонусы</h2>
+            <label class="radio-option">
+                <input type="checkbox" th:field="*{useBonuses}">
+                <span>Списать доступные бонусы: <b th:text="${bonusBalance} + ' ₽'"></b></span>
+            </label>
+            <p class="form-label" style="margin-top:8px;">1 бонус = 1 ₽. Бонусы можно списать до суммы заказа.</p>
+        </div>
+
         <input type="hidden" name="telegramInitData" id="telegramInitData">
 
         <!-- BOTTOM BAR (HTML Fallback) -->
@@ -302,7 +311,13 @@
 </div>
 
 <script src="/js/haptic-feedback.js"></script>
+<script src="/js/telegram-shop.js"></script>
 <script>
+    if (window.TelegramShop) {
+        window.TelegramShop.bindPersistentCart().then(result => {
+            if (result.changed) window.location.reload();
+        });
+    }
     // === TELEGRAM WEBAPP ===
     if (window.Telegram && window.Telegram.WebApp) {
         const tg = window.Telegram.WebApp;

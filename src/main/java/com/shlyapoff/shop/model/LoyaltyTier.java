@@ -11,7 +11,7 @@ import java.math.BigDecimal;
 /**
  * Порог программы лояльности: при достижении суммарной суммы всех заказов
  * клиента значения {@code minAmount} и выше — клиенту присваивается скидка
- * {@code discountPercent} на все последующие заказы.
+ * {@code bonusPercent} от подтверждённого заказа в виде бонусов.
  * Управляется администратором через /admin/loyalty.
  */
 @Entity
@@ -29,6 +29,6 @@ public class LoyaltyTier {
 
     @Min(0)
     @Max(100)
-    @Column(name = "discount_percent", nullable = false)
-    private Integer discountPercent;
+    @Column(name = "bonus_percent", nullable = false)
+    private Integer bonusPercent;
 }

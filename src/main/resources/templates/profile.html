@@ -188,27 +188,28 @@
     };
 
     function renderLoyalty(loyalty) {
-        const current = loyalty.currentDiscountPercent || 0;
+        const current = loyalty.currentBonusPercent || 0;
+        const balance = loyalty.bonusBalance || 0;
         let progressHtml = '';
 
-        if (loyalty.nextDiscountPercent && loyalty.amountLeftToNextDiscount != null) {
+        if (loyalty.nextBonusPercent && loyalty.amountLeftToNextBonus != null) {
             // Грубая оценка прогресса к следующему порогу для прогресс-бара
-            const left = Math.max(0, loyalty.amountLeftToNextDiscount);
+            const left = Math.max(0, loyalty.amountLeftToNextBonus);
             const spent = loyalty.totalSpent;
             const target = spent + left;
             const pct = target > 0 ? Math.min(100, Math.round((spent / target) * 100)) : 0;
             progressHtml = `
                 <div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div>
-                <div class="loyalty-hint">До скидки ${loyalty.nextDiscountPercent}% осталось потратить ${formatMoney(left)}</div>
+                <div class="loyalty-hint">До кешбэка ${loyalty.nextBonusPercent}% осталось потратить ${formatMoney(left)}</div>
             `;
         } else {
-            progressHtml = `<div class="loyalty-hint">Вы получили максимальную скидку по программе лояльности 🎉</div>`;
+            progressHtml = `<div class="loyalty-hint">У вас максимальный кешбэк по программе лояльности 🎉</div>`;
         }
 
         loyaltyCard.innerHTML = `
-            <div class="loyalty-title">Сумма всех ваших заказов</div>
-            <div class="loyalty-discount">${formatMoney(loyalty.totalSpent)}</div>
-            <div class="loyalty-hint">Ваша текущая скидка на все товары: <b style="color:var(--success)">${current}%</b></div>
+            <div class="loyalty-title">Доступно бонусов</div>
+            <div class="loyalty-discount">${formatMoney(balance)}</div>
+            <div class="loyalty-hint">Ваш кешбэк: <b style="color:var(--success)">${current}%</b>. 1 бонус = 1 ₽</div>
             ${progressHtml}
         `;
     }
@@ -224,11 +225,12 @@
                 `<div>${i.quantity} × ${i.productName}</div>`
             ).join('');
 
-            const hasDiscount = order.discountPercent && order.discountPercent > 0;
-            const totalsHtml = hasDiscount
+            const spent = order.bonusesSpent || 0;
+            const earned = order.bonusesEarned || 0;
+            const totalsHtml = spent > 0
                 ? `<span class="order-subtotal-strike">${formatMoney(order.subtotalAmount)}</span>
                    <span class="order-total-final">${formatMoney(order.totalAmount)}</span>
-                   <span class="order-discount-badge">-${order.discountPercent}%</span>`
+                   <span class="order-discount-badge">−${formatMoney(spent)} бонусов</span>`
                 : `<span class="order-total-final">${formatMoney(order.totalAmount)}</span>`;
 
             return `
@@ -239,7 +241,7 @@
                     </div>
                     <div class="order-date">${formatDate(order.createdAt)}</div>
                     <div class="order-items">${itemsHtml}</div>
-                    <div class="order-totals">${totalsHtml}</div>
+                    <div class="order-totals">${totalsHtml}${earned > 0 ? `<span class="order-discount-badge">+${formatMoney(earned)} бонусов</span>` : ''}</div>
                 </div>
             `;
         }).join('');

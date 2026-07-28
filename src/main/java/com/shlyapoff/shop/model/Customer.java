@@ -55,6 +55,10 @@ public class Customer {
     @Column(name = "discount_percent", nullable = false)
     private Integer discountPercent = 0;
 
+    /** Доступные бонусы: один бонус равен одному рублю. */
+    @Column(name = "bonus_balance", nullable = false)
+    private BigDecimal bonusBalance = BigDecimal.ZERO;
+
     @CreatedDate
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

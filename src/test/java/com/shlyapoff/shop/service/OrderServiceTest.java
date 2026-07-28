@@ -121,7 +121,7 @@ class OrderServiceTest {
         assertThat(result.getTelegramUserId()).isEqualTo(12345L);
         assertThat(result.getCustomer()).isEqualTo(customer);
 
-        verify(cartService).clearCart(SESSION_ID);
+        verify(cartService).clearCart(SESSION_ID, 12345L);
         verify(notificationOutboxService).enqueueNewOrderNotification(result);
         // Заказ ещё не подтверждён администратором — сумма НЕ должна начисляться клиенту сразу.
         verify(customerService, never()).registerOrderAndRecalculateDiscount(any(), any());
@@ -132,24 +132,24 @@ class OrderServiceTest {
     }
 
     @Test
-    @DisplayName("применяет накопленную скидку клиента к сумме заказа")
-    void appliesCustomerDiscountToOrderTotal() {
+    @DisplayName("списывает бонусы клиента по его выбору")
+    void spendsCustomerBonusesWhenRequested() {
         Customer customer = new Customer();
         customer.setId(8L);
         customer.setTelegramUserId(999L);
-        customer.setDiscountPercent(10);
+        customer.setBonusBalance(new BigDecimal("50.00"));
 
         when(cartService.getCartBySessionIdForCheckout(SESSION_ID)).thenReturn(Optional.of(cartWithItems));
         when(customerService.findOrCreateByTelegram(999L, "vip_client", null, null)).thenReturn(customer);
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         Order result = orderService.createOrderFromCart(
-                SESSION_ID, "Пётр", "+7000", "PICKUP", null, 999L, "vip_client");
+                SESSION_ID, "Пётр", "+7000", "PICKUP", null, 999L, "vip_client", true);
 
-        // 450.50 - 10% = 405.45
+        // 450.50 - 50 бонусов = 400.50
         assertThat(result.getSubtotalAmount()).isEqualByComparingTo("450.50");
-        assertThat(result.getDiscountPercent()).isEqualTo(10);
-        assertThat(result.getTotalAmount()).isEqualByComparingTo("405.45");
+        assertThat(result.getBonusesSpent()).isEqualByComparingTo("50.00");
+        assertThat(result.getTotalAmount()).isEqualByComparingTo("400.50");
 
         // Заказ ещё не подтверждён администратором — сумма НЕ должна начисляться клиенту сразу.
         verify(customerService, never()).registerOrderAndRecalculateDiscount(any(), any());
@@ -332,7 +332,10 @@ class OrderServiceTest {
         order.setStatus(OrderStatus.NEW);
         order.setCustomer(customer);
         order.setSubtotalAmount(new BigDecimal("450.50"));
+        order.setTotalAmount(new BigDecimal("450.50"));
         when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(customerService.registerOrderAndAccrueBonuses(customer, new BigDecimal("450.50"), new BigDecimal("450.50")))
+                .thenReturn(customer);
 
         orderService.updateStatus(1L, "COMPLETED");
         orderService.updateStatus(1L, "COMPLETED");
@@ -340,7 +343,7 @@ class OrderServiceTest {
         assertThat(order.getStatus()).isEqualTo(OrderStatus.COMPLETED);
         verify(orderRepository, times(1)).save(order);
         verify(customerService, times(1))
-                .registerOrderAndRecalculateDiscount(customer, new BigDecimal("450.50"));
+                .registerOrderAndAccrueBonuses(customer, new BigDecimal("450.50"), new BigDecimal("450.50"));
     }
 
     @Test

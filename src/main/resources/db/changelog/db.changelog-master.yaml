@@ -35,3 +35,5 @@ databaseChangeLog:
       file: db/changelog/changes/017-create-notification-outbox.sql
   - include:
       file: db/changelog/changes/018-performance-indexes.sql
+  - include:
+      file: db/changelog/changes/019-favorites-bonuses-and-persistent-carts.sql

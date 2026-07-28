@@ -16,6 +16,8 @@ public interface CartRepository extends JpaRepository<Cart, Long> {
     // Обычный метод (оставляем для других случаев)
     Optional<Cart> findBySessionId(String sessionId);
 
+    Optional<Cart> findByTelegramUserId(Long telegramUserId);
+
     // НОВЫЙ метод: сразу загружает корзину с товарами и продуктами
     @Query("""
     SELECT DISTINCT c FROM Cart c
@@ -38,4 +40,26 @@ public interface CartRepository extends JpaRepository<Cart, Long> {
     WHERE c.sessionId = :sessionId
 """)
     Optional<Cart> findBySessionIdWithItemsForUpdate(@Param("sessionId") String sessionId);
+
+    @Query("""
+    SELECT DISTINCT c FROM Cart c
+    LEFT JOIN FETCH c.items i
+    LEFT JOIN FETCH i.product p
+    LEFT JOIN FETCH i.productVariant
+    LEFT JOIN FETCH p.category
+    LEFT JOIN FETCH p.brand
+    WHERE c.telegramUserId = :telegramUserId
+    """)
+    Optional<Cart> findByTelegramUserIdWithItems(@Param("telegramUserId") Long telegramUserId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+    SELECT DISTINCT c FROM Cart c
+    LEFT JOIN FETCH c.items i
+    LEFT JOIN FETCH i.product p
+    LEFT JOIN FETCH i.productVariant
+    LEFT JOIN FETCH p.category
+    WHERE c.telegramUserId = :telegramUserId
+    """)
+    Optional<Cart> findByTelegramUserIdWithItemsForUpdate(@Param("telegramUserId") Long telegramUserId);
 }

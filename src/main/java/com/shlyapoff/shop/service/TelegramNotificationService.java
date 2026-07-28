@@ -75,8 +75,8 @@ public class TelegramNotificationService {
                     .append(itemTotal).append(" ₽\n");
         }
 
-        if (order.getDiscountPercent() != null && order.getDiscountPercent() > 0) {
-            sb.append("\n🎁 <b>Скидка:</b> -").append(order.getDiscountPercent()).append("%")
+        if (order.getBonusesSpent() != null && order.getBonusesSpent().signum() > 0) {
+            sb.append("\n🎁 <b>Списано бонусов:</b> ").append(order.getBonusesSpent()).append(" ₽")
                     .append(" (было ").append(order.getSubtotalAmount()).append(" ₽)\n");
         }
 

@@ -21,16 +21,18 @@ public class ProfileDto {
             String status,
             String deliveryType,
             BigDecimal subtotalAmount,
-            Integer discountPercent,
+            BigDecimal bonusesSpent,
+            BigDecimal bonusesEarned,
             BigDecimal totalAmount,
             List<OrderItemView> items
     ) {}
 
     public record LoyaltyProgress(
+            BigDecimal bonusBalance,
             BigDecimal totalSpent,
-            Integer currentDiscountPercent,
-            Integer nextDiscountPercent,
-            BigDecimal amountLeftToNextDiscount
+            Integer currentBonusPercent,
+            Integer nextBonusPercent,
+            BigDecimal amountLeftToNextBonus
     ) {}
 
     public record ProfileResponse(

@@ -47,7 +47,8 @@ public class CustomerService {
                     Customer c = new Customer();
                     c.setTelegramUserId(telegramUserId);
                     c.setTotalSpent(BigDecimal.ZERO);
-                    c.setDiscountPercent(0);
+                    c.setDiscountPercent(0); // historical field; new orders use bonuses
+                    c.setBonusBalance(BigDecimal.ZERO);
                     return c;
                 });
 
@@ -76,10 +77,35 @@ public class CustomerService {
      * и пересчитывает его скидку на будущие заказы согласно программе лояльности.
      */
     @Transactional
-    public Customer registerOrderAndRecalculateDiscount(Customer customer, BigDecimal orderSubtotal) {
+    public Customer registerOrderAndAccrueBonuses(Customer customer, BigDecimal orderSubtotal, BigDecimal orderTotal) {
         BigDecimal newTotal = customer.getTotalSpent().add(orderSubtotal);
         customer.setTotalSpent(newTotal);
-        customer.setDiscountPercent(loyaltyTierService.resolveDiscountPercent(newTotal));
+        int bonusPercent = loyaltyTierService.resolveBonusPercent(newTotal);
+        BigDecimal earned = orderTotal.multiply(BigDecimal.valueOf(bonusPercent))
+                .movePointLeft(2).setScale(2, java.math.RoundingMode.HALF_UP);
+        customer.setBonusBalance(customer.getBonusBalance().add(earned));
         return customerRepository.save(customer);
+    }
+
+    /** Устаревшее имя для совместимости; новые заказы начисляют бонусы. */
+    @Transactional
+    public Customer registerOrderAndRecalculateDiscount(Customer customer, BigDecimal orderSubtotal) {
+        return registerOrderAndAccrueBonuses(customer, orderSubtotal, orderSubtotal);
+    }
+
+    @Transactional
+    public void spendBonuses(Customer customer, BigDecimal amount) {
+        if (amount.signum() <= 0) return;
+        BigDecimal balance = customer.getBonusBalance() == null ? BigDecimal.ZERO : customer.getBonusBalance();
+        if (balance.compareTo(amount) < 0) throw new IllegalStateException("Недостаточно бонусов");
+        customer.setBonusBalance(balance.subtract(amount));
+        customerRepository.save(customer);
+    }
+
+    @Transactional
+    public void restoreBonuses(Customer customer, BigDecimal amount) {
+        if (amount == null || amount.signum() <= 0) return;
+        customer.setBonusBalance(customer.getBonusBalance().add(amount));
+        customerRepository.save(customer);
     }
 }

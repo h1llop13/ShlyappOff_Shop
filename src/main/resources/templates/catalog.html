@@ -113,6 +113,23 @@
         }
         .page-btn.active { background: var(--btn-bg); color: var(--btn-text); border-color: var(--btn-bg); }
 
+        /* Новый компактный фильтр: акцент на быстрый выбор одной рукой. */
+        .header { padding: 20px 16px 16px; background: linear-gradient(145deg, var(--bg), var(--secondary-bg)); }
+        .header h1 { font-size: 28px; letter-spacing: -.8px; margin-bottom: 16px; }
+        .filters { gap: 10px; }
+        .search-box input { border-radius: 18px; padding: 15px 16px 15px 44px; background: color-mix(in srgb, var(--bg) 78%, var(--text) 6%); }
+        .filters-panel { padding: 12px; border: 1px solid var(--border); background: color-mix(in srgb, var(--bg) 78%, var(--text) 4%); border-radius: 20px; }
+        .filter-row { grid-template-columns: 1fr 1fr; gap: 8px; }
+        .filter-select, .filter-input { min-width: 0; padding: 12px; border: 1px solid var(--border); border-radius: 13px; color: var(--text); background: var(--secondary-bg); font: inherit; }
+        .price-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+        .filter-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; }
+        .stock-toggle { display: flex; align-items: center; gap: 8px; color: var(--text); font-size: 13px; font-weight: 600; }
+        .stock-toggle input { accent-color: var(--text); width: 18px; height: 18px; }
+        .btn-search { border-radius: 14px; padding: 12px 16px; }
+        .clear-filters { color: var(--hint); font-size: 13px; text-decoration: none; padding: 8px; }
+        .active-filters { display: flex; gap: 6px; overflow-x: auto; margin-top: 12px; scrollbar-width: none; }
+        .active-filters span { flex: 0 0 auto; padding: 7px 10px; border-radius: 99px; background: color-mix(in srgb, var(--text) 10%, transparent); color: var(--hint); font-size: 12px; }
+
         .bottom-nav {
             position: fixed; bottom: 0; left: 0; right: 0; background: var(--bg);
             border-top: 1px solid var(--border); display: flex; justify-content: space-around;
@@ -129,6 +146,7 @@
         }
     </style>
     <link rel="stylesheet" href="/css/cart-feedback.css">
+    <link rel="stylesheet" href="/css/favorites.css">
 </head>
 <body>
 <div class="header">
@@ -137,18 +155,37 @@
         <div class="search-box">
             <input type="text" name="search" placeholder="Поиск товаров..." th:value="${search}">
         </div>
-        <div class="filter-row">
-            <select name="categoryId" class="filter-select">
-                <option value="">Все категории</option>
-                <option th:each="cat : ${categories}" th:value="${cat.id}" th:text="${cat.name}"
-                        th:selected="${cat.id == categoryId}"></option>
-            </select>
-            <select name="brandId" class="filter-select">
-                <option value="">Все бренды</option>
-                <option th:each="br : ${brands}" th:value="${br.id}" th:text="${br.name}"
-                        th:selected="${br.id == brandId}"></option>
-            </select>
-            <button type="submit" class="btn-search">Найти</button>
+        <div class="filters-panel">
+            <div class="filter-row">
+                <select name="categoryId" class="filter-select">
+                    <option value="">Категория</option>
+                    <option th:each="cat : ${categories}" th:value="${cat.id}" th:text="${cat.name}"
+                            th:selected="${cat.id == categoryId}"></option>
+                </select>
+                <select name="brandId" class="filter-select">
+                    <option value="">Бренд</option>
+                    <option th:each="br : ${brands}" th:value="${br.id}" th:text="${br.name}"
+                            th:selected="${br.id == brandId}"></option>
+                </select>
+                <select name="sort" class="filter-select">
+                    <option value="newest" th:selected="${sort == 'newest'}">Сначала новые</option>
+                    <option value="price_asc" th:selected="${sort == 'price_asc'}">Сначала дешевле</option>
+                    <option value="price_desc" th:selected="${sort == 'price_desc'}">Сначала дороже</option>
+                </select>
+            </div>
+            <div class="price-row">
+                <input class="filter-input" type="number" min="0" step="1" name="minPrice" placeholder="Цена от" th:value="${minPrice}">
+                <input class="filter-input" type="number" min="0" step="1" name="maxPrice" placeholder="Цена до" th:value="${maxPrice}">
+            </div>
+            <div class="filter-actions">
+                <label class="stock-toggle"><input type="checkbox" name="onlyInStock" value="true" th:checked="${onlyInStock}"> Только в наличии</label>
+                <div><a href="/catalog" class="clear-filters">Сбросить</a><button type="submit" class="btn-search">Показать</button></div>
+            </div>
+        </div>
+        <div class="active-filters" th:if="${search != null || categoryId != null || brandId != null || minPrice != null || maxPrice != null || onlyInStock}">
+            <span th:if="${search != null}" th:text="${'Поиск: ' + search}"></span>
+            <span th:if="${onlyInStock}">В наличии</span>
+            <span th:if="${minPrice != null || maxPrice != null}" th:text="${'Цена: ' + (minPrice ?: 0) + '–' + (maxPrice ?: '∞')}"></span>
         </div>
     </form>
 </div>
@@ -165,6 +202,7 @@
             <img th:if="${product.imageUrl == null}" src="/img/placeholder.svg" class="product-image" alt="Нет фото" loading="lazy" decoding="async">
 
             <div class="product-content">
+                <button type="button" class="favorite-btn" th:data-favorite-button="${product.id}" aria-label="Добавить в избранное">♡</button>
                 <h3 class="product-title" th:text="${product.name}">Название</h3>
                 <p class="product-description" th:text="${product.description}">Описание...</p>
                 <p th:if="${!product.requiresVariant}"
@@ -191,17 +229,17 @@
 
     <div th:if="${totalPages > 1}" class="pagination">
         <a th:if="${currentPage > 0}"
-           th:href="@{/catalog(page=${currentPage - 1}, search=${search}, categoryId=${categoryId}, brandId=${brandId})}"
+           th:href="@{/catalog(page=${currentPage - 1}, search=${search}, categoryId=${categoryId}, brandId=${brandId}, minPrice=${minPrice}, maxPrice=${maxPrice}, onlyInStock=${onlyInStock}, sort=${sort})}"
            class="page-btn">← Назад</a>
 
         <span th:each="i : ${#numbers.sequence(0, totalPages - 1)}">
-                <a th:href="@{/catalog(page=${i}, search=${search}, categoryId=${categoryId}, brandId=${brandId})}"
+                <a th:href="@{/catalog(page=${i}, search=${search}, categoryId=${categoryId}, brandId=${brandId}, minPrice=${minPrice}, maxPrice=${maxPrice}, onlyInStock=${onlyInStock}, sort=${sort})}"
                    th:text="${i + 1}"
                    th:class="${i == currentPage} ? 'page-btn active' : 'page-btn'">1</a>
             </span>
 
         <a th:if="${currentPage < totalPages - 1}"
-           th:href="@{/catalog(page=${currentPage + 1}, search=${search}, categoryId=${categoryId}, brandId=${brandId})}"
+           th:href="@{/catalog(page=${currentPage + 1}, search=${search}, categoryId=${categoryId}, brandId=${brandId}, minPrice=${minPrice}, maxPrice=${maxPrice}, onlyInStock=${onlyInStock}, sort=${sort})}"
            class="page-btn">Вперёд →</a>
     </div>
 </div>
@@ -226,7 +264,9 @@
 </nav>
 
 <script src="/js/haptic-feedback.js"></script>
+<script src="/js/telegram-shop.js"></script>
 <script src="/js/cart-feedback.js"></script>
+<script src="/js/favorites.js"></script>
 <script>
     // БЕЗОПАСНАЯ инициализация (не падает в обычном браузере)
     if (window.Telegram && window.Telegram.WebApp) {

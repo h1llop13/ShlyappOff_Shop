@@ -38,6 +38,14 @@ public class OrderService {
     public Order createOrderFromCart(String sessionId, String customerName, String phone,
                                      String deliveryType, String comment, Long telegramUserId,
                                      String telegramUsername) {
+        return createOrderFromCart(sessionId, customerName, phone, deliveryType, comment,
+                telegramUserId, telegramUsername, false);
+    }
+
+    @Transactional
+    public Order createOrderFromCart(String sessionId, String customerName, String phone,
+                                     String deliveryType, String comment, Long telegramUserId,
+                                     String telegramUsername, boolean useBonuses) {
         // Получаем корзину
         Optional<Cart> cartOpt = cartService.getCartBySessionIdForCheckout(sessionId);
         if (cartOpt.isEmpty() || cartOpt.get().getItems().isEmpty()) {
@@ -79,16 +87,21 @@ public class OrderService {
         // Если заказ оформлен из Telegram Mini App — находим/заводим профиль клиента
         // и применяем скидку, накопленную по программе лояльности с ПРЕДЫДУЩИХ заказов.
         Customer customer = null;
-        int discountPercent = 0;
+        BigDecimal bonusesSpent = BigDecimal.ZERO;
         if (telegramUserId != null) {
             customer = customerService.findOrCreateByTelegram(telegramUserId, telegramUsername, null, null);
-            discountPercent = customer.getDiscountPercent() == null ? 0 : customer.getDiscountPercent();
+            if (useBonuses) {
+                BigDecimal balance = customer.getBonusBalance() == null ? BigDecimal.ZERO : customer.getBonusBalance();
+                bonusesSpent = balance.min(subtotal);
+                customerService.spendBonuses(customer, bonusesSpent);
+            }
         }
 
-        BigDecimal total = applyDiscount(subtotal, discountPercent);
+        BigDecimal total = subtotal.subtract(bonusesSpent);
 
         order.setSubtotalAmount(subtotal);
-        order.setDiscountPercent(discountPercent);
+        order.setDiscountPercent(0);
+        order.setBonusesSpent(bonusesSpent);
         order.setTotalAmount(total);
         order.setCustomer(customer);
 
@@ -96,7 +109,8 @@ public class OrderService {
         Order savedOrder = orderRepository.save(order);
 
         // Очищаем корзину
-        cartService.clearCart(sessionId);
+        if (telegramUserId == null) cartService.clearCart(sessionId);
+        else cartService.clearCart(sessionId, telegramUserId);
 
         // ВАЖНО: сумма заказа НЕ прибавляется к totalSpent клиента здесь!
         // Заказ ещё не подтверждён администратором, поэтому он не должен
@@ -108,12 +122,8 @@ public class OrderService {
         return savedOrder;
     }
 
-    private BigDecimal applyDiscount(BigDecimal subtotal, int discountPercent) {
-        if (discountPercent <= 0) {
-            return subtotal;
-        }
-        BigDecimal multiplier = BigDecimal.valueOf(100 - discountPercent).divide(BigDecimal.valueOf(100));
-        return subtotal.multiply(multiplier).setScale(2, RoundingMode.HALF_UP);
+    public void bindTelegramCart(String sessionId, Long telegramUserId) {
+        cartService.bindTelegramCart(sessionId, telegramUserId);
     }
 
     public List<Order> findAllOrders() {
@@ -167,12 +177,22 @@ public class OrderService {
         order.setStatus(nextStatus);
         orderRepository.save(order);
 
-        // Начисляем сумму заказа в totalSpent клиента и пересчитываем скидку
+        // Начисляем сумму заказа и бонусы только при первом завершении заказа.
         // ТОЛЬКО в момент, когда админ впервые подтверждает заказ статусом COMPLETED.
         // Проверка previousStatus защищает от повторного начисления,
         // если админ случайно ещё раз сохранит тот же статус.
         if (nextStatus == OrderStatus.COMPLETED && order.getCustomer() != null) {
-            customerService.registerOrderAndRecalculateDiscount(order.getCustomer(), order.getSubtotalAmount());
+            BigDecimal balanceBefore = order.getCustomer().getBonusBalance() == null
+                    ? BigDecimal.ZERO : order.getCustomer().getBonusBalance();
+            Customer customer = customerService.registerOrderAndAccrueBonuses(
+                    order.getCustomer(), order.getSubtotalAmount(), order.getTotalAmount());
+            if (customer != null && customer.getBonusBalance() != null) {
+                order.setBonusesEarned(customer.getBonusBalance().subtract(balanceBefore));
+            }
+        }
+        if (nextStatus == OrderStatus.CANCELLED && order.getCustomer() != null
+                && order.getBonusesSpent() != null && order.getBonusesSpent().signum() > 0) {
+            customerService.restoreBonuses(order.getCustomer(), order.getBonusesSpent());
         }
     }
 
@@ -213,11 +233,21 @@ public class OrderService {
         variant.setStockQuantity(currentQuantity - quantity);
     }
 
-    public Optional<Cart> getCartForCheckout(String sessionId) {
-        Optional<Cart> cartOpt = cartService.getCartBySessionId(sessionId);
+    public Optional<Cart> getCartForCheckout(String sessionId, Long telegramUserId) {
+        Optional<Cart> cartOpt = cartService.getCart(sessionId, telegramUserId);
         if (cartOpt.isPresent() && !cartOpt.get().getItems().isEmpty()) {
             return cartOpt;
         }
         return Optional.empty();
+    }
+
+    public Optional<Cart> getCartForCheckout(String sessionId) {
+        Optional<Cart> cartOpt = cartService.getCartBySessionId(sessionId);
+        return cartOpt.filter(cart -> !cart.getItems().isEmpty());
+    }
+
+    public BigDecimal findBonusBalance(Long telegramUserId) {
+        return customerService.findByTelegramUserId(telegramUserId)
+                .map(Customer::getBonusBalance).orElse(BigDecimal.ZERO);
     }
 }

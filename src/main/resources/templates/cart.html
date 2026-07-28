@@ -210,7 +210,13 @@
 </div>
 
 <script src="/js/haptic-feedback.js"></script>
+<script src="/js/telegram-shop.js"></script>
 <script>
+    if (window.TelegramShop) {
+        window.TelegramShop.bindPersistentCart().then(result => {
+            if (result.changed) window.location.reload();
+        });
+    }
     if (window.Telegram && window.Telegram.WebApp) {
         const tg = window.Telegram.WebApp;
         tg.expand();

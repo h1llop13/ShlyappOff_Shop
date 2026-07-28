@@ -47,7 +47,7 @@
             <th>Клиент</th>
             <th>Телефон</th>
             <th>Сумма</th>
-            <th>Скидка</th>
+            <th>Списано бонусов</th>
             <th>Итого</th>
             <th>Статус</th>
             <th>Действие</th>
@@ -59,7 +59,7 @@
             <td th:text="${order.customerName}">Имя</td>
             <td th:text="${order.phone}">Телефон</td>
             <td th:text="${order.subtotalAmount} + ' ₽'">0 ₽</td>
-            <td th:text="${order.discountPercent} + '%'">0%</td>
+            <td th:text="${order.bonusesSpent} + ' бонусов'">0 бонусов</td>
             <td th:text="${order.totalAmount} + ' ₽'">0 ₽</td>
             <td>
                 <span th:switch="${order.status.name()}">

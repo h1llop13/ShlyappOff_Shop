@@ -20,4 +20,6 @@ public class OrderDto {
 
     @Size(max = 500, message = "Комментарий слишком длинный")
     private String comment;
+
+    private boolean useBonuses;
 }
