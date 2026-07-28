@@ -59,8 +59,11 @@ public class ProductService {
             case "price_desc" -> Sort.by(Sort.Direction.DESC, "price");
             default -> Sort.by(Sort.Direction.DESC, "createdAt");
         };
+        // PostgreSQL cannot infer the type of a null parameter inside lower(...).
+        // An empty string preserves the "no search filter" behavior without sending null.
+        String searchTerm = name == null || name.isBlank() ? "" : name.trim();
         return productRepository.findCardsWithFilters(
-                name == null || name.isBlank() ? null : name.trim(), categoryId, brandId,
+                searchTerm, categoryId, brandId,
                 minPrice, maxPrice, onlyInStock, PageRequest.of(Math.max(page, 0), size, order));
     }
 

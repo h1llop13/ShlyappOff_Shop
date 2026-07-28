@@ -64,6 +64,13 @@ class ShopApplicationTests {
 	}
 
 	@Test
+	void catalogLoadsWithoutSearchParameters() throws Exception {
+		mockMvc.perform(get("/catalog"))
+				.andExpect(status().isOk())
+				.andExpect(content().string(containsString("Каталог")));
+	}
+
+	@Test
 	void telegramLoaderIsServedLocallyAndLoadsSdkAsynchronously() throws Exception {
 		mockMvc.perform(get("/js/telegram-loader.js"))
 				.andExpect(status().isOk())

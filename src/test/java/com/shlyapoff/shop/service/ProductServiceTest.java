@@ -112,6 +112,20 @@ class ProductServiceTest {
     }
 
     @Test
+    @DisplayName("Расширенный каталог передаёт пустой поиск строкой, а не null")
+    void extendedFiltersUseEmptyStringForMissingSearch() {
+        when(productRepository.findCardsWithFilters(
+                anyString(), isNull(), isNull(), isNull(), isNull(), eq(false), any(Pageable.class)))
+                .thenReturn(Page.empty());
+
+        productService.findWithFilters(null, null, null, null, null,
+                false, "newest", 0, 12);
+
+        verify(productRepository).findCardsWithFilters(
+                eq(""), isNull(), isNull(), isNull(), isNull(), eq(false), any(Pageable.class));
+    }
+
+    @Test
     @DisplayName("findByIdWithVariants возвращает товар вместе с вариантами")
     void findByIdWithVariantsDelegatesToRepository() {
         Product product = new Product();
