@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Оформление заказа - ShlyapOff</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="/js/telegram-loader.js"></script>
 
     <style>
         :root {
@@ -313,14 +313,13 @@
 <script src="/js/haptic-feedback.js"></script>
 <script src="/js/telegram-shop.js"></script>
 <script>
-    if (window.TelegramShop) {
-        window.TelegramShop.bindPersistentCart().then(result => {
-            if (result.changed) window.location.reload();
-        });
-    }
     // === TELEGRAM WEBAPP ===
-    if (window.Telegram && window.Telegram.WebApp) {
-        const tg = window.Telegram.WebApp;
+    window.TelegramLoader.onReady((tg) => {
+        if (window.TelegramShop) {
+            window.TelegramShop.bindPersistentCart().then(result => {
+                if (result.changed) window.location.reload();
+            });
+        }
         tg.expand();
         tg.ready();
 
@@ -359,7 +358,7 @@
 
         // Скрываем HTML-кнопку
         document.getElementById('htmlBottomBar').style.display = 'none';
-    }
+    });
 
     // Подсветка выбранной радио-кнопки
     document.querySelectorAll('.radio-option input[type="radio"]').forEach(radio => {

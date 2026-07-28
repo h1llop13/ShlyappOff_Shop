@@ -41,6 +41,7 @@ public class SecurityConfig {
                         .requestMatchers("/cart/**").permitAll()
                         .requestMatchers("/checkout", "/success").permitAll()
                         .requestMatchers("/profile", "/api/profile/**", "/api/cart/**", "/api/favorites/**").permitAll()
+                        .requestMatchers("/actuator/health").permitAll()
                         .requestMatchers("/admin/**").hasAuthority("ROLE_ADMIN")
                         .anyRequest().authenticated()
                 )
@@ -57,6 +58,12 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf
                         .csrfTokenRequestHandler(requestHandler)
                         .ignoringRequestMatchers("/api/**")
+                )
+                .headers(headers -> headers
+                        .frameOptions(frameOptions -> frameOptions.disable())
+                        .contentSecurityPolicy(csp -> csp.policyDirectives(
+                                "frame-ancestors 'self' https://web.telegram.org https://*.telegram.org"
+                        ))
                 );
 
         return http.build();

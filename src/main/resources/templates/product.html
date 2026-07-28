@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title th:text="${product.name} + ' - ShlyapOff'">Товар</title>
 
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="/js/telegram-loader.js"></script>
 
     <style>
         :root {
@@ -162,8 +162,8 @@
 <script src="/js/favorites.js"></script>
 <script>
     // === TELEGRAM WEBAPP MAGIC ===
-    if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) {
-        const tg = window.Telegram.WebApp;
+    window.TelegramLoader.onReady((tg) => {
+        if (!tg.initData) return;
         tg.expand();
         tg.ready();
 
@@ -196,7 +196,7 @@
             // Скрываем нашу HTML-кнопку, так как есть нативная
             document.getElementById('htmlBottomBar').style.display = 'none';
         }
-    }
+    });
 </script>
 </body>
 </html>

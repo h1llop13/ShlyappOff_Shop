@@ -1,5 +1,7 @@
 # Replace example.com, certificate paths and /opt/shlyapoff before enabling this file.
 limit_req_zone $binary_remote_addr zone=shlyapoff_general:10m rate=20r/s;
+proxy_cache_path /var/cache/telegram-sdk levels=1:2
+                 keys_zone=telegram_sdk_cache:1m max_size=5m inactive=7d use_temp_path=off;
 log_format shlyapoff_timing '$remote_addr $request $status $body_bytes_sent '
                             'rt=$request_time urt=$upstream_response_time';
 
@@ -23,6 +25,18 @@ server {
     gzip_vary on;
     gzip_min_length 1024;
     gzip_types text/plain text/css application/javascript application/json application/xml image/svg+xml;
+
+    location = /js/telegram-web-app.js {
+        proxy_pass https://telegram.org/js/telegram-web-app.js?63;
+        proxy_ssl_server_name on;
+        proxy_ssl_name telegram.org;
+        proxy_set_header Host telegram.org;
+        proxy_cache telegram_sdk_cache;
+        proxy_cache_valid 200 1d;
+        proxy_cache_use_stale error timeout invalid_header updating
+                              http_500 http_502 http_503 http_504;
+        add_header X-Telegram-SDK-Cache $upstream_cache_status always;
+    }
 
     location /images/ {
         alias /opt/shlyapoff/uploads/;

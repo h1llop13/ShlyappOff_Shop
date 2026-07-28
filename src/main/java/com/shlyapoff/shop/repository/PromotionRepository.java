@@ -1,0 +1,10 @@
+package com.shlyapoff.shop.repository;
+
+import com.shlyapoff.shop.model.Promotion;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+
+public interface PromotionRepository extends JpaRepository<Promotion, Long> {
+    List<Promotion> findAllByOrderByDisplayPriorityDescCreatedAtDesc();
+}

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Профиль - ShlyapOff</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="/js/telegram-loader.js"></script>
 
     <style>
         :root {
@@ -273,8 +273,7 @@
         }
     }
 
-    if (window.Telegram && window.Telegram.WebApp) {
-        const tg = window.Telegram.WebApp;
+    window.TelegramLoader.onReady((tg) => {
         tg.expand();
         tg.ready();
 
@@ -283,9 +282,10 @@
         } else {
             showError('Профиль доступен только внутри Telegram Mini App.');
         }
-    } else {
+    });
+    window.TelegramLoader.onUnavailable(() => {
         showError('Откройте магазин в Telegram, чтобы увидеть свой профиль и историю заказов.');
-    }
+    });
 </script>
 </body>
 </html>

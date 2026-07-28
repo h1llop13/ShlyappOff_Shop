@@ -6,7 +6,7 @@
     <title>Каталог - ShlyapOff</title>
 
     <!-- Telegram WebApp SDK -->
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="/js/telegram-loader.js"></script>
 
     <style>
         :root {
@@ -269,11 +269,10 @@
 <script src="/js/favorites.js"></script>
 <script>
     // БЕЗОПАСНАЯ инициализация (не падает в обычном браузере)
-    if (window.Telegram && window.Telegram.WebApp) {
-        const tg = window.Telegram.WebApp;
+    window.TelegramLoader.onReady((tg) => {
         tg.expand();
         tg.ready();
-    }
+    });
 
     const catalogHeader = document.querySelector('.header');
     let lastScrollY = window.scrollY;

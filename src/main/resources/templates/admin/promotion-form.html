@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Админка — Акция</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-dark text-white">
+<nav class="navbar navbar-dark bg-black"><div class="container"><a class="navbar-brand fw-bold" href="/admin/promotions">← Акции</a></div></nav>
+<main class="container mt-5" style="max-width: 720px;">
+    <h1 th:text="${promotion.id == null ? 'Новая акция' : 'Редактирование акции'}">Акция</h1>
+    <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+    <form th:action="${promotion.id == null ? '/admin/promotions/create' : '/admin/promotions/edit/' + promotion.id}" method="post" class="mt-4">
+        <div class="mb-3"><label class="form-label">Название</label><input name="title" class="form-control bg-dark text-white" maxlength="120" required th:value="${promotion.title}" placeholder="Например, Больше бонусов в выходные"></div>
+        <div class="mb-3"><label class="form-label">Описание</label><textarea name="description" class="form-control bg-dark text-white" maxlength="500" rows="3" th:text="${promotion.description}" placeholder="Коротко объясните выгоду покупателю"></textarea></div>
+        <div class="row g-3">
+            <div class="col-md-6"><label class="form-label">Тип</label><select name="kind" class="form-select bg-dark text-white"><option th:each="kind : ${kinds}" th:value="${kind}" th:text="${kind.displayName}" th:selected="${kind == promotion.kind}"></option></select></div>
+            <div class="col-md-6"><label class="form-label">Множитель бонусов</label><input name="bonusMultiplier" type="number" step="0.1" min="1" class="form-control bg-dark text-white" th:value="${promotion.bonusMultiplier}"><div class="form-text text-white-50">Для подборки пока оставьте 1.</div></div>
+            <div class="col-md-4"><label class="form-label">Приоритет</label><input name="displayPriority" type="number" class="form-control bg-dark text-white" th:value="${promotion.displayPriority}"></div>
+            <div class="col-md-4"><label class="form-label">Начало</label><input name="startsAt" type="datetime-local" class="form-control bg-dark text-white" th:value="${promotion.startsAt}"></div>
+            <div class="col-md-4"><label class="form-label">Окончание</label><input name="endsAt" type="datetime-local" class="form-control bg-dark text-white" th:value="${promotion.endsAt}"></div>
+        </div>
+        <div class="form-check form-switch mt-4"><input class="form-check-input" type="checkbox" name="active" value="true" th:checked="${promotion.active}" id="active"><label class="form-check-label" for="active">Акция активна</label></div>
+        <div class="mt-4 d-flex gap-2"><button class="btn btn-warning">Сохранить</button><a href="/admin/promotions" class="btn btn-outline-light">Отмена</a></div>
+    </form>
+</main>
+</body>
+</html>

@@ -27,5 +27,15 @@
             });
         });
     }
-    document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', init, { once: true }) : init();
+    function initializeWhenTelegramIsReady() {
+        if (window.TelegramLoader) {
+            window.TelegramLoader.onReady(init);
+            return;
+        }
+        init();
+    }
+
+    document.readyState === 'loading'
+        ? document.addEventListener('DOMContentLoaded', initializeWhenTelegramIsReady, { once: true })
+        : initializeWhenTelegramIsReady();
 })();
