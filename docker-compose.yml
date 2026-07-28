@@ -7,6 +7,17 @@ services:
       POSTGRES_DB: shlyapoff_db
       POSTGRES_USER: shlyapoff_user
       POSTGRES_PASSWORD: ${DB_PASSWORD}
+    command:
+      - postgres
+      - -c
+      - shared_buffers=256MB
+      - -c
+      - work_mem=4MB
+      - -c
+      - maintenance_work_mem=64MB
+      - -c
+      - max_connections=30
+    mem_limit: 700m
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -22,6 +33,7 @@ services:
     container_name: shlyapoff_app
     ports:
       - "127.0.0.1:8080:8080"
+    mem_limit: 800m
     environment:
       # Передаем настройки подключения к БД
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/shlyapoff_db
@@ -37,11 +49,18 @@ services:
       # Логин/пароль первого админа (пароль опционален, см. .env.example)
       APP_ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
       APP_ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=55 -XX:MaxMetaspaceSize=192m -XX:ActiveProcessorCount=1 -Djava.security.egd=file:/dev/./urandom
     depends_on:
       db:
         condition: service_healthy
     volumes:
       - ./uploads:/app/uploads
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://localhost:8080/actuator/health | grep -q 'UP'"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
     restart: unless-stopped
 
 volumes:

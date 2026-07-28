@@ -5,6 +5,9 @@ import com.shlyapoff.shop.repository.CustomerRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -23,6 +26,13 @@ public class CustomerService {
 
     public List<Customer> findAllOrderBySpentDesc() {
         return customerRepository.findAllByOrderByTotalSpentDesc();
+    }
+
+    @Transactional(readOnly = true)
+    public Page<Customer> findAllOrderBySpentDesc(int page) {
+        return customerRepository.findAllByOrderByTotalSpentDesc(
+                PageRequest.of(Math.max(page, 0), 30, Sort.by(Sort.Direction.DESC, "totalSpent"))
+        );
     }
 
     /**

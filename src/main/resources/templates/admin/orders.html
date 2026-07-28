@@ -90,6 +90,11 @@
         </tr>
         </tbody>
     </table>
+    <nav th:if="${totalPages > 1}" class="d-flex gap-2">
+        <a th:if="${currentPage > 0}" th:href="@{/admin/orders(page=${currentPage - 1})}" class="btn btn-outline-light">Назад</a>
+        <span class="align-self-center" th:text="${currentPage + 1 + ' / ' + totalPages}">1 / 1</span>
+        <a th:if="${currentPage < totalPages - 1}" th:href="@{/admin/orders(page=${currentPage + 1})}" class="btn btn-outline-light">Вперёд</a>
+    </nav>
 </div>
 
 </body>

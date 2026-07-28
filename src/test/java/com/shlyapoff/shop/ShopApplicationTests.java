@@ -1,6 +1,8 @@
 package com.shlyapoff.shop;
 
 import org.junit.jupiter.api.Test;
+import com.shlyapoff.shop.service.ProductService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest(properties = {
@@ -14,8 +16,23 @@ import org.springframework.boot.test.context.SpringBootTest;
 })
 class ShopApplicationTests {
 
+	@Autowired
+	private ProductService productService;
+
 	@Test
 	void contextLoads() {
+	}
+
+	@Test
+	void productCardQueriesExecuteForEveryFilterCombination() {
+		productService.findWithFilters(null, null, null, 0, 12);
+		productService.findWithFilters("vape", null, null, 0, 12);
+		productService.findWithFilters(null, 1L, null, 0, 12);
+		productService.findWithFilters(null, null, 1L, 0, 12);
+		productService.findWithFilters("vape", 1L, null, 0, 12);
+		productService.findWithFilters("vape", null, 1L, 0, 12);
+		productService.findWithFilters(null, 1L, 1L, 0, 12);
+		productService.findWithFilters("vape", 1L, 1L, 0, 12);
 	}
 
 }

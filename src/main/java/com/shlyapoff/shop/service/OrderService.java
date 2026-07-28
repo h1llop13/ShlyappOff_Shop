@@ -13,6 +13,9 @@ import com.shlyapoff.shop.repository.ProductVariantRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -26,7 +29,7 @@ public class OrderService {
 
     private final OrderRepository orderRepository;
     private final CartService cartService;
-    private final TelegramNotificationService telegramNotificationService;
+    private final NotificationOutboxService notificationOutboxService;
     private final CustomerService customerService;
     private final ProductRepository productRepository;
     private final ProductVariantRepository productVariantRepository;
@@ -100,7 +103,7 @@ public class OrderService {
         // ни попадать в историю профиля, ни влиять на скидку по программе лояльности.
         // Начисление происходит в updateStatus(), когда админ подтверждает статус COMPLETED.
 
-        telegramNotificationService.notifyAdminAboutNewOrder(savedOrder);
+        notificationOutboxService.enqueueNewOrderNotification(savedOrder);
 
         return savedOrder;
     }
@@ -115,6 +118,13 @@ public class OrderService {
 
     public List<Order> findAllOrders() {
         return orderRepository.findAllByOrderByCreatedAtDesc();
+    }
+
+    @Transactional(readOnly = true)
+    public Page<Order> findOrdersPage(int page) {
+        return orderRepository.findAllByOrderByCreatedAtDesc(
+                PageRequest.of(Math.max(page, 0), 30, Sort.by(Sort.Direction.DESC, "createdAt"))
+        );
     }
 
     public List<Order> findByCustomerId(Long customerId) {

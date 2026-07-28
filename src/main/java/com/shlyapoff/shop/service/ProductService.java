@@ -1,8 +1,11 @@
 package com.shlyapoff.shop.service;
 
+import com.shlyapoff.shop.dto.ProductCard;
 import com.shlyapoff.shop.model.Product;
 import com.shlyapoff.shop.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -19,13 +22,14 @@ public class ProductService {
     private final ProductRepository productRepository;
 
     @Transactional(readOnly = true)
-    public List<Product> findLatestActive() {
-        return productRepository.findTop12ByActiveTrueOrderByCreatedAtDesc();
+    @Cacheable("latestProducts")
+    public List<ProductCard> findLatestActive() {
+        return productRepository.findLatestActiveCards(PageRequest.of(0, 12));
     }
 
     @Transactional(readOnly = true)
-    public List<Product> findAllActiveWithVariants() {
-        return productRepository.findAllActiveWithVariants();
+    public Page<Product> findAdminProducts(int page) {
+        return productRepository.findByActiveTrue(PageRequest.of(Math.max(page, 0), 30, Sort.by(Sort.Direction.DESC, "createdAt")));
     }
 
     public List<Product> findByCategory(long categoryId) {
@@ -36,17 +40,42 @@ public class ProductService {
         return productRepository.findById(id);
     }
 
+    @CacheEvict(cacheNames = "latestProducts", allEntries = true)
     public Product save(Product product) {
         return productRepository.save(product);
     }
 
+    @CacheEvict(cacheNames = "latestProducts", allEntries = true)
     public void deleteById(Long id) {
         productRepository.deleteById(id);
     }
 
-    public Page<Product> findWithFilters(String name, Long categoryId, Long brandId, int page, int size) {
-        PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "created_at"));
-        return productRepository.findWithFilters(name, categoryId, brandId, pageable);
+    @Transactional(readOnly = true)
+    public Page<ProductCard> findWithFilters(String name, Long categoryId, Long brandId, int page, int size) {
+        PageRequest pageable = PageRequest.of(Math.max(page, 0), size);
+        boolean hasName = name != null && !name.isBlank();
+        if (hasName && categoryId != null && brandId != null) {
+            return productRepository.findCardsByNameAndCategoryAndBrand(name, categoryId, brandId, pageable);
+        }
+        if (hasName && categoryId != null) {
+            return productRepository.findCardsByNameAndCategory(name, categoryId, pageable);
+        }
+        if (hasName && brandId != null) {
+            return productRepository.findCardsByNameAndBrand(name, brandId, pageable);
+        }
+        if (categoryId != null && brandId != null) {
+            return productRepository.findCardsByCategoryAndBrand(categoryId, brandId, pageable);
+        }
+        if (hasName) {
+            return productRepository.findCardsByName(name, pageable);
+        }
+        if (categoryId != null) {
+            return productRepository.findCardsByCategory(categoryId, pageable);
+        }
+        if (brandId != null) {
+            return productRepository.findCardsByBrand(brandId, pageable);
+        }
+        return productRepository.findAllActiveCards(pageable);
     }
 
     @Transactional(readOnly = true)

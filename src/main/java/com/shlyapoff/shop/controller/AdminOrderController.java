@@ -15,8 +15,11 @@ public class AdminOrderController {
     private final OrderService orderService;
 
     @GetMapping
-    public String ordersPage(Model model) {
-        model.addAttribute("orders", orderService.findAllOrders());
+    public String ordersPage(@RequestParam(defaultValue = "0") int page, Model model) {
+        var ordersPage = orderService.findOrdersPage(page);
+        model.addAttribute("orders", ordersPage.getContent());
+        model.addAttribute("currentPage", ordersPage.getNumber());
+        model.addAttribute("totalPages", ordersPage.getTotalPages());
         return "admin/orders";
     }
 

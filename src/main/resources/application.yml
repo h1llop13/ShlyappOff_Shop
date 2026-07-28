@@ -7,18 +7,30 @@ spring:
     username: ${SPRING_DATASOURCE_USERNAME:postgres}
     password: ${SPRING_DATASOURCE_PASSWORD}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 8
+      minimum-idle: 2
+      connection-timeout: 2000
+      validation-timeout: 1000
+      max-lifetime: 1740000
 
   jpa:
     hibernate:
       ddl-auto: validate
     properties:
       hibernate:
-        format_sql: true
+        format_sql: false
+        default_batch_fetch_size: 32
     show-sql: false
     open-in-view: false
 
   thymeleaf:
     cache: true
+
+  cache:
+    type: caffeine
+    caffeine:
+      spec: maximumSize=200,expireAfterWrite=2m
 
   servlet:
     multipart:
@@ -36,6 +48,17 @@ app:
   admin:
     username: ${APP_ADMIN_USERNAME:admin}
     password: ${APP_ADMIN_PASSWORD:}
+  notifications:
+    fixed-delay-ms: ${APP_NOTIFICATION_FIXED_DELAY_MS:5000}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
 
 # ВАЖНО: секция telegram на КОРНЕВОМ уровне (без отступов слева)!
 telegram:

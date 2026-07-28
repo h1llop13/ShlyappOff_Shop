@@ -5,6 +5,7 @@ import com.shlyapoff.shop.model.ProductVariant;
 import com.shlyapoff.shop.repository.ProductRepository;
 import com.shlyapoff.shop.repository.ProductVariantRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,6 +28,7 @@ public class ProductVariantService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = "latestProducts", allEntries = true)
     public ProductVariant save(Long productId, String value, Integer stockQuantity) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new RuntimeException("Товар не найден"));
@@ -40,11 +42,13 @@ public class ProductVariantService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = "latestProducts", allEntries = true)
     public void deleteById(Long id) {
         productVariantRepository.deleteById(id);
     }
 
     @Transactional
+    @CacheEvict(cacheNames = "latestProducts", allEntries = true)
     public void updateStockQuantity(Long id, Integer stockQuantity) {
         ProductVariant variant = productVariantRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Вариант не найден"));

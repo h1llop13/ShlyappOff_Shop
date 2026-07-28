@@ -31,13 +31,16 @@ public class TelegramNotificationService {
         String ordersUrl = baseUrl + "/admin/orders";
 
         // Просто кнопка со ссылкой — открывать в обычном браузере
-        bot.sendMessageWithButton(superAdminChatId, message, "📋 Открыть заказы", ordersUrl);
+        boolean delivered = bot.sendMessageWithButton(superAdminChatId, message, "📋 Открыть заказы", ordersUrl);
 
         List<Admin> admins = adminRepository.findAll();
         for (Admin admin : admins) {
             if (!admin.getTelegramChatId().equals(superAdminChatId)) {
-                bot.sendMessageWithButton(admin.getTelegramChatId(), message, "📋 Открыть заказы", ordersUrl);
+                delivered = bot.sendMessageWithButton(admin.getTelegramChatId(), message, "📋 Открыть заказы", ordersUrl) && delivered;
             }
+        }
+        if (!delivered) {
+            throw new IllegalStateException("Telegram временно недоступен");
         }
     }
 

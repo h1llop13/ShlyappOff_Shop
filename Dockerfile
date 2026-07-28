@@ -12,6 +12,7 @@ RUN mvn clean verify
 
 # ЭТАП 2: Запуск (используем только JRE, образ будет легким)
 FROM eclipse-temurin:21-jre-alpine
+RUN apk add --no-cache wget
 WORKDIR /app
 
 # Копируем собранный jar из этапа сборки

@@ -1,5 +1,6 @@
 package com.shlyapoff.shop.service;
 
+import com.shlyapoff.shop.dto.ProductCard;
 import com.shlyapoff.shop.model.Product;
 import com.shlyapoff.shop.repository.ProductRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -36,16 +37,14 @@ class ProductServiceTest {
     @Test
     @DisplayName("findLatestActive возвращает до двенадцати последних активных товаров")
     void findLatestActiveReturnsProductsFromRepository() {
-        Product active = new Product();
-        active.setId(1L);
-        active.setActive(true);
+        ProductCard active = new ProductCard(1L, "Товар", null, null, 1, null, null, null);
 
-        when(productRepository.findTop12ByActiveTrueOrderByCreatedAtDesc()).thenReturn(List.of(active));
+        when(productRepository.findLatestActiveCards(any(Pageable.class))).thenReturn(List.of(active));
 
-        List<Product> result = productService.findLatestActive();
+        List<ProductCard> result = productService.findLatestActive();
 
         assertThat(result).hasSize(1).containsExactly(active);
-        verify(productRepository).findTop12ByActiveTrueOrderByCreatedAtDesc();
+        verify(productRepository).findLatestActiveCards(any(Pageable.class));
     }
 
     @Test
@@ -98,16 +97,18 @@ class ProductServiceTest {
     @Test
     @DisplayName("findWithFilters строит Pageable с сортировкой по created_at и передаёт фильтры")
     void findWithFiltersBuildsPageableAndDelegates() {
-        Product product = new Product();
-        Page<Product> page = new PageImpl<>(List.of(product));
+        ProductCard product = new ProductCard(1L, "Товар", null, null, 1, null, null, null);
+        Page<ProductCard> page = new PageImpl<>(List.of(product));
 
-        when(productRepository.findWithFilters(eq("vape"), eq(2L), eq(3L), any(Pageable.class)))
+        when(productRepository.findCardsByNameAndCategoryAndBrand(
+                eq("vape"), eq(2L), eq(3L), any(Pageable.class)))
                 .thenReturn(page);
 
-        Page<Product> result = productService.findWithFilters("vape", 2L, 3L, 0, 10);
+        Page<ProductCard> result = productService.findWithFilters("vape", 2L, 3L, 0, 10);
 
         assertThat(result.getContent()).containsExactly(product);
-        verify(productRepository).findWithFilters(eq("vape"), eq(2L), eq(3L), any(Pageable.class));
+        verify(productRepository).findCardsByNameAndCategoryAndBrand(
+                eq("vape"), eq(2L), eq(3L), any(Pageable.class));
     }
 
     @Test

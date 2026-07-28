@@ -17,6 +17,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
@@ -32,6 +33,7 @@ class TelegramNotificationServiceTest {
     private static final Long ADMIN_CHAT_ID = 999L;
 
     private TelegramNotificationService buildService() {
+        when(bot.sendMessageWithButton(anyLong(), anyString(), anyString(), anyString())).thenReturn(true);
         TelegramNotificationService service = new TelegramNotificationService(bot, adminRepository);
         ReflectionTestUtils.setField(service, "superAdminChatId", ADMIN_CHAT_ID);
         ReflectionTestUtils.setField(service, "baseUrl", "https://test-shop.ru");

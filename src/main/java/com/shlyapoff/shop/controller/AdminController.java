@@ -45,6 +45,7 @@ import java.util.stream.Collectors;
 public class AdminController {
 
     private static final int MAX_IMAGE_DIMENSION = 1200;
+    private static final int THUMBNAIL_MAX_DIMENSION = 480;
     private static final float JPEG_QUALITY = 0.85f;
 
     private final ProductService productService;
@@ -58,8 +59,11 @@ public class AdminController {
 
     // Список товаров в админке
     @GetMapping
-    public String adminPage(Model model) {
-        model.addAttribute("products", productService.findAllActiveWithVariants());
+    public String adminPage(@RequestParam(defaultValue = "0") int page, Model model) {
+        var productPage = productService.findAdminProducts(page);
+        model.addAttribute("products", productPage.getContent());
+        model.addAttribute("currentPage", productPage.getNumber());
+        model.addAttribute("totalPages", productPage.getTotalPages());
         return "admin/products";
     }
 
@@ -106,8 +110,9 @@ public class AdminController {
 
         // Обрабатываем загрузку картинки
         if (!imageFile.isEmpty()) {
-            String imageUrl = saveImage(imageFile);
-            product.setImageUrl(imageUrl);
+            StoredImage image = saveImage(imageFile);
+            product.setImageUrl(image.imageUrl());
+            product.setImageThumbnailUrl(image.thumbnailUrl());
         }
 
         Product savedProduct = productService.save(product);
@@ -179,8 +184,9 @@ public class AdminController {
 
         // Если загружена новая картинка, заменяем старую
         if (!imageFile.isEmpty()) {
-            String imageUrl = saveImage(imageFile);
-            productToUpdate.setImageUrl(imageUrl);
+            StoredImage image = saveImage(imageFile);
+            productToUpdate.setImageUrl(image.imageUrl());
+            productToUpdate.setImageThumbnailUrl(image.thumbnailUrl());
         }
 
         productService.save(productToUpdate);
@@ -197,7 +203,7 @@ public class AdminController {
     }
 
     // Метод для сохранения картинки
-    private String saveImage(MultipartFile imageFile) {
+    private StoredImage saveImage(MultipartFile imageFile) {
 
         String contentType = imageFile.getContentType();
         if (contentType == null || !contentType.startsWith("image/")) {
@@ -224,8 +230,10 @@ public class AdminController {
 
             String newFilename = UUID.randomUUID() + ".jpg";
 
-            // Сохраняем файл
             Path filePath = uploadPath.resolve(newFilename);
+            Path thumbnailsPath = uploadPath.resolve("thumbs");
+            Files.createDirectories(thumbnailsPath);
+            Path thumbnailPath = thumbnailsPath.resolve(newFilename);
             BufferedImage source;
             try (InputStream inputStream = imageFile.getInputStream()) {
                 source = ImageIO.read(inputStream);
@@ -233,19 +241,19 @@ public class AdminController {
             if (source == null) {
                 throw new IllegalArgumentException("Не удалось прочитать изображение. Загрузите JPG или PNG.");
             }
-            writeJpeg(resizeImage(source), filePath);
+            writeJpeg(resizeImage(source, MAX_IMAGE_DIMENSION), filePath);
+            writeJpeg(resizeImage(source, THUMBNAIL_MAX_DIMENSION), thumbnailPath);
 
-            // Возвращаем URL для доступа к файлу
-            return "/images/" + newFilename;
+            return new StoredImage("/images/" + newFilename, "/images/thumbs/" + newFilename);
         } catch (IOException e) {
             throw new IllegalStateException("Не удалось сохранить изображение", e);
         }
     }
 
-    private BufferedImage resizeImage(BufferedImage source) {
+    private BufferedImage resizeImage(BufferedImage source, int maximumDimension) {
         int sourceWidth = source.getWidth();
         int sourceHeight = source.getHeight();
-        double scale = Math.min(1.0, (double) MAX_IMAGE_DIMENSION / Math.max(sourceWidth, sourceHeight));
+        double scale = Math.min(1.0, (double) maximumDimension / Math.max(sourceWidth, sourceHeight));
         int targetWidth = Math.max(1, (int) Math.round(sourceWidth * scale));
         int targetHeight = Math.max(1, (int) Math.round(sourceHeight * scale));
 
@@ -276,6 +284,9 @@ public class AdminController {
         } finally {
             writer.dispose();
         }
+    }
+
+    private record StoredImage(String imageUrl, String thumbnailUrl) {
     }
 
     // Категориии

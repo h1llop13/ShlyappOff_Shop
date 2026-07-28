@@ -161,13 +161,13 @@
 
     <div th:if="${!#lists.isEmpty(products)}" class="products-grid">
         <div class="product-card" th:each="product : ${products}">
-            <img th:if="${product.imageUrl != null}" th:src="${product.imageUrl}" class="product-image" alt="Фото" loading="lazy" decoding="async">
+            <img th:if="${product.imageUrl != null}" th:src="${product.imageThumbnailUrl ?: product.imageUrl}" class="product-image" alt="Фото" loading="lazy" decoding="async">
             <img th:if="${product.imageUrl == null}" src="/img/placeholder.svg" class="product-image" alt="Нет фото" loading="lazy" decoding="async">
 
             <div class="product-content">
                 <h3 class="product-title" th:text="${product.name}">Название</h3>
                 <p class="product-description" th:text="${product.description}">Описание...</p>
-                <p th:if="${product.category == null || product.category.variantType == null || product.category.variantType.name() == 'NONE'}"
+                <p th:if="${!product.requiresVariant}"
                    th:classappend="${product.stockQuantity > 0} ? '' : ' out-of-stock'"
                    class="stock-status"
                    th:text="${product.stockQuantity > 0} ? 'В наличии: ' + product.stockQuantity + ' шт.' : 'Нет в наличии'">В наличии: 0 шт.</p>
@@ -176,7 +176,7 @@
                     <span class="product-price" th:text="${product.price} + ' ₽'">0 ₽</span>
                     <div style="display: flex; gap: 8px;">
                         <a th:href="@{/product/{id}(id=${product.id})}" class="btn-details">Подробнее</a>
-                        <form th:if="${product.category == null || product.category.variantType == null || product.category.variantType.name() == 'NONE'}"
+                        <form th:if="${!product.requiresVariant}"
                               th:action="@{/cart/add}" method="post" data-cart-form>
                             <input type="hidden" name="productId" th:value="${product.id}">
                             <input th:if="${_csrf != null}" type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">

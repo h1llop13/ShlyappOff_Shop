@@ -44,7 +44,7 @@ class OrderServiceTest {
     private CartService cartService;
 
     @Mock
-    private TelegramNotificationService telegramNotificationService;
+    private NotificationOutboxService notificationOutboxService;
 
     @Mock
     private CustomerService customerService;
@@ -122,7 +122,7 @@ class OrderServiceTest {
         assertThat(result.getCustomer()).isEqualTo(customer);
 
         verify(cartService).clearCart(SESSION_ID);
-        verify(telegramNotificationService).notifyAdminAboutNewOrder(result);
+        verify(notificationOutboxService).enqueueNewOrderNotification(result);
         // Заказ ещё не подтверждён администратором — сумма НЕ должна начисляться клиенту сразу.
         verify(customerService, never()).registerOrderAndRecalculateDiscount(any(), any());
 
@@ -184,7 +184,7 @@ class OrderServiceTest {
 
         verify(orderRepository, never()).save(any());
         verify(cartService, never()).clearCart(any());
-        verify(telegramNotificationService, never()).notifyAdminAboutNewOrder(any());
+        verify(notificationOutboxService, never()).enqueueNewOrderNotification(any());
     }
 
     @Test

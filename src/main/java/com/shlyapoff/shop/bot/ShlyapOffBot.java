@@ -100,24 +100,25 @@ public class ShlyapOffBot extends TelegramLongPollingBot {
         }
     }
 
-    public void sendMessage(Long chatId, String text) {
+    public boolean sendMessage(Long chatId, String text) {
         SendMessage message = new SendMessage();
         message.setChatId(String.valueOf(chatId));
         message.setText(text);
         message.enableHtml(true);
         try {
             execute(message);
+            return true;
         } catch (TelegramApiException e) {
             // 3. Заменяем плохое e.printStackTrace() на правильное логирование
             log.error("Ошибка отправки простого сообщения в чат {}", chatId, e);
+            return false;
         }
     }
 
-    public void sendMessageWithButton(Long chatId, String text, String buttonText, String buttonUrl) {
+    public boolean sendMessageWithButton(Long chatId, String text, String buttonText, String buttonUrl) {
         if (!isPublicHttpsUrl(buttonUrl)) {
             log.warn("Refusing to send Telegram inline button with non-public URL: {}", buttonUrl);
-            sendMessage(chatId, text);
-            return;
+            return sendMessage(chatId, text);
         }
 
         SendMessage message = new SendMessage();
@@ -138,8 +139,10 @@ public class ShlyapOffBot extends TelegramLongPollingBot {
 
         try {
             execute(message);
+            return true;
         } catch (TelegramApiException e) {
             log.error("Ошибка отправки сообщения с кнопкой в чат {}", chatId, e);
+            return false;
         }
     }
 

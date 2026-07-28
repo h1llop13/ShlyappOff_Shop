@@ -35,6 +35,9 @@ public class Product {
 
     private String imageUrl;
 
+    @Column(name = "image_thumbnail_url")
+    private String imageThumbnailUrl;
+
     private String nicotineStrength;
 
     private String volume;
@@ -63,11 +66,11 @@ public class Product {
     @Column(updatable = false)
     private LocalDateTime createdAt;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id")
     private Category category;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "brand_id")
     private Brand brand;
 

@@ -2,6 +2,7 @@ package com.shlyapoff.shop.controller;
 
 import com.shlyapoff.shop.model.Cart;
 import com.shlyapoff.shop.model.Product;
+import com.shlyapoff.shop.dto.ProductCard;
 import com.shlyapoff.shop.model.ProductField;
 import com.shlyapoff.shop.model.ProductVariant;
 import com.shlyapoff.shop.model.VariantType;
@@ -38,7 +39,7 @@ public class HomeController {
 
     @GetMapping("/")
     public String homePage(Model model) {
-        List<Product> products = productService.findLatestActive();
+        List<ProductCard> products = productService.findLatestActive();
 
         model.addAttribute("products", products);
 
@@ -59,7 +60,7 @@ public class HomeController {
         }
 
         // Запрашиваем страницу товаров (по 12 штук на страницу)
-        Page<Product> productPage = productService.findWithFilters(search, categoryId, brandId, page, 12);
+        Page<ProductCard> productPage = productService.findWithFilters(search, categoryId, brandId, page, 12);
 
         // Кладем в модель сам список товаров для текущей страницы
         model.addAttribute("products", productPage.getContent());

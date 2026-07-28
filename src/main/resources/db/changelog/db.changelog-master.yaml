@@ -29,3 +29,9 @@ databaseChangeLog:
       file: db/changelog/changes/014-secure-cart-and-order-data.sql
   - include:
       file: db/changelog/changes/015-add-inventory-quantity.sql
+  - include:
+      file: db/changelog/changes/016-add-product-thumbnail.sql
+  - include:
+      file: db/changelog/changes/017-create-notification-outbox.sql
+  - include:
+      file: db/changelog/changes/018-performance-indexes.sql

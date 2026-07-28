@@ -82,8 +82,11 @@ public class AdminLoyaltyController {
     // === Клиенты (профили из Mini App) ===
 
     @GetMapping("/customers")
-    public String customersPage(Model model) {
-        model.addAttribute("customers", customerService.findAllOrderBySpentDesc());
+    public String customersPage(@RequestParam(defaultValue = "0") int page, Model model) {
+        var customersPage = customerService.findAllOrderBySpentDesc(page);
+        model.addAttribute("customers", customersPage.getContent());
+        model.addAttribute("currentPage", customersPage.getNumber());
+        model.addAttribute("totalPages", customersPage.getTotalPages());
         return "admin/customers";
     }
 
