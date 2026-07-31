@@ -31,6 +31,10 @@ public class ShlyapOffBot extends TelegramLongPollingBot {
     @Value("${telegram.admin-chat-id}")
     private Long superAdminChatId;
 
+    /** Ссылка на личный чат или чат поддержки в Telegram. */
+    @Value("${telegram.feedback-url:https://t.me/h1llop}")
+    private String feedbackUrl;
+
     @Override
     public String getBotUsername() {
         return "ShlyapOffBot";
@@ -47,8 +51,9 @@ public class ShlyapOffBot extends TelegramLongPollingBot {
             String messageText = update.getMessage().getText();
             long chatId = update.getMessage().getChatId();
 
-            if (messageText.equals("/start")) {
-                sendMessage(chatId, "Привет! Я бот магазина ShlyapOff.");
+            if (messageText.equals("/start") || messageText.startsWith("/start ")
+                    || messageText.equals("/support")) {
+                sendWelcomeMessage(chatId);
             }
 
             // Логика добавления админа
@@ -113,6 +118,15 @@ public class ShlyapOffBot extends TelegramLongPollingBot {
             log.error("Ошибка отправки простого сообщения в чат {}", chatId, e);
             return false;
         }
+    }
+
+    private void sendWelcomeMessage(long chatId) {
+        sendMessageWithButton(
+                chatId,
+                "Привет! Я бот магазина ShlyapOff. Если есть вопрос по заказу или товару, напишите нам.",
+                "💬 Связаться с нами",
+                feedbackUrl
+        );
     }
 
     public boolean sendMessageWithButton(Long chatId, String text, String buttonText, String buttonUrl) {

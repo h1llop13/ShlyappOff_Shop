@@ -45,9 +45,16 @@ public class ProductService {
         return productRepository.save(product);
     }
 
+    @Transactional
     @CacheEvict(cacheNames = "latestProducts", allEntries = true)
-    public void deleteById(Long id) {
-        productRepository.deleteById(id);
+    public boolean deleteById(Long id) {
+        return productRepository.findById(id)
+                .map(product -> {
+                    // Keep completed orders intact: they reference the product for order history.
+                    product.setActive(false);
+                    return true;
+                })
+                .orElse(false);
     }
 
     @Transactional(readOnly = true)

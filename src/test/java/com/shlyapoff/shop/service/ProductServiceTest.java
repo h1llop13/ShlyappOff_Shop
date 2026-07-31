@@ -88,10 +88,17 @@ class ProductServiceTest {
 
     @Test
     @DisplayName("deleteById вызывает удаление в репозитории")
-    void deleteByIdDelegatesToRepository() {
-        productService.deleteById(5L);
+    void deleteByIdDeactivatesProduct() {
+        Product product = new Product();
+        product.setActive(true);
+        when(productRepository.findById(5L)).thenReturn(Optional.of(product));
 
-        verify(productRepository).deleteById(5L);
+        boolean deleted = productService.deleteById(5L);
+
+        assertThat(deleted).isTrue();
+        assertThat(product.getActive()).isFalse();
+        verify(productRepository).findById(5L);
+        verify(productRepository, never()).deleteById(anyLong());
     }
 
     @Test

@@ -46,6 +46,7 @@ services:
       # Переменные Telegram-бота
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       TELEGRAM_ADMIN_CHAT_ID: ${TELEGRAM_ADMIN_CHAT_ID}
+      TELEGRAM_FEEDBACK_URL: ${TELEGRAM_FEEDBACK_URL:-https://t.me/h1llop}
       # Логин/пароль первого админа (пароль опционален, см. .env.example)
       APP_ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
       APP_ADMIN_PASSWORD: ${ADMIN_PASSWORD}

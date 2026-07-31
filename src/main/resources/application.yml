@@ -64,3 +64,4 @@ management:
 telegram:
   bot-token: ${TELEGRAM_BOT_TOKEN}
   admin-chat-id: ${TELEGRAM_ADMIN_CHAT_ID}
+  feedback-url: ${TELEGRAM_FEEDBACK_URL:https://t.me/h1llop}

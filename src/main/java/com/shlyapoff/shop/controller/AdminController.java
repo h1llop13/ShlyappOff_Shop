@@ -124,7 +124,7 @@ public class AdminController {
     // Форма редактирования товара
     @GetMapping("/product/edit/{id}")
     public String editProductForm(@PathVariable Long id, Model model) {
-        Optional<Product> product = productService.findById(id);
+        Optional<Product> product = productService.findByIdWithVariants(id);
         if (product.isEmpty()) {
             return "redirect:/admin";
         }
@@ -197,8 +197,11 @@ public class AdminController {
     // Удаление товара
     @PostMapping("/product/delete/{id}")
     public String deleteProduct(@PathVariable Long id, RedirectAttributes redirectAttributes) {
-        productService.deleteById(id);
-        redirectAttributes.addFlashAttribute("successMessage", "Товар успешно удален!");
+        if (productService.deleteById(id)) {
+            redirectAttributes.addFlashAttribute("successMessage", "Товар снят с продажи.");
+        } else {
+            redirectAttributes.addFlashAttribute("errorMessage", "Товар не найден.");
+        }
         return "redirect:/admin";
     }
 
@@ -390,7 +393,7 @@ public class AdminController {
 
     @GetMapping("/product/{id}/variants")
     public String manageVariants(@PathVariable Long id, Model model) {
-        Optional<Product> product = productService.findById(id);
+        Optional<Product> product = productService.findByIdWithVariants(id);
         if (product.isEmpty()) {
             return "redirect:/admin";
         }
@@ -409,7 +412,7 @@ public class AdminController {
                              @RequestParam String value,
                              @RequestParam(defaultValue = "0") Integer stockQuantity,
                              RedirectAttributes redirectAttributes) {
-        Optional<Product> product = productService.findById(id);
+        Optional<Product> product = productService.findByIdWithVariants(id);
         if (product.isEmpty() || getVariantType(product.get()) == VariantType.NONE) {
             return "redirect:/admin";
         }
@@ -426,7 +429,7 @@ public class AdminController {
     public String updateVariantStock(@PathVariable Long variantId,
                                      @RequestParam Integer stockQuantity,
                                      RedirectAttributes redirectAttributes) {
-        Optional<ProductVariant> variantOpt = productVariantRepository.findById(variantId);
+        Optional<ProductVariant> variantOpt = productVariantRepository.findByIdWithProduct(variantId);
         if (variantOpt.isPresent()) {
             ProductVariant variant = variantOpt.get();
             if (stockQuantity == null || stockQuantity < 0) {
@@ -442,7 +445,7 @@ public class AdminController {
 
     @PostMapping("/product/variant/{variantId}/delete")
     public String deleteVariant(@PathVariable Long variantId, RedirectAttributes redirectAttributes) {
-        Optional<ProductVariant> variantOpt = productVariantRepository.findById(variantId);
+        Optional<ProductVariant> variantOpt = productVariantRepository.findByIdWithProduct(variantId);
         if (variantOpt.isPresent()) {
             Long productId = variantOpt.get().getProduct().getId();
             productVariantService.deleteById(variantId);
