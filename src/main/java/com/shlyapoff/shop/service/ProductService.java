@@ -13,7 +13,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -30,6 +32,22 @@ public class ProductService {
     @Transactional(readOnly = true)
     public Page<Product> findAdminProducts(int page) {
         return productRepository.findByActiveTrue(PageRequest.of(Math.max(page, 0), 30, Sort.by(Sort.Direction.DESC, "createdAt")));
+    }
+
+    @Transactional(readOnly = true)
+    public Page<Product> findAdminProductsByCategory(Long categoryId, int page) {
+        return productRepository.findByCategory_IdAndActiveTrue(
+                categoryId,
+                PageRequest.of(Math.max(page, 0), 30, Sort.by(Sort.Direction.DESC, "createdAt")));
+    }
+
+    @Transactional(readOnly = true)
+    public Map<Long, Long> activeProductCountsByCategory() {
+        return productRepository.countActiveByCategory().stream()
+                .filter(count -> count.getCategoryId() != null)
+                .collect(Collectors.toMap(
+                        ProductRepository.CategoryProductCount::getCategoryId,
+                        ProductRepository.CategoryProductCount::getProductCount));
     }
 
     public List<Product> findByCategory(long categoryId) {

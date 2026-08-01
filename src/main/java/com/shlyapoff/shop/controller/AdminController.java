@@ -34,10 +34,8 @@ import javax.imageio.ImageWriteParam;
 import javax.imageio.ImageWriter;
 import javax.imageio.stream.ImageOutputStream;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/admin")
@@ -59,8 +57,23 @@ public class AdminController {
 
     // Список товаров в админке
     @GetMapping
-    public String adminPage(@RequestParam(defaultValue = "0") int page, Model model) {
-        var productPage = productService.findAdminProducts(page);
+    public String adminPage(Model model) {
+        model.addAttribute("categories", categoryService.findAll());
+        model.addAttribute("productCounts", productService.activeProductCountsByCategory());
+        return "admin/catalog";
+    }
+
+    @GetMapping("/category/{categoryId}/products")
+    public String categoryProductsPage(@PathVariable Long categoryId,
+                                       @RequestParam(defaultValue = "0") int page,
+                                       Model model) {
+        Optional<Category> category = categoryService.findById(categoryId);
+        if (category.isEmpty()) {
+            return "redirect:/admin";
+        }
+
+        var productPage = productService.findAdminProductsByCategory(categoryId, page);
+        model.addAttribute("category", category.get());
         model.addAttribute("products", productPage.getContent());
         model.addAttribute("currentPage", productPage.getNumber());
         model.addAttribute("totalPages", productPage.getTotalPages());
@@ -69,9 +82,16 @@ public class AdminController {
 
     // Форма добавления товара
     @GetMapping("/product/create")
-    public String createProductForm(Model model) {
-        model.addAttribute("product", new Product());
-        addProductFormData(model);
+    public String createProductForm(@RequestParam Long categoryId, Model model) {
+        Optional<Category> category = categoryService.findById(categoryId);
+        if (category.isEmpty()) {
+            return "redirect:/admin";
+        }
+
+        Product product = new Product();
+        product.setCategory(category.get());
+        model.addAttribute("product", product);
+        addProductFormData(model, category.get());
         return "admin/product-form";
     }
 
@@ -92,19 +112,22 @@ public class AdminController {
         Optional<Category> category = categoryService.findById(categoryId);
         Optional<Brand> brand = brandService.findById(brandId);
 
+        if (category.isEmpty()) {
+            return "redirect:/admin";
+        }
         category.ifPresent(product::setCategory);
         brand.ifPresent(product::setBrand);
 
         String validationError = validateProduct(product);
         if (validationError != null) {
             model.addAttribute("errorMessage", validationError);
-            addProductFormData(model);
+            addProductFormData(model, product.getCategory());
             return "admin/product-form";
         }
         if (getVariantType(product) != VariantType.NONE
                 && (variantValues == null || variantValues.stream().allMatch(value -> value == null || value.isBlank()))) {
             model.addAttribute("errorMessage", "Добавьте хотя бы один вариант товара");
-            addProductFormData(model);
+            addProductFormData(model, product.getCategory());
             return "admin/product-form";
         }
 
@@ -118,7 +141,7 @@ public class AdminController {
         Product savedProduct = productService.save(product);
         saveProductVariants(savedProduct.getId(), variantValues, variantStockQuantities);
         redirectAttributes.addFlashAttribute("successMessage", "Товар успешно добавлен!");
-        return "redirect:/admin";
+        return redirectToCategoryProducts(categoryId);
     }
 
     // Форма редактирования товара
@@ -129,7 +152,7 @@ public class AdminController {
             return "redirect:/admin";
         }
         model.addAttribute("product", product.get());
-        addProductFormData(model);
+        addProductFormData(model, product.get().getCategory());
         return "admin/product-form";
     }
 
@@ -152,15 +175,14 @@ public class AdminController {
 
         Product productToUpdate = existingProduct.get();
 
-        Optional<Category> category = categoryService.findById(categoryId);
         Optional<Brand> brand = brandService.findById(brandId);
-        category.ifPresent(product::setCategory);
+        product.setCategory(productToUpdate.getCategory());
         brand.ifPresent(product::setBrand);
 
         String validationError = validateProduct(product);
         if (validationError != null) {
             model.addAttribute("errorMessage", validationError);
-            addProductFormData(model);
+            addProductFormData(model, product.getCategory());
             return "admin/product-form";
         }
 
@@ -179,7 +201,6 @@ public class AdminController {
         productToUpdate.setActive(true);
 
         // Обновляем категорию и бренд
-        category.ifPresent(productToUpdate::setCategory);
         brand.ifPresent(productToUpdate::setBrand);
 
         // Если загружена новая картинка, заменяем старую
@@ -191,18 +212,20 @@ public class AdminController {
 
         productService.save(productToUpdate);
         redirectAttributes.addFlashAttribute("successMessage", "Товар успешно обновлен!");
-        return "redirect:/admin";
+        return redirectToCategoryProducts(productToUpdate.getCategory().getId());
     }
 
     // Удаление товара
     @PostMapping("/product/delete/{id}")
     public String deleteProduct(@PathVariable Long id, RedirectAttributes redirectAttributes) {
+        Optional<Product> product = productService.findById(id);
+        Long categoryId = product.map(Product::getCategory).map(Category::getId).orElse(null);
         if (productService.deleteById(id)) {
             redirectAttributes.addFlashAttribute("successMessage", "Товар снят с продажи.");
         } else {
             redirectAttributes.addFlashAttribute("errorMessage", "Товар не найден.");
         }
-        return "redirect:/admin";
+        return categoryId == null ? "redirect:/admin" : redirectToCategoryProducts(categoryId);
     }
 
     // Метод для сохранения картинки
@@ -478,13 +501,14 @@ public class AdminController {
         }
     }
 
-    private void addProductFormData(Model model) {
-        List<Category> categories = categoryService.findAll();
-        Map<Long, List<ProductField>> fieldsByCategory = categories.stream()
-                .collect(Collectors.toMap(Category::getId, ProductField::forCategory));
-        model.addAttribute("categories", categories);
+    private void addProductFormData(Model model, Category category) {
+        model.addAttribute("category", category);
         model.addAttribute("brands", brandService.findAll());
-        model.addAttribute("fieldsByCategory", fieldsByCategory);
+        model.addAttribute("fields", ProductField.forCategory(category));
+    }
+
+    private String redirectToCategoryProducts(Long categoryId) {
+        return "redirect:/admin/category/" + categoryId + "/products";
     }
 
     private String validateProduct(Product product) {

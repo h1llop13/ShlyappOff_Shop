@@ -39,6 +39,23 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     @EntityGraph(attributePaths = "category")
     Page<Product> findByActiveTrue(Pageable pageable);
 
+    @EntityGraph(attributePaths = "category")
+    Page<Product> findByCategory_IdAndActiveTrue(Long categoryId, Pageable pageable);
+
+    @Query("""
+            SELECT p.category.id AS categoryId, COUNT(p) AS productCount
+            FROM Product p
+            WHERE p.active = true
+            GROUP BY p.category.id
+            """)
+    List<CategoryProductCount> countActiveByCategory();
+
+    interface CategoryProductCount {
+        Long getCategoryId();
+
+        long getProductCount();
+    }
+
     @Query("""
             SELECT new com.shlyapoff.shop.dto.ProductCard(p.id, p.name, p.description, p.price,
                 p.stockQuantity, p.imageUrl, p.imageThumbnailUrl, c.variantType)

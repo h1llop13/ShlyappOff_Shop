@@ -51,8 +51,7 @@ public class ShlyapOffBot extends TelegramLongPollingBot {
             String messageText = update.getMessage().getText();
             long chatId = update.getMessage().getChatId();
 
-            if (messageText.equals("/start") || messageText.startsWith("/start ")
-                    || messageText.equals("/support")) {
+            if (isCommand(messageText, "/start") || isCommand(messageText, "/support")) {
                 sendWelcomeMessage(chatId);
             }
 
@@ -127,6 +126,12 @@ public class ShlyapOffBot extends TelegramLongPollingBot {
                 "💬 Связаться с нами",
                 feedbackUrl
         );
+    }
+
+    private boolean isCommand(String messageText, String command) {
+        String receivedCommand = messageText.split("\\s+", 2)[0];
+        return receivedCommand.equals(command)
+                || receivedCommand.equals(command + "@" + getBotUsername());
     }
 
     public boolean sendMessageWithButton(Long chatId, String text, String buttonText, String buttonUrl) {

@@ -13,101 +13,81 @@
         <a class="navbar-brand fw-bold" href="/admin">Админка ShlyapOff</a>
         <div class="collapse navbar-collapse">
             <ul class="navbar-nav ms-auto">
+                <li class="nav-item"><a class="nav-link" href="/admin">Каталог</a></li>
                 <li class="nav-item"><a class="nav-link" href="/">На сайт</a></li>
-                <li class="nav-item"><a class="nav-link" href="/logout">Выйти</a></li>
             </ul>
         </div>
     </div>
 </nav>
 
-<div class="container mt-5">
-    <h1 class="mb-4" th:text="${product.id != null ? 'Редактировать товар' : 'Добавить товар'}">Форма</h1>
+<main class="container mt-5">
+    <nav aria-label="Навигация" class="mb-3">
+        <a href="/admin" class="link-light text-decoration-none">Каталог</a>
+        <span class="text-white-50 mx-2">/</span>
+        <a th:href="@{/admin/category/{categoryId}/products(categoryId=${category.id})}" class="link-light text-decoration-none" th:text="${category.name}">Категория</a>
+        <span class="text-white-50 mx-2">/</span>
+        <span th:text="${product.id != null ? 'Редактирование' : 'Новый товар'}">Товар</span>
+    </nav>
+
+    <h1 class="mb-2" th:text="${product.id != null ? 'Редактировать товар' : 'Добавить товар'}">Форма товара</h1>
+    <p class="text-white-50 mb-4">Категория: <strong class="text-white" th:text="${category.name}">Категория</strong></p>
 
     <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
 
     <form th:action="${product.id != null ? '/admin/product/edit/' + product.id : '/admin/product/create'}"
           method="post"
           enctype="multipart/form-data">
+        <input type="hidden" name="category_id" th:value="${category.id}">
 
         <div class="mb-3">
             <label for="name" class="form-label">Название товара</label>
-            <input type="text" class="form-control bg-dark text-white" id="name" name="name"
-                   th:value="${product.name}" required>
+            <input type="text" class="form-control bg-dark text-white" id="name" name="name" th:value="${product.name}" required>
         </div>
 
         <div class="mb-3">
             <label for="description" class="form-label">Описание</label>
-            <textarea class="form-control bg-dark text-white" id="description" name="description" rows="3"
-                      th:text="${product.description}"></textarea>
+            <textarea class="form-control bg-dark text-white" id="description" name="description" rows="3" th:text="${product.description}"></textarea>
         </div>
 
         <div class="row">
             <div class="col-md-6 mb-3">
                 <label for="price" class="form-label">Цена (₽)</label>
-                <input type="number" step="0.01" min="0" class="form-control bg-dark text-white" id="price" name="price"
-                       th:value="${product.price}" required>
+                <input type="number" step="0.01" min="0" class="form-control bg-dark text-white" id="price" name="price" th:value="${product.price}" required>
             </div>
-
             <div class="col-md-6 mb-3">
-                <label for="category_id" class="form-label">Категория</label>
-                <select class="form-select bg-dark text-white" id="category_id" name="category_id" required>
-                    <option value="">Выберите категорию</option>
-                    <option th:each="category : ${categories}"
-                            th:value="${category.id}"
-                            th:text="${category.name}"
-                            th:attr="data-variant-type=${category.variantType},data-variant-title=${category.variantType.displayTitle},data-variant-singular=${category.variantType.singularAccusative},data-product-fields-template=${'product-fields-' + category.id}"
-                            th:selected="${product.category != null && product.category.id == category.id}">
-                    </option>
+                <label for="brand_id" class="form-label">Бренд</label>
+                <select class="form-select bg-dark text-white" id="brand_id" name="brand_id" required>
+                    <option value="">Выберите бренд</option>
+                    <option th:each="brand : ${brands}" th:value="${brand.id}" th:text="${brand.name}"
+                            th:selected="${product.brand != null && product.brand.id == brand.id}">Бренд</option>
                 </select>
             </div>
         </div>
 
         <div class="row">
-            <div class="col-md-6 mb-3">
-                <label for="brand_id" class="form-label">Бренд</label>
-                <select class="form-select bg-dark text-white" id="brand_id" name="brand_id" required>
-                    <option value="">Выберите бренд</option>
-                    <option th:each="brand : ${brands}"
-                            th:value="${brand.id}"
-                            th:text="${brand.name}"
-                            th:selected="${product.brand != null && product.brand.id == brand.id}">
-                    </option>
-                </select>
-            </div>
-
-            <div class="col-md-6 mb-3" id="productStockSection">
-                <label for="stockQuantity" class="form-label">Остаток на складе (шт.)</label>
-                <input type="number" min="0" class="form-control bg-dark text-white" id="stockQuantity" name="stockQuantity"
-                       th:value="${product.stockQuantity}">
-                <div class="form-text text-white-50">Для товара с вариантами остатки указываются отдельно.</div>
-            </div>
-
-        </div>
-
-        <div id="productFieldsContainer" class="row"></div>
-
-        <template th:each="category : ${categories}"
-                  th:id="${'product-fields-' + category.id}">
-            <div th:each="field : ${fieldsByCategory[category.id]}" class="col-md-4 mb-3">
+            <div th:each="field : ${fields}" class="col-md-4 mb-3">
                 <label th:for="${field.propertyName}" class="form-label" th:text="${field.displayName}">Характеристика</label>
                 <input type="text" class="form-control bg-dark text-white"
-                       th:id="${field.propertyName}"
-                       th:name="${field.propertyName}"
-                       th:value="${field.getValue(product)}"
-                       th:placeholder="${field.placeholder}"
-                       required>
+                       th:id="${field.propertyName}" th:name="${field.propertyName}"
+                       th:value="${field.getValue(product)}" th:placeholder="${field.placeholder}" required>
             </div>
-        </template>
+        </div>
 
-        <section id="variantsSection" class="card bg-black mb-3" th:if="${product.id == null}" hidden>
+        <div th:if="${category.variantType.name() == 'NONE'}" class="mb-3">
+            <label for="stockQuantity" class="form-label">Остаток на складе (шт.)</label>
+            <input type="number" min="0" class="form-control bg-dark text-white" id="stockQuantity" name="stockQuantity" th:value="${product.stockQuantity}" required>
+        </div>
+
+        <section th:if="${product.id == null && category.variantType.name() != 'NONE'}" class="card bg-black mb-3">
             <div class="card-body">
-                <h5 id="variantsTitle" class="mb-3">Варианты</h5>
+                <h2 class="h5 mb-3" th:text="${category.variantType.displayTitle}">Варианты</h2>
                 <div id="variantRows" class="d-grid gap-2"></div>
-                <button type="button" id="addVariantButton" class="btn btn-outline-info mt-3">Добавить вариант</button>
+                <button type="button" id="addVariantButton" class="btn btn-outline-info mt-3"
+                        th:text="${'Добавить ' + category.variantType.singularAccusative}">Добавить вариант</button>
             </div>
         </section>
 
-        <div th:if="${product.id != null && product.category != null && product.category.variantType.name() != 'NONE'}" class="mb-3">
+        <div th:if="${product.id != null && category.variantType.name() != 'NONE'}" class="mb-3">
             <a th:href="@{/admin/product/{id}/variants(id=${product.id})}" class="btn btn-outline-info">Управлять вариантами товара</a>
         </div>
 
@@ -122,37 +102,17 @@
 
         <div class="d-flex gap-2">
             <button type="submit" class="btn btn-warning" th:text="${product.id != null ? 'Сохранить изменения' : 'Добавить товар'}">Сохранить</button>
-            <a href="/admin" class="btn btn-outline-light">Отмена</a>
+            <a th:href="@{/admin/category/{categoryId}/products(categoryId=${category.id})}" class="btn btn-outline-light">Отмена</a>
         </div>
     </form>
-</div>
+</main>
 
-<script>
-    const categorySelect = document.getElementById('category_id');
-    const productFieldsContainer = document.getElementById('productFieldsContainer');
-    const variantsSection = document.getElementById('variantsSection');
-    const variantsTitle = document.getElementById('variantsTitle');
+<script th:if="${product.id == null && category.variantType.name() != 'NONE'}" th:inline="javascript">
     const variantRows = document.getElementById('variantRows');
     const addVariantButton = document.getElementById('addVariantButton');
-
-    function selectedVariantType() {
-        return categorySelect.options[categorySelect.selectedIndex];
-    }
-
-    function updateProductFields() {
-        const option = selectedVariantType();
-        const templateId = option && option.dataset.productFieldsTemplate;
-        const template = templateId && document.getElementById(templateId);
-        productFieldsContainer.replaceChildren();
-
-        if (template) {
-            productFieldsContainer.appendChild(template.content.cloneNode(true));
-        }
-    }
+    const singular = /*[[${category.variantType.singularAccusative}]]*/ 'вариант';
 
     function addVariantRow() {
-        const option = selectedVariantType();
-        const singular = option.dataset.variantSingular || 'вариант';
         const row = document.createElement('div');
         row.className = 'input-group';
         row.innerHTML = `<input type="text" name="variantValues" class="form-control bg-dark text-white" placeholder="Укажите ${singular}" required>
@@ -162,35 +122,8 @@
         variantRows.appendChild(row);
     }
 
-    function updateVariantsSection() {
-        const option = selectedVariantType();
-        const hasVariants = option && option.dataset.variantType && option.dataset.variantType !== 'NONE';
-        variantsSection.hidden = !hasVariants;
-        if (!hasVariants) {
-            variantRows.replaceChildren();
-            return;
-        }
-        variantsTitle.textContent = option.dataset.variantTitle || 'Варианты';
-        addVariantButton.textContent = `Добавить ${option.dataset.variantSingular || 'вариант'}`;
-    }
-
-    function updateProductStockSection() {
-        const option = selectedVariantType();
-        const hasVariants = option && option.dataset.variantType && option.dataset.variantType !== 'NONE';
-        document.getElementById('productStockSection').hidden = hasVariants;
-    }
-
-    categorySelect.addEventListener('change', updateProductFields);
-    categorySelect.addEventListener('change', updateProductStockSection);
-    updateProductFields();
-    updateProductStockSection();
-
-    if (variantsSection) {
-        categorySelect.addEventListener('change', updateVariantsSection);
-        addVariantButton.addEventListener('click', addVariantRow);
-        updateVariantsSection();
-    }
+    addVariantButton.addEventListener('click', addVariantRow);
 </script>
-
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

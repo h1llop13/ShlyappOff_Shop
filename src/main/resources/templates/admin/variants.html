@@ -90,7 +90,7 @@
     </div>
 
     <div class="mt-3">
-        <a href="/admin" class="btn btn-outline-light">← Назад к товарам</a>
+        <a th:href="@{/admin/category/{categoryId}/products(categoryId=${product.category.id})}" class="btn btn-outline-light">← Назад к товарам категории</a>
     </div>
 </div>
 

@@ -52,6 +52,8 @@
             <td th:text="${category.id}">1</td>
             <td th:text="${category.name}">Категория</td>
             <td>
+                <a th:href="@{/admin/category/{categoryId}/products(categoryId=${category.id})}" class="btn btn-sm btn-outline-info">Товары</a>
+                <a th:href="@{/admin/product/create(categoryId=${category.id})}" class="btn btn-sm btn-warning">Добавить товар</a>
                 <a th:href="@{/admin/category/edit/{id}(id=${category.id})}" class="btn btn-sm btn-outline-light">Редактировать</a>
                 <form th:action="@{/admin/category/delete/{id}(id=${category.id})}" method="post" style="display: inline;">
                     <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Удалить категорию?')">Удалить</button>

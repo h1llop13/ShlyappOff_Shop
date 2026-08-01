@@ -11,10 +11,12 @@ import com.shlyapoff.shop.service.ProductService;
 import com.shlyapoff.shop.service.ProductVariantService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.ui.ExtendedModelMap;
 import org.springframework.web.servlet.mvc.support.RedirectAttributesModelMap;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -27,6 +29,8 @@ class AdminControllerTest {
     private ProductService productService;
     private ProductVariantService productVariantService;
     private ProductVariantRepository productVariantRepository;
+    private CategoryService categoryService;
+    private BrandService brandService;
     private AdminController controller;
 
     @BeforeEach
@@ -34,8 +38,8 @@ class AdminControllerTest {
         productService = mock(ProductService.class);
         productVariantService = mock(ProductVariantService.class);
         productVariantRepository = mock(ProductVariantRepository.class);
-        CategoryService categoryService = mock(CategoryService.class);
-        BrandService brandService = mock(BrandService.class);
+        categoryService = mock(CategoryService.class);
+        brandService = mock(BrandService.class);
         when(categoryService.findAll()).thenReturn(List.of());
         when(brandService.findAll()).thenReturn(List.of());
         controller = new AdminController(productService, categoryService, brandService,
@@ -51,6 +55,36 @@ class AdminControllerTest {
 
         assertThat(view).isEqualTo("admin/product-form");
         verify(productService).findByIdWithVariants(7L);
+    }
+
+    @Test
+    void catalogShowsCategoriesInsteadOfAMixedProductList() {
+        Category category = categoryWithId(4L);
+        when(categoryService.findAll()).thenReturn(List.of(category));
+        when(productService.activeProductCountsByCategory()).thenReturn(Map.of(4L, 3L));
+        ExtendedModelMap model = new ExtendedModelMap();
+
+        String view = controller.adminPage(model);
+
+        assertThat(view).isEqualTo("admin/catalog");
+        assertThat(model.get("categories")).isEqualTo(List.of(category));
+        assertThat(model.get("productCounts")).isEqualTo(Map.of(4L, 3L));
+    }
+
+    @Test
+    void categoryProductsPageLoadsOnlyTheSelectedCategory() {
+        Category category = categoryWithId(4L);
+        Product product = productWithVariants();
+        when(categoryService.findById(4L)).thenReturn(Optional.of(category));
+        when(productService.findAdminProductsByCategory(4L, 0)).thenReturn(new PageImpl<>(List.of(product)));
+        ExtendedModelMap model = new ExtendedModelMap();
+
+        String view = controller.categoryProductsPage(4L, 0, model);
+
+        assertThat(view).isEqualTo("admin/products");
+        assertThat(model.get("category")).isEqualTo(category);
+        assertThat(model.get("products")).isEqualTo(List.of(product));
+        verify(productService).findAdminProductsByCategory(4L, 0);
     }
 
     @Test
@@ -81,11 +115,14 @@ class AdminControllerTest {
 
     @Test
     void deleteProductDeactivatesInsteadOfRemovingOrderHistory() {
+        Product product = productWithVariants();
+        product.setCategory(categoryWithId(4L));
+        when(productService.findById(7L)).thenReturn(Optional.of(product));
         when(productService.deleteById(7L)).thenReturn(true);
 
         String view = controller.deleteProduct(7L, new RedirectAttributesModelMap());
 
-        assertThat(view).isEqualTo("redirect:/admin");
+        assertThat(view).isEqualTo("redirect:/admin/category/4/products");
         verify(productService).deleteById(7L);
     }
 
@@ -96,5 +133,12 @@ class AdminControllerTest {
         product.setId(7L);
         product.setCategory(category);
         return product;
+    }
+
+    private Category categoryWithId(Long id) {
+        Category category = new Category();
+        category.setId(id);
+        category.setVariantType(VariantType.FLAVOR);
+        return category;
     }
 }
