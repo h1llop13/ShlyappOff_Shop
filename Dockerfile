@@ -1,5 +1,5 @@
 # ЭТАП 1: Сборка (используем образ с Maven)
-FROM maven:3.9-eclipse-temurin-21-alpine AS build
+FROM maven:3-eclipse-temurin-24-alpine AS build
 WORKDIR /app
 
 # Копируем pom.xml и скачиваем зависимости (кэшируем)
