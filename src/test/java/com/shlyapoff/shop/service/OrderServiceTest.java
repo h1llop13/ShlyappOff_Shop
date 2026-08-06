@@ -28,6 +28,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.*;
 
 /**
@@ -55,6 +57,9 @@ class OrderServiceTest {
     @Mock
     private ProductVariantRepository productVariantRepository;
 
+    @Mock
+    private PromoCodeService promoCodeService;
+
     @InjectMocks
     private OrderService orderService;
 
@@ -68,11 +73,13 @@ class OrderServiceTest {
         product1.setId(1L);
         product1.setName("Товар 1");
         product1.setPrice(new BigDecimal("100.00"));
+        product1.setStockQuantity(10);
 
         Product product2 = new Product();
         product2.setId(2L);
         product2.setName("Товар 2");
         product2.setPrice(new BigDecimal("250.50"));
+        product2.setStockQuantity(10);
 
         CartItem item1 = new CartItem();
         item1.setProduct(product1);
@@ -87,6 +94,11 @@ class OrderServiceTest {
         cartWithItems.setSessionId(SESSION_ID);
         cartWithItems.getItems().add(item1);
         cartWithItems.getItems().add(item2);
+
+        lenient().when(productRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(product1));
+        lenient().when(productRepository.findByIdForUpdate(2L)).thenReturn(Optional.of(product2));
+        lenient().when(promoCodeService.apply(isNull(), any(BigDecimal.class), nullable(Customer.class)))
+                .thenReturn(PromoCodeService.AppliedPromoCode.none());
     }
 
     @Test
@@ -97,7 +109,7 @@ class OrderServiceTest {
         customer.setTelegramUserId(12345L);
         customer.setDiscountPercent(0);
 
-        when(cartService.getCartBySessionIdForCheckout(SESSION_ID)).thenReturn(Optional.of(cartWithItems));
+        when(cartService.getCartForCheckout(SESSION_ID, 12345L)).thenReturn(Optional.of(cartWithItems));
         when(customerService.findOrCreateByTelegram(12345L, "ivan_the_customer", null, null))
                 .thenReturn(customer);
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> {
@@ -139,7 +151,7 @@ class OrderServiceTest {
         customer.setTelegramUserId(999L);
         customer.setBonusBalance(new BigDecimal("50.00"));
 
-        when(cartService.getCartBySessionIdForCheckout(SESSION_ID)).thenReturn(Optional.of(cartWithItems));
+        when(cartService.getCartForCheckout(SESSION_ID, 999L)).thenReturn(Optional.of(cartWithItems));
         when(customerService.findOrCreateByTelegram(999L, "vip_client", null, null)).thenReturn(customer);
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -158,7 +170,7 @@ class OrderServiceTest {
     @Test
     @DisplayName("не создаёт клиента и не применяет скидку, если заказ оформлен без Telegram")
     void doesNotCreateCustomerWithoutTelegramUserId() {
-        when(cartService.getCartBySessionIdForCheckout(SESSION_ID)).thenReturn(Optional.of(cartWithItems));
+        when(cartService.getCartForCheckout(SESSION_ID, null)).thenReturn(Optional.of(cartWithItems));
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         Order result = orderService.createOrderFromCart(
@@ -175,7 +187,7 @@ class OrderServiceTest {
     @Test
     @DisplayName("выбрасывает исключение и не сохраняет заказ, если корзина отсутствует")
     void throwsWhenCartMissing() {
-        when(cartService.getCartBySessionIdForCheckout(SESSION_ID)).thenReturn(Optional.empty());
+        when(cartService.getCartForCheckout(SESSION_ID, null)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> orderService.createOrderFromCart(
                 SESSION_ID, "Иван", "+7000", "PICKUP", null, null, null))
@@ -193,7 +205,7 @@ class OrderServiceTest {
         Cart emptyCart = new Cart();
         emptyCart.setSessionId(SESSION_ID);
 
-        when(cartService.getCartBySessionIdForCheckout(SESSION_ID)).thenReturn(Optional.of(emptyCart));
+        when(cartService.getCartForCheckout(SESSION_ID, null)).thenReturn(Optional.of(emptyCart));
 
         assertThatThrownBy(() -> orderService.createOrderFromCart(
                 SESSION_ID, "Иван", "+7000", "PICKUP", null, null, null))

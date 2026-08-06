@@ -21,6 +21,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -92,7 +93,7 @@ class CheckoutControllerTest {
 
         when(telegramWebAppAuthService.validate("signed-data")).thenReturn(Optional.of(verifiedUser));
         when(orderService.createOrderFromCart(
-                eq(SESSION_ID), any(), any(), any(), any(), eq(12345L), eq("verified_user")
+                eq(SESSION_ID), any(), any(), any(), any(), eq(12345L), eq("verified_user"), eq(false), isNull()
         )).thenReturn(savedOrder);
 
         String view = controller.processOrder(
@@ -112,7 +113,9 @@ class CheckoutControllerTest {
                 orderDto.getDeliveryType(),
                 orderDto.getComment(),
                 12345L,
-                "verified_user"
+                "verified_user",
+                false,
+                null
         );
     }
 
@@ -122,7 +125,7 @@ class CheckoutControllerTest {
         var bindingResult = new BeanPropertyBindingResult(orderDto, "orderDto");
         Order savedOrder = new Order();
         savedOrder.setId(43L);
-        when(orderService.createOrderFromCart(any(), any(), any(), any(), any(), any(), any()))
+        when(orderService.createOrderFromCart(any(), any(), any(), any(), any(), any(), any(), eq(false), isNull()))
                 .thenReturn(savedOrder);
 
         String view = controller.processOrder(
@@ -143,6 +146,8 @@ class CheckoutControllerTest {
                 orderDto.getDeliveryType(),
                 orderDto.getComment(),
                 null,
+                null,
+                false,
                 null
         );
     }

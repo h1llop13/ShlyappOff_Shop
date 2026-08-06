@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"><title>Админка — Промокоды</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"></head>
+<body class="bg-dark text-white">
+<nav class="navbar navbar-dark bg-black"><div class="container"><a class="navbar-brand fw-bold" href="/admin">Админка ShlyapOff</a><div class="d-flex gap-3"><a class="text-white-50 text-decoration-none" href="/admin/dashboard">Дашборд</a><a class="text-white-50 text-decoration-none" href="/admin/promotions">Акции</a></div></div></nav>
+<main class="container mt-5">
+    <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
+    <div class="d-flex justify-content-between align-items-center"><div><h1>Промокоды</h1><p class="text-white-50">Скидки, сроки и лимиты использования.</p></div><a href="/admin/promo-codes/create" class="btn btn-warning">Создать промокод</a></div>
+    <div class="table-responsive mt-4"><table class="table table-dark table-striped align-middle"><thead><tr><th>Код</th><th>Скидка</th><th>Минимум</th><th>Лимиты</th><th>Период</th><th>Статус</th><th></th></tr></thead><tbody>
+    <tr th:each="promo : ${promoCodes}">
+        <td><code class="text-warning fw-bold" th:text="${promo.code}">CODE</code><div class="small text-white-50" th:text="${promo.description}"></div></td>
+        <td><span th:text="${promo.discountValue}"></span><span th:text="${promo.discountType.name() == 'PERCENTAGE' ? '%' : ' ₽'}"></span></td>
+        <td th:text="${promo.minOrderAmount} + ' ₽'"></td>
+        <td class="small"><div th:text="${promo.usageLimit == null ? 'Общий: без лимита' : 'Общий: ' + promo.usageLimit}"></div><div th:text="${promo.perCustomerLimit == null ? 'На клиента: без лимита' : 'На клиента: ' + promo.perCustomerLimit}"></div></td>
+        <td class="small"><span th:text="${promo.startsAt ?: 'сразу'}"></span> — <span th:text="${promo.endsAt ?: 'без срока'}"></span></td>
+        <td><span class="badge" th:classappend="${promo.active} ? ' bg-success' : ' bg-secondary'" th:text="${promo.active} ? 'Активен' : 'Отключён'"></span></td>
+        <td class="text-end"><a class="btn btn-sm btn-outline-light" th:href="@{/admin/promo-codes/edit/{id}(id=${promo.id})}">Изменить</a> <form class="d-inline" method="post" th:action="@{/admin/promo-codes/delete/{id}(id=${promo.id})}"><button class="btn btn-sm btn-outline-danger" onclick="return confirm('Удалить промокод?')">Удалить</button></form></td>
+    </tr>
+    <tr th:if="${promoCodes.isEmpty()}"><td colspan="7" class="text-center text-white-50 py-5">Промокодов пока нет.</td></tr>
+    </tbody></table></div>
+</main></body></html>

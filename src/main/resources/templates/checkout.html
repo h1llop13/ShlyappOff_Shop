@@ -301,6 +301,15 @@
             <p class="form-label" style="margin-top:8px;">1 бонус = 1 ₽. Бонусы можно списать до суммы заказа.</p>
         </div>
 
+        <div class="section">
+            <h2 class="section-title">Промокод</h2>
+            <div class="form-group">
+                <input type="text" class="form-input" th:field="*{promoCode}"
+                       maxlength="40" autocomplete="off" placeholder="Введите промокод">
+                <p class="form-label" style="margin-top:8px;">Скидка будет рассчитана при подтверждении заказа.</p>
+            </div>
+        </div>
+
         <input type="hidden" name="telegramInitData" id="telegramInitData">
 
         <!-- BOTTOM BAR (HTML Fallback) -->

@@ -50,6 +50,9 @@ app:
     password: ${APP_ADMIN_PASSWORD:}
   notifications:
     fixed-delay-ms: ${APP_NOTIFICATION_FIXED_DELAY_MS:5000}
+  orders:
+    reservation-minutes: ${APP_ORDER_RESERVATION_MINUTES:15}
+    reservation-cleanup-ms: ${APP_ORDER_RESERVATION_CLEANUP_MS:60000}
 
 management:
   endpoints:

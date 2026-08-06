@@ -12,12 +12,14 @@
         <a class="navbar-brand fw-bold" href="/admin">Админка ShlyapOff</a>
         <div class="collapse navbar-collapse">
             <ul class="navbar-nav ms-auto">
+                <li class="nav-item"><a class="nav-link" href="/admin/dashboard">Дашборд</a></li>
                 <li class="nav-item"><a class="nav-link" href="/admin">Товары</a></li>
                 <li class="nav-item"><a class="nav-link" href="/admin/categories">Категории</a></li>
                 <li class="nav-item"><a class="nav-link" href="/admin/brands">Бренды</a></li>
                 <li class="nav-item"><a class="nav-link active" href="/admin/orders">Заказы</a></li>
                 <li class="nav-item"><a class="nav-link" href="/admin/customers">Клиенты</a></li>
                 <li class="nav-item"><a class="nav-link" href="/admin/loyalty">Лояльность</a></li>
+                <li class="nav-item"><a class="nav-link" href="/admin/promo-codes">Промокоды</a></li>
                 <li class="nav-item"><a class="nav-link" href="/">На сайт</a></li>
                 <li class="nav-item">
                     <form th:action="@{/logout}" method="post" class="d-inline">
@@ -48,6 +50,7 @@
             <th>Телефон</th>
             <th>Сумма</th>
             <th>Списано бонусов</th>
+            <th>Промокод</th>
             <th>Итого</th>
             <th>Статус</th>
             <th>Действие</th>
@@ -60,6 +63,7 @@
             <td th:text="${order.phone}">Телефон</td>
             <td th:text="${order.subtotalAmount} + ' ₽'">0 ₽</td>
             <td th:text="${order.bonusesSpent} + ' бонусов'">0 бонусов</td>
+            <td><span th:if="${order.promoCode != null}" th:text="${order.promoCode + ' (−' + order.promoDiscountAmount + ' ₽)'}" class="badge bg-info text-dark"></span><span th:if="${order.promoCode == null}" class="text-white-50">—</span></td>
             <td th:text="${order.totalAmount} + ' ₽'">0 ₽</td>
             <td>
                 <span th:switch="${order.status.name()}">
@@ -86,7 +90,7 @@
             </td>
         </tr>
         <tr th:if="${orders.isEmpty()}">
-            <td colspan="8" class="text-white-50">Заказов пока нет.</td>
+            <td colspan="9" class="text-white-50">Заказов пока нет.</td>
         </tr>
         </tbody>
     </table>

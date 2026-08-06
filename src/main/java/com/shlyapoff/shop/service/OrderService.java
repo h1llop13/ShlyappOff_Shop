@@ -11,6 +11,8 @@ import com.shlyapoff.shop.repository.OrderRepository;
 import com.shlyapoff.shop.repository.ProductRepository;
 import com.shlyapoff.shop.repository.ProductVariantRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.domain.Page;
@@ -19,6 +21,7 @@ import org.springframework.data.domain.Sort;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.Comparator;
@@ -33,28 +36,38 @@ public class OrderService {
     private final CustomerService customerService;
     private final ProductRepository productRepository;
     private final ProductVariantRepository productVariantRepository;
+    private final PromoCodeService promoCodeService;
+
+    @Value("${app.orders.reservation-minutes:15}")
+    private long reservationMinutes;
 
     @Transactional
     public Order createOrderFromCart(String sessionId, String customerName, String phone,
                                      String deliveryType, String comment, Long telegramUserId,
                                      String telegramUsername) {
         return createOrderFromCart(sessionId, customerName, phone, deliveryType, comment,
-                telegramUserId, telegramUsername, false);
+                telegramUserId, telegramUsername, false, null);
     }
 
     @Transactional
     public Order createOrderFromCart(String sessionId, String customerName, String phone,
                                      String deliveryType, String comment, Long telegramUserId,
                                      String telegramUsername, boolean useBonuses) {
-        // Получаем корзину
-        Optional<Cart> cartOpt = cartService.getCartBySessionIdForCheckout(sessionId);
+        return createOrderFromCart(sessionId, customerName, phone, deliveryType, comment,
+                telegramUserId, telegramUsername, useBonuses, null);
+    }
+
+    @Transactional
+    public Order createOrderFromCart(String sessionId, String customerName, String phone,
+                                     String deliveryType, String comment, Long telegramUserId,
+                                     String telegramUsername, boolean useBonuses, String promoCode) {
+        Optional<Cart> cartOpt = cartService.getCartForCheckout(sessionId, telegramUserId);
         if (cartOpt.isEmpty() || cartOpt.get().getItems().isEmpty()) {
             throw new IllegalStateException("Корзина пуста");
         }
 
         Cart cart = cartOpt.get();
 
-        // Создаем заказ
         Order order = new Order();
         order.setCustomerName(customerName);
         order.setPhone(phone);
@@ -63,7 +76,6 @@ public class OrderService {
         order.setTelegramUserId(telegramUserId);
         order.setTelegramUsername(telegramUsername);
 
-        // Рассчитываем сумму товаров (без скидки) и добавляем товары
         BigDecimal subtotal = BigDecimal.ZERO;
         for (var cartItem : cart.getItems()) {
             cartService.validateCartItemAvailability(cartItem);
@@ -80,42 +92,40 @@ public class OrderService {
 
             order.addItem(orderItem);
 
-            // Сумма = цена * количество
             subtotal = subtotal.add(cartItem.getProduct().getPrice().multiply(BigDecimal.valueOf(cartItem.getQuantity())));
         }
 
-        // Если заказ оформлен из Telegram Mini App — находим/заводим профиль клиента
-        // и применяем скидку, накопленную по программе лояльности с ПРЕДЫДУЩИХ заказов.
         Customer customer = null;
-        BigDecimal bonusesSpent = BigDecimal.ZERO;
         if (telegramUserId != null) {
             customer = customerService.findOrCreateByTelegram(telegramUserId, telegramUsername, null, null);
-            if (useBonuses) {
-                BigDecimal balance = customer.getBonusBalance() == null ? BigDecimal.ZERO : customer.getBonusBalance();
-                bonusesSpent = balance.min(subtotal);
-                customerService.spendBonuses(customer, bonusesSpent);
-            }
         }
 
-        BigDecimal total = subtotal.subtract(bonusesSpent);
+        PromoCodeService.AppliedPromoCode appliedPromoCode = promoCodeService.apply(promoCode, subtotal, customer);
+        BigDecimal afterPromo = subtotal.subtract(appliedPromoCode.discountAmount());
+        BigDecimal bonusesSpent = BigDecimal.ZERO;
+        if (customer != null && useBonuses) {
+            BigDecimal balance = customer.getBonusBalance() == null ? BigDecimal.ZERO : customer.getBonusBalance();
+            bonusesSpent = balance.min(afterPromo);
+            customerService.spendBonuses(customer, bonusesSpent);
+        }
+        BigDecimal total = afterPromo.subtract(bonusesSpent).setScale(2, RoundingMode.HALF_UP);
 
         order.setSubtotalAmount(subtotal);
         order.setDiscountPercent(0);
+        order.setPromoCodeEntity(appliedPromoCode.promoCode());
+        order.setPromoCode(appliedPromoCode.promoCode() == null ? null : appliedPromoCode.promoCode().getCode());
+        order.setPromoDiscountAmount(appliedPromoCode.discountAmount());
         order.setBonusesSpent(bonusesSpent);
         order.setTotalAmount(total);
         order.setCustomer(customer);
+        reserveInventory(order);
+        order.setInventoryReserved(true);
+        order.setReservationExpiresAt(LocalDateTime.now().plusMinutes(Math.max(1, reservationMinutes)));
 
-        // Сохраняем заказ
         Order savedOrder = orderRepository.save(order);
 
-        // Очищаем корзину
         if (telegramUserId == null) cartService.clearCart(sessionId);
         else cartService.clearCart(sessionId, telegramUserId);
-
-        // ВАЖНО: сумма заказа НЕ прибавляется к totalSpent клиента здесь!
-        // Заказ ещё не подтверждён администратором, поэтому он не должен
-        // ни попадать в историю профиля, ни влиять на скидку по программе лояльности.
-        // Начисление происходит в updateStatus(), когда админ подтверждает статус COMPLETED.
 
         notificationOutboxService.enqueueNewOrderNotification(savedOrder);
 
@@ -170,8 +180,23 @@ public class OrderService {
             );
         }
 
+        if ((nextStatus == OrderStatus.PROCESSING || nextStatus == OrderStatus.COMPLETED)
+                && !Boolean.TRUE.equals(order.getInventoryReserved())) {
+            reserveInventory(order);
+            order.setInventoryReserved(true);
+        }
+        if (nextStatus == OrderStatus.PROCESSING) {
+            order.setReservationExpiresAt(null);
+        }
         if (nextStatus == OrderStatus.COMPLETED) {
-            deductInventory(order);
+            order.setInventoryReserved(false);
+            order.setReservationExpiresAt(null);
+            order.setCompletedAt(LocalDateTime.now());
+        }
+        if (nextStatus == OrderStatus.CANCELLED && Boolean.TRUE.equals(order.getInventoryReserved())) {
+            restoreInventory(order);
+            order.setInventoryReserved(false);
+            order.setReservationExpiresAt(null);
         }
 
         order.setStatus(nextStatus);
@@ -196,7 +221,24 @@ public class OrderService {
         }
     }
 
-    private void deductInventory(Order order) {
+    @Scheduled(fixedDelayString = "${app.orders.reservation-cleanup-ms:60000}")
+    @Transactional
+    public void releaseExpiredReservations() {
+        LocalDateTime now = LocalDateTime.now();
+        for (Order order : orderRepository.findExpiredReservations(now)) {
+            restoreInventory(order);
+            order.setInventoryReserved(false);
+            order.setReservationExpiresAt(null);
+            order.setStatus(OrderStatus.CANCELLED);
+            if (order.getCustomer() != null && order.getBonusesSpent() != null
+                    && order.getBonusesSpent().signum() > 0) {
+                customerService.restoreBonuses(order.getCustomer(), order.getBonusesSpent());
+            }
+            orderRepository.save(order);
+        }
+    }
+
+    private void reserveInventory(Order order) {
         List<OrderItem> items = order.getItems().stream()
                 .sorted(Comparator.comparing((OrderItem item) -> item.getProduct().getId())
                         .thenComparing(item -> item.getProductVariant() == null ? 0L : item.getProductVariant().getId()))
@@ -205,14 +247,32 @@ public class OrderService {
         for (OrderItem item : items) {
             if (item.getProductVariant() != null) {
                 ProductVariant variant = productVariantRepository.findByIdForUpdate(item.getProductVariant().getId())
-                        .orElseThrow(() -> new IllegalStateException("Вариант товара для списания не найден"));
+                        .orElseThrow(() -> new IllegalStateException("Вариант товара для резервирования не найден"));
                 deductVariantQuantity(variant, item.getQuantity());
             } else if (item.getVariantValue() != null) {
-                throw new IllegalStateException("Нельзя списать остаток: у позиции заказа не указан вариант товара");
+                throw new IllegalStateException("Нельзя зарезервировать остаток: у позиции заказа не указан вариант товара");
             } else {
                 Product product = productRepository.findByIdForUpdate(item.getProduct().getId())
-                        .orElseThrow(() -> new IllegalStateException("Товар для списания не найден"));
+                        .orElseThrow(() -> new IllegalStateException("Товар для резервирования не найден"));
                 deductProductQuantity(product, item.getQuantity());
+            }
+        }
+    }
+
+    private void restoreInventory(Order order) {
+        List<OrderItem> items = order.getItems().stream()
+                .sorted(Comparator.comparing((OrderItem item) -> item.getProduct().getId())
+                        .thenComparing(item -> item.getProductVariant() == null ? 0L : item.getProductVariant().getId()))
+                .toList();
+        for (OrderItem item : items) {
+            if (item.getProductVariant() != null) {
+                ProductVariant variant = productVariantRepository.findByIdForUpdate(item.getProductVariant().getId())
+                        .orElseThrow(() -> new IllegalStateException("Вариант товара для возврата резерва не найден"));
+                variant.setStockQuantity(variant.getStockQuantity() + item.getQuantity());
+            } else {
+                Product product = productRepository.findByIdForUpdate(item.getProduct().getId())
+                        .orElseThrow(() -> new IllegalStateException("Товар для возврата резерва не найден"));
+                product.setStockQuantity(product.getStockQuantity() + item.getQuantity());
             }
         }
     }

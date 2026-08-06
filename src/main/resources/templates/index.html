@@ -284,7 +284,7 @@
         }
     </style>
     <link rel="stylesheet" href="/css/cart-feedback.css">
-    <link rel="stylesheet" href="/css/favorites.css">
+    <link rel="stylesheet" href="/css/loading-states.css">
 </head>
 <body>
 <!-- HERO SECTION -->
@@ -331,7 +331,6 @@
             <img th:if="${product.imageUrl == null}" src="/img/placeholder.svg" class="product-image" alt="Нет фото" loading="lazy" decoding="async">
 
             <div class="product-content">
-                <button type="button" class="favorite-btn" th:data-favorite-button="${product.id}" aria-label="Добавить в избранное">♡</button>
                 <h3 class="product-title" th:text="${product.name}">Название товара</h3>
                 <p th:if="${!product.requiresVariant}"
                    th:classappend="${product.stockQuantity > 0} ? '' : ' out-of-stock'"
@@ -377,7 +376,7 @@
 <script src="/js/haptic-feedback.js"></script>
 <script src="/js/telegram-shop.js"></script>
 <script src="/js/cart-feedback.js"></script>
-<script src="/js/favorites.js"></script>
+<script src="/js/loading-states.js"></script>
 <script>
     // === TELEGRAM WEBAPP ===
     window.TelegramLoader.onReady((tg) => {

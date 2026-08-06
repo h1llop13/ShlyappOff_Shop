@@ -50,6 +50,16 @@ public class Order {
     @Column(name = "bonuses_earned", nullable = false)
     private BigDecimal bonusesEarned = BigDecimal.ZERO;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "promo_code_id")
+    private PromoCode promoCodeEntity;
+
+    @Column(name = "promo_code", length = 40)
+    private String promoCode;
+
+    @Column(name = "promo_discount_amount", nullable = false)
+    private BigDecimal promoDiscountAmount = BigDecimal.ZERO;
+
     /**
      * Итоговая сумма к оплате (subtotalAmount за вычетом скидки).
      */
@@ -59,6 +69,15 @@ public class Order {
     @Column(name = "status", nullable = false)
     @Enumerated(EnumType.STRING)
     private OrderStatus status = OrderStatus.NEW;
+
+    @Column(name = "reservation_expires_at")
+    private LocalDateTime reservationExpiresAt;
+
+    @Column(name = "completed_at")
+    private LocalDateTime completedAt;
+
+    @Column(name = "inventory_reserved", nullable = false)
+    private Boolean inventoryReserved = false;
 
     @Column(name = "telegram_user_id")
     private Long telegramUserId;

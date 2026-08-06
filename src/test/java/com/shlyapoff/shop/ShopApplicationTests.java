@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.security.test.context.support.WithMockUser;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
@@ -68,6 +69,34 @@ class ShopApplicationTests {
 		mockMvc.perform(get("/catalog"))
 				.andExpect(status().isOk())
 				.andExpect(content().string(containsString("Каталог")));
+	}
+
+	@Test
+	void emptyCartShowsHelpfulEmptyState() throws Exception {
+		mockMvc.perform(get("/cart"))
+				.andExpect(status().isOk())
+				.andExpect(content().string(containsString("Корзина пуста")))
+				.andExpect(content().string(containsString("Перейти в каталог")));
+	}
+
+	@Test
+	void storefrontLoadsSkeletonAssetsAndHasNoFavoritesUi() throws Exception {
+		mockMvc.perform(get("/"))
+				.andExpect(status().isOk())
+				.andExpect(content().string(containsString("/css/loading-states.css")))
+				.andExpect(content().string(containsString("/js/loading-states.js")))
+				.andExpect(content().string(not(containsString("favorite-btn"))));
+	}
+
+	@Test
+	@WithMockUser(username = "admin", authorities = "ROLE_ADMIN")
+	void adminDashboardAndPromoCodesRender() throws Exception {
+		mockMvc.perform(get("/admin/dashboard"))
+				.andExpect(status().isOk())
+				.andExpect(content().string(containsString("Продажи")));
+		mockMvc.perform(get("/admin/promo-codes"))
+				.andExpect(status().isOk())
+				.andExpect(content().string(containsString("Промокоды")));
 	}
 
 	@Test

@@ -85,7 +85,7 @@
         }
     </style>
     <link rel="stylesheet" href="/css/cart-feedback.css">
-    <link rel="stylesheet" href="/css/favorites.css">
+    <link rel="stylesheet" href="/css/loading-states.css">
 </head>
 <body>
 
@@ -105,7 +105,6 @@
 <div class="product-content">
     <div class="price-tag" th:text="${product.price} + ' ₽'">0 ₽</div>
     <h2 class="product-name" th:text="${product.name}">Название товара</h2>
-    <button type="button" class="favorite-btn favorite-btn--product" th:data-favorite-button="${product.id}" aria-label="Добавить в избранное">♡</button>
     <p class="product-desc" th:text="${product.description}">Описание товара...</p>
     <p th:if="${!requiresVariant}" class="stock-status"
        th:classappend="${product.stockQuantity > 0} ? '' : ' out-of-stock'"
@@ -159,7 +158,7 @@
 <script src="/js/haptic-feedback.js"></script>
 <script src="/js/telegram-shop.js"></script>
 <script src="/js/cart-feedback.js"></script>
-<script src="/js/favorites.js"></script>
+<script src="/js/loading-states.js"></script>
 <script>
     // === TELEGRAM WEBAPP MAGIC ===
     window.TelegramLoader.onReady((tg) => {

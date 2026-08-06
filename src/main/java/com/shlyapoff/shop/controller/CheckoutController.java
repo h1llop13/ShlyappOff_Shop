@@ -104,13 +104,11 @@ public class CheckoutController {
 
         try {
             String sessionId = request.getSession().getId();
-            Order savedOrder = orderDto.isUseBonuses()
-                    ? orderService.createOrderFromCart(sessionId, orderDto.getCustomerName(), orderDto.getPhone(),
-                    orderDto.getDeliveryType(), orderDto.getComment(), telegramUser != null ? telegramUser.id() : null,
-                    telegramUser != null ? telegramUser.username() : null, true)
-                    : orderService.createOrderFromCart(sessionId, orderDto.getCustomerName(), orderDto.getPhone(),
-                    orderDto.getDeliveryType(), orderDto.getComment(), telegramUser != null ? telegramUser.id() : null,
-                    telegramUser != null ? telegramUser.username() : null);
+            Order savedOrder = orderService.createOrderFromCart(
+                    sessionId, orderDto.getCustomerName(), orderDto.getPhone(), orderDto.getDeliveryType(),
+                    orderDto.getComment(), telegramUser != null ? telegramUser.id() : null,
+                    telegramUser != null ? telegramUser.username() : null, orderDto.isUseBonuses(),
+                    orderDto.getPromoCode());
 
             // TODO: Здесь будет отправка уведомления в Telegram
 

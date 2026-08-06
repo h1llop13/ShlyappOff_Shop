@@ -39,3 +39,7 @@ databaseChangeLog:
       file: db/changelog/changes/019-favorites-bonuses-and-persistent-carts.sql
   - include:
       file: db/changelog/changes/020-create-promotions.sql
+  - include:
+      file: db/changelog/changes/021-remove-favorites.sql
+  - include:
+      file: db/changelog/changes/022-add-reservations-and-promo-codes.sql

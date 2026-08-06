@@ -22,4 +22,7 @@ public class OrderDto {
     private String comment;
 
     private boolean useBonuses;
+
+    @Size(max = 40, message = "Промокод слишком длинный")
+    private String promoCode;
 }
