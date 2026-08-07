@@ -229,11 +229,6 @@ public class OrderService {
             restoreInventory(order);
             order.setInventoryReserved(false);
             order.setReservationExpiresAt(null);
-            order.setStatus(OrderStatus.CANCELLED);
-            if (order.getCustomer() != null && order.getBonusesSpent() != null
-                    && order.getBonusesSpent().signum() > 0) {
-                customerService.restoreBonuses(order.getCustomer(), order.getBonusesSpent());
-            }
             orderRepository.save(order);
         }
     }

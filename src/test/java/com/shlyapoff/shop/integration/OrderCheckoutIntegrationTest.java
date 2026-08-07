@@ -118,7 +118,7 @@ class OrderCheckoutIntegrationTest {
     }
 
     @Test
-    void expiredReservationCancelsOrderAndRestoresStock() {
+    void expiredReservationReleasesStockWithoutCancellingOrder() {
         Product product = product("Товар для резерва", "75.00", 5);
         cartService.addToCart("expired-reservation-session", product.getId(), 2);
         Order order = orderService.createOrderFromCart(
@@ -130,9 +130,17 @@ class OrderCheckoutIntegrationTest {
         orderService.releaseExpiredReservations();
 
         Order expired = orderRepository.findById(order.getId()).orElseThrow();
-        assertThat(expired.getStatus()).isEqualTo(OrderStatus.CANCELLED);
+        assertThat(expired.getStatus()).isEqualTo(OrderStatus.NEW);
         assertThat(expired.getInventoryReserved()).isFalse();
+        assertThat(expired.getReservationExpiresAt()).isNull();
         assertThat(productRepository.findById(product.getId()).orElseThrow().getStockQuantity()).isEqualTo(5);
+
+        orderService.updateStatus(order.getId(), "PROCESSING");
+
+        Order processing = orderRepository.findById(order.getId()).orElseThrow();
+        assertThat(processing.getStatus()).isEqualTo(OrderStatus.PROCESSING);
+        assertThat(processing.getInventoryReserved()).isTrue();
+        assertThat(productRepository.findById(product.getId()).orElseThrow().getStockQuantity()).isEqualTo(3);
     }
 
     private Product product(String name, String price, int stock) {
