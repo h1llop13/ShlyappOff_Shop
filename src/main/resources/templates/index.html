@@ -70,6 +70,8 @@
         .hero-btn:active {
             transform: scale(0.98);
         }
+        .promo-strip { margin:16px;padding:18px;border-radius:16px;background:linear-gradient(135deg,#2b2100,var(--secondary-bg));border:1px solid #ffd54a55;color:var(--text);text-decoration:none;display:block; }
+        .promo-strip small { color:#dcae24;font-weight:700; }.promo-strip strong{display:block;font-size:19px;margin:6px 0}.promo-strip span{color:var(--hint);font-size:14px}
 
         /* === CATEGORIES SCROLL === */
         .categories-section {
@@ -295,6 +297,11 @@
     <a href="/catalog" class="hero-btn">Перейти в каталог</a>
 </section>
 
+<section th:if="${activePromotions != null && !activePromotions.isEmpty()}">
+    <a class="promo-strip" th:href="@{/promotions/{id}(id=${activePromotions[0].id})}"><small>АКЦИЯ</small><strong th:text="${activePromotions[0].title}">Акция</strong><span th:text="${activePromotions[0].description}">Условия</span></a>
+    <div style="text-align:right;padding:0 16px"><a href="/promotions" class="section-link">Все акции →</a></div>
+</section>
+
 <!-- CATEGORIES -->
 <section class="categories-section">
     <div class="section-header">
@@ -351,6 +358,11 @@
             </div>
         </div>
     </div>
+</section>
+
+<section class="products-section" style="margin-top:28px" th:if="${recentlyViewed != null && !recentlyViewed.isEmpty()}">
+    <div class="section-header"><h2 class="section-title">Недавно смотрели</h2></div>
+    <div class="products-grid"><div class="product-card" th:each="product : ${recentlyViewed}"><img th:src="${product.imageThumbnailUrl ?: (product.imageUrl ?: '/img/placeholder.svg')}" class="product-image" alt=""><div class="product-content"><h3 class="product-title" th:text="${product.name}"></h3><div class="product-price" th:text="${product.price + ' ₽'}"></div><div class="product-actions"><a th:href="@{/product/{id}(id=${product.id})}" class="btn-details">Подробнее</a></div></div></div></div>
 </section>
 
 <!-- BOTTOM NAVIGATION -->

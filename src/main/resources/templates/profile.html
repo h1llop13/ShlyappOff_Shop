@@ -101,6 +101,7 @@
         .order-total-final { font-size: 17px; font-weight: 700; }
         .order-subtotal-strike { font-size: 13px; color: var(--hint); text-decoration: line-through; margin-right: 6px; }
         .order-discount-badge { font-size: 12px; color: var(--success); font-weight: 600; }
+        .repeat-btn { width:100%;margin-top:12px;padding:11px;border:1px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text);font-weight:600;cursor:pointer; }
 
         .empty-state, .loading-state {
             text-align: center;
@@ -171,6 +172,7 @@
 <script>
     const loyaltyCard = document.getElementById('loyaltyCard');
     const ordersList = document.getElementById('ordersList');
+    let telegramInitData = '';
 
     function formatMoney(n) {
         return new Intl.NumberFormat('ru-RU').format(n) + ' ₽';
@@ -260,10 +262,35 @@
                     ${cancellationHtml}
                     <div class="order-items">${itemsHtml}</div>
                     <div class="order-totals">${totalsHtml}${earned > 0 ? `<span class="order-discount-badge">+${formatMoney(earned)} бонусов</span>` : ''}</div>
+                    <button class="repeat-btn" data-order-id="${order.id}">Повторить заказ</button>
                 </div>
             `;
         }).join('');
     }
+
+    async function repeatOrder(orderId, button) {
+        button.disabled = true;
+        button.textContent = 'Добавляем…';
+        try {
+            const response = await fetch(`/api/profile/orders/${orderId}/repeat`, {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({initData: telegramInitData})
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.message || 'Не удалось повторить заказ');
+            button.textContent = `${result.addedItems} шт. добавлено — открыть корзину`;
+            button.disabled = false;
+            button.onclick = () => window.location.href = '/cart';
+        } catch (error) {
+            button.textContent = error.message;
+            button.disabled = false;
+        }
+    }
+
+    ordersList.addEventListener('click', event => {
+        const button = event.target.closest('.repeat-btn');
+        if (button) repeatOrder(button.dataset.orderId, button);
+    });
 
     function showError(message) {
         loyaltyCard.innerHTML = `<div class="empty-state">${message}</div>`;
@@ -296,6 +323,7 @@
         tg.ready();
 
         if (tg.initData) {
+            telegramInitData = tg.initData;
             loadProfile(tg.initData);
         } else {
             showError('Профиль доступен только внутри Telegram Mini App.');

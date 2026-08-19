@@ -25,6 +25,21 @@ public class PromotionService {
         return promotionRepository.findById(id);
     }
 
+    @Transactional(readOnly = true)
+    public List<Promotion> findActive() {
+        return promotionRepository.findActive(LocalDateTime.now(), PublicationStatus.PUBLISHED);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<Promotion> findActiveById(Long id) {
+        LocalDateTime now = LocalDateTime.now();
+        return promotionRepository.findByIdWithPromoCode(id)
+                .filter(p -> Boolean.TRUE.equals(p.getActive()))
+                .filter(p -> p.getPublicationStatus() == PublicationStatus.PUBLISHED)
+                .filter(p -> p.getStartsAt() == null || !now.isBefore(p.getStartsAt()))
+                .filter(p -> p.getEndsAt() == null || now.isBefore(p.getEndsAt()));
+    }
+
     public Promotion save(Promotion promotion) {
         applyPublicationState(promotion);
         return promotionRepository.save(promotion);

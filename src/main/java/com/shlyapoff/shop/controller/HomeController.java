@@ -13,6 +13,10 @@ import com.shlyapoff.shop.service.CategoryService;
 import com.shlyapoff.shop.service.ProductService;
 import com.shlyapoff.shop.service.PricingService;
 import com.shlyapoff.shop.service.TelegramCartSessionService;
+import com.shlyapoff.shop.service.RecommendationService;
+import com.shlyapoff.shop.service.ShoppingEventService;
+import com.shlyapoff.shop.service.PromotionService;
+import com.shlyapoff.shop.model.AbandonmentReason;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -41,31 +45,46 @@ public class HomeController {
     private final CartService cartService;
     private final TelegramCartSessionService telegramCartSessionService;
     private final PricingService pricingService;
+    private final RecommendationService recommendationService;
+    private final ShoppingEventService shoppingEventService;
+    private final PromotionService promotionService;
 
     @Autowired
     public HomeController(ProductService productService, CategoryService categoryService, BrandService brandService,
                           CartService cartService, TelegramCartSessionService telegramCartSessionService,
-                          PricingService pricingService) {
+                          PricingService pricingService, RecommendationService recommendationService,
+                          ShoppingEventService shoppingEventService, PromotionService promotionService) {
         this.productService = productService;
         this.categoryService = categoryService;
         this.brandService = brandService;
         this.cartService = cartService;
         this.telegramCartSessionService = telegramCartSessionService;
         this.pricingService = pricingService;
+        this.recommendationService = recommendationService;
+        this.shoppingEventService = shoppingEventService;
+        this.promotionService = promotionService;
     }
 
     /** Совместимость с существующими изолированными тестами контроллера. */
     public HomeController(ProductService productService, CategoryService categoryService, BrandService brandService,
                           CartService cartService) {
         this(productService, categoryService, brandService, cartService,
-                new TelegramCartSessionService(), new PricingService(BigDecimal.ZERO));
+                new TelegramCartSessionService(), new PricingService(BigDecimal.ZERO), null, null, null);
     }
 
     @GetMapping("/")
-    public String homePage(Model model) {
+    public String homePage(Model model, HttpServletRequest request) {
         List<ProductCard> products = productService.findLatestActive();
 
         model.addAttribute("products", products);
+        if (recommendationService != null) {
+            Long telegramUserId = telegramCartSessionService.getTelegramUserId(request.getSession());
+            model.addAttribute("recentlyViewed", recommendationService.recentlyViewed(
+                    request.getSession().getId(), telegramUserId, null, 6));
+        }
+        if (promotionService != null) {
+            model.addAttribute("activePromotions", promotionService.findActive());
+        }
 
         return "index";
     }
@@ -114,7 +133,7 @@ public class HomeController {
     }
 
     @GetMapping("/product/{id}")
-    public String productPage(@PathVariable Long id, Model model) {
+    public String productPage(@PathVariable Long id, Model model, HttpServletRequest request) {
         // Используем новый метод, который сразу загружает варианты
         Optional<Product> product = productService.findByIdWithVariants(id);
 
@@ -134,6 +153,16 @@ public class HomeController {
         model.addAttribute("requiresVariant", requiresVariant);
         model.addAttribute("hasInStockVariants", prod.getVariants().stream()
                 .anyMatch(variant -> variant.getStockQuantity() != null && variant.getStockQuantity() > 0));
+        Long telegramUserId = telegramCartSessionService.getTelegramUserId(request.getSession());
+        if (shoppingEventService != null) {
+            shoppingEventService.recordProductView(request.getSession().getId(), telegramUserId, prod);
+        }
+        if (recommendationService != null) {
+            model.addAttribute("similarProducts", recommendationService.similar(prod, 6));
+            model.addAttribute("boughtTogether", recommendationService.boughtTogether(prod.getId(), 6));
+            model.addAttribute("recentlyViewed", recommendationService.recentlyViewed(
+                    request.getSession().getId(), telegramUserId, prod.getId(), 6));
+        }
 
         return "product";
     }
@@ -148,6 +177,10 @@ public class HomeController {
         try {
             if (telegramUserId == null) cartService.addToCart(sessionId, productId, variantId, 1);
             else cartService.addToCart(sessionId, telegramUserId, productId, variantId, 1);
+            if (shoppingEventService != null) {
+                productService.findById(productId)
+                        .ifPresent(product -> shoppingEventService.recordCartAdd(sessionId, telegramUserId, product));
+            }
 
             int itemCount = (telegramUserId == null ? cartService.getCartBySessionId(sessionId) : cartService.getCart(sessionId, telegramUserId))
                     .map(cart -> cart.getItems().stream()
@@ -175,6 +208,10 @@ public class HomeController {
         try {
             if (telegramUserId == null) cartService.addToCart(sessionId, productId, variantId, 1);
             else cartService.addToCart(sessionId, telegramUserId, productId, variantId, 1);
+            if (shoppingEventService != null) {
+                productService.findById(productId)
+                        .ifPresent(product -> shoppingEventService.recordCartAdd(sessionId, telegramUserId, product));
+            }
         } catch (IllegalArgumentException | IllegalStateException exception) {
             redirectAttributes.addFlashAttribute("errorMessage", exception.getMessage());
             return "redirect:/product/" + productId;
@@ -211,6 +248,11 @@ public class HomeController {
         Long telegramUserId = telegramCartSessionService.getTelegramUserId(request.getSession());
         if (telegramUserId == null) cartService.removeFromCart(sessionId, productId, variantId);
         else cartService.removeFromCart(sessionId, telegramUserId, productId, variantId);
+        Optional<Cart> remaining = telegramUserId == null
+                ? cartService.getCartBySessionId(sessionId) : cartService.getCart(sessionId, telegramUserId);
+        if (shoppingEventService != null && remaining.map(Cart::getItems).map(List::isEmpty).orElse(true)) {
+            shoppingEventService.recordAbandoned(sessionId, telegramUserId, AbandonmentReason.REMOVED_LAST_ITEM);
+        }
         return "redirect:/cart";
     }
 
@@ -237,6 +279,18 @@ public class HomeController {
         Long telegramUserId = telegramCartSessionService.getTelegramUserId(request.getSession());
         if (telegramUserId == null) cartService.clearCart(sessionId);
         else cartService.clearCart(sessionId, telegramUserId);
+        if (shoppingEventService != null) {
+            shoppingEventService.recordAbandoned(sessionId, telegramUserId, AbandonmentReason.CART_CLEARED);
+        }
         return "redirect:/cart";
+    }
+
+    @PostMapping("/cart/abandon")
+    public String recordAbandonment(@RequestParam AbandonmentReason reason, HttpServletRequest request) {
+        if (shoppingEventService != null) {
+            shoppingEventService.recordAbandoned(request.getSession().getId(),
+                    telegramCartSessionService.getTelegramUserId(request.getSession()), reason);
+        }
+        return "redirect:/catalog";
     }
 }

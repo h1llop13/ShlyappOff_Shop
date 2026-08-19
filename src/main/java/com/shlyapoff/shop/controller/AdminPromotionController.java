@@ -4,6 +4,7 @@ import com.shlyapoff.shop.model.Promotion;
 import com.shlyapoff.shop.model.PromotionKind;
 import com.shlyapoff.shop.model.PublicationStatus;
 import com.shlyapoff.shop.service.PromotionService;
+import com.shlyapoff.shop.service.PromoCodeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -17,6 +18,7 @@ import java.math.BigDecimal;
 @RequiredArgsConstructor
 public class AdminPromotionController {
     private final PromotionService promotionService;
+    private final PromoCodeService promoCodeService;
 
     @GetMapping
     public String list(Model model) {
@@ -35,12 +37,14 @@ public class AdminPromotionController {
 
     @PostMapping("/create")
     public String create(@ModelAttribute Promotion promotion,
+                         @RequestParam(required = false) Long promoCodeId,
                          RedirectAttributes attributes) {
         String error = validate(promotion);
         if (error != null) {
             attributes.addFlashAttribute("errorMessage", error);
             return "redirect:/admin/promotions/create";
         }
+        promotion.setPromoCode(resolvePromoCode(promoCodeId));
         promotionService.save(normalize(promotion));
         attributes.addFlashAttribute("successMessage", "Акция создана");
         return "redirect:/admin/promotions";
@@ -58,6 +62,7 @@ public class AdminPromotionController {
 
     @PostMapping("/edit/{id}")
     public String edit(@PathVariable Long id, @ModelAttribute Promotion form,
+                       @RequestParam(required = false) Long promoCodeId,
                        RedirectAttributes attributes) {
         var existing = promotionService.findById(id);
         if (existing.isEmpty()) return "redirect:/admin/promotions";
@@ -76,6 +81,8 @@ public class AdminPromotionController {
         promotion.setEndsAt(form.getEndsAt());
         promotion.setPublicationStatus(form.getPublicationStatus());
         promotion.setPublishAt(form.getPublishAt());
+        promotion.setTerms(form.getTerms());
+        promotion.setPromoCode(resolvePromoCode(promoCodeId));
         promotionService.save(normalize(promotion));
         attributes.addFlashAttribute("successMessage", "Акция обновлена");
         return "redirect:/admin/promotions";
@@ -92,6 +99,7 @@ public class AdminPromotionController {
         model.addAttribute("promotion", promotion);
         model.addAttribute("kinds", PromotionKind.values());
         model.addAttribute("publicationStatuses", PublicationStatus.values());
+        model.addAttribute("promoCodes", promoCodeService.findAll());
     }
 
     private String validate(Promotion promotion) {
@@ -111,5 +119,11 @@ public class AdminPromotionController {
         if (promotion.getDescription() != null && promotion.getDescription().isBlank()) promotion.setDescription(null);
         if (promotion.getDisplayPriority() == null) promotion.setDisplayPriority(0);
         return promotion;
+    }
+
+    private com.shlyapoff.shop.model.PromoCode resolvePromoCode(Long promoCodeId) {
+        if (promoCodeId == null) return null;
+        return promoCodeService.findById(promoCodeId)
+                .orElseThrow(() -> new IllegalArgumentException("Промокод не найден"));
     }
 }

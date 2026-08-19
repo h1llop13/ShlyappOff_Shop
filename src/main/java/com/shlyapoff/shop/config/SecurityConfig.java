@@ -37,7 +37,7 @@ public class SecurityConfig {
 
         http
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/", "/catalog", "/product/**", "/css/**", "/js/**", "/images/**", "/login", "/error").permitAll()
+                        .requestMatchers("/", "/catalog", "/product/**", "/promotions/**", "/css/**", "/js/**", "/images/**", "/login", "/error").permitAll()
                         .requestMatchers("/cart/**").permitAll()
                         .requestMatchers("/checkout", "/success").permitAll()
                         .requestMatchers("/profile", "/api/profile/**", "/api/cart/**").permitAll()

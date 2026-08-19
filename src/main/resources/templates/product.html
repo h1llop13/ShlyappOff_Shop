@@ -83,6 +83,14 @@
             width: 100%; padding: 16px; background: var(--btn-bg); color: var(--btn-text);
             border: none; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer;
         }
+        .notify-btn { width:100%;padding:14px;border-radius:12px;border:1px solid var(--border);background:var(--secondary-bg);color:var(--text);font-weight:600;margin-bottom:20px;cursor:pointer; }
+        .recommendation-section { padding: 0 16px 24px; }
+        .recommendation-scroll { display:flex;gap:12px;overflow-x:auto;padding-bottom:8px;scrollbar-width:none; }
+        .recommendation-card { flex:0 0 150px;color:var(--text);text-decoration:none;background:var(--secondary-bg);border-radius:14px;overflow:hidden;border:1px solid var(--border); }
+        .recommendation-card img { width:100%;height:110px;object-fit:cover;display:block; }
+        .recommendation-card div { padding:10px; }
+        .recommendation-card strong { display:block;font-size:13px;line-height:1.3;margin-bottom:6px; }
+        .recommendation-card span { font-size:14px;font-weight:700; }
     </style>
     <link rel="stylesheet" href="/css/cart-feedback.css">
     <link rel="stylesheet" href="/css/loading-states.css">
@@ -111,6 +119,7 @@
        th:text="${product.stockQuantity > 0} ? 'В наличии: ' + product.stockQuantity + ' шт.' : 'Нет в наличии'">В наличии: 0 шт.</p>
 
     <p th:if="${errorMessage}" class="product-desc" th:text="${errorMessage}"></p>
+    <button th:if="${product.outOfStock}" type="button" id="stockNotifyButton" class="notify-btn">Сообщить о появлении в Telegram</button>
 
     <!-- VARIANTS (FLAVORS) -->
     <div th:if="${variants != null && !variants.isEmpty()}">
@@ -145,6 +154,10 @@
     </div>
 </div>
 
+<section class="recommendation-section" th:if="${similarProducts != null && !similarProducts.isEmpty()}"><h3 class="section-title">Похожие товары</h3><div class="recommendation-scroll"><a class="recommendation-card" th:each="item : ${similarProducts}" th:href="@{/product/{id}(id=${item.id})}"><img th:src="${item.imageThumbnailUrl ?: (item.imageUrl ?: '/img/placeholder.svg')}" alt=""><div><strong th:text="${item.name}"></strong><span th:text="${item.price + ' ₽'}"></span></div></a></div></section>
+<section class="recommendation-section" th:if="${boughtTogether != null && !boughtTogether.isEmpty()}"><h3 class="section-title">С этим покупают</h3><div class="recommendation-scroll"><a class="recommendation-card" th:each="item : ${boughtTogether}" th:href="@{/product/{id}(id=${item.id})}"><img th:src="${item.imageThumbnailUrl ?: (item.imageUrl ?: '/img/placeholder.svg')}" alt=""><div><strong th:text="${item.name}"></strong><span th:text="${item.price + ' ₽'}"></span></div></a></div></section>
+<section class="recommendation-section" th:if="${recentlyViewed != null && !recentlyViewed.isEmpty()}"><h3 class="section-title">Недавно смотрели</h3><div class="recommendation-scroll"><a class="recommendation-card" th:each="item : ${recentlyViewed}" th:href="@{/product/{id}(id=${item.id})}"><img th:src="${item.imageThumbnailUrl ?: (item.imageUrl ?: '/img/placeholder.svg')}" alt=""><div><strong th:text="${item.name}"></strong><span th:text="${item.price + ' ₽'}"></span></div></a></div></section>
+
 <!-- BOTTOM BAR (HTML Fallback) -->
 <div class="bottom-bar" id="htmlBottomBar">
     <form th:action="@{/cart/add}" method="post" id="addToCartForm" style="width: 100%;" data-cart-form>
@@ -159,12 +172,25 @@
 <script src="/js/telegram-shop.js"></script>
 <script src="/js/cart-feedback.js"></script>
 <script src="/js/loading-states.js"></script>
-<script>
+<script th:inline="javascript">
     // === TELEGRAM WEBAPP MAGIC ===
     window.TelegramLoader.onReady((tg) => {
         if (!tg.initData) return;
         tg.expand();
         tg.ready();
+
+        const notifyButton = document.getElementById('stockNotifyButton');
+        if (notifyButton) {
+            notifyButton.addEventListener('click', async () => {
+                if (!tg.initData) { notifyButton.textContent = 'Откройте товар внутри Telegram'; return; }
+                notifyButton.disabled = true;
+                const productId = /*[[${product.id}]]*/ 0;
+                const response = await fetch(`/api/products/${productId}/stock-subscription`, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({initData:tg.initData})});
+                const result = await response.json().catch(() => ({message:'Не удалось оформить подписку'}));
+                notifyButton.textContent = result.message;
+                if (!response.ok) notifyButton.disabled = false;
+            });
+        }
 
         // 1. Нативная кнопка "Назад" в шапке Telegram
         tg.BackButton.show();

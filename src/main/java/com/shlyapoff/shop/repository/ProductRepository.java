@@ -168,4 +168,23 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     int publishScheduled(@Param("now") LocalDateTime now,
                          @Param("scheduled") PublicationStatus scheduled,
                          @Param("published") PublicationStatus published);
+
+    @Query("""
+            SELECT p FROM Product p LEFT JOIN FETCH p.category LEFT JOIN FETCH p.brand
+            WHERE p.active = true AND p.publicationStatus = com.shlyapoff.shop.model.PublicationStatus.PUBLISHED
+              AND p.id <> :productId
+              AND (:categoryId IS NULL OR p.category.id = :categoryId)
+            ORDER BY CASE WHEN :brandId IS NOT NULL AND p.brand.id = :brandId THEN 0 ELSE 1 END,
+                     p.createdAt DESC
+            """)
+    List<Product> findSimilar(@Param("productId") Long productId,
+                              @Param("categoryId") Long categoryId,
+                              @Param("brandId") Long brandId,
+                              Pageable pageable);
+
+    @Query("""
+            SELECT p FROM Product p LEFT JOIN FETCH p.category
+            WHERE p.id IN :ids AND p.active = true
+            """)
+    List<Product> findActiveByIds(@Param("ids") List<Long> ids);
 }

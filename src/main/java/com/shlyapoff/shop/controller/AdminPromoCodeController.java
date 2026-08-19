@@ -3,6 +3,7 @@ package com.shlyapoff.shop.controller;
 import com.shlyapoff.shop.model.DiscountType;
 import com.shlyapoff.shop.model.PromoCode;
 import com.shlyapoff.shop.service.PromoCodeService;
+import com.shlyapoff.shop.service.NotificationOutboxService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -14,6 +15,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 @RequiredArgsConstructor
 public class AdminPromoCodeController {
     private final PromoCodeService promoCodeService;
+    private final NotificationOutboxService notificationOutboxService;
 
     @GetMapping
     public String list(Model model) {
@@ -88,6 +90,21 @@ public class AdminPromoCodeController {
     public String delete(@PathVariable Long id, RedirectAttributes attributes) {
         promoCodeService.deleteById(id);
         attributes.addFlashAttribute("successMessage", "Промокод удалён");
+        return "redirect:/admin/promo-codes";
+    }
+
+    @PostMapping("/{id}/send")
+    public String sendPersonalCode(@PathVariable Long id,
+                                   @RequestParam Long telegramUserId,
+                                   RedirectAttributes attributes) {
+        try {
+            PromoCode promoCode = promoCodeService.findById(id)
+                    .orElseThrow(() -> new IllegalArgumentException("Промокод не найден"));
+            notificationOutboxService.enqueuePersonalPromoCode(promoCode, telegramUserId);
+            attributes.addFlashAttribute("successMessage", "Персональное уведомление поставлено в очередь");
+        } catch (IllegalArgumentException exception) {
+            attributes.addFlashAttribute("errorMessage", exception.getMessage());
+        }
         return "redirect:/admin/promo-codes";
     }
 

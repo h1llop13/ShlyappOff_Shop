@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Акции — ShlyapOff</title>
+    <style>
+        :root{--bg:var(--tg-theme-bg-color,#0b0b0b);--text:var(--tg-theme-text-color,#fff);--muted:var(--tg-theme-hint-color,#929292);--card:var(--tg-theme-secondary-bg-color,#181818);--accent:#ffd54a}
+        *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.header{display:flex;gap:14px;align-items:center;padding:18px 16px;border-bottom:1px solid #ffffff20}.back{color:var(--text);text-decoration:none;font-size:24px}.wrap{max-width:900px;margin:auto;padding:24px 16px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}.card{display:block;background:var(--card);border:1px solid #ffffff20;border-radius:18px;padding:22px;color:var(--text);text-decoration:none}.badge{color:var(--accent);font-size:13px;font-weight:700}.card h2{margin:10px 0 8px}.card p{color:var(--muted);line-height:1.5}.timer{font-variant-numeric:tabular-nums;font-weight:700;margin-top:16px}.empty{color:var(--muted);text-align:center;padding:60px 0}
+    </style>
+</head>
+<body>
+<header class="header"><a class="back" href="/">←</a><h1>Акции</h1></header>
+<main class="wrap">
+    <div class="grid">
+        <a class="card" th:each="promotion : ${promotions}" th:href="@{/promotions/{id}(id=${promotion.id})}">
+            <span class="badge">СПЕЦИАЛЬНОЕ ПРЕДЛОЖЕНИЕ</span>
+            <h2 th:text="${promotion.title}">Акция</h2>
+            <p th:text="${promotion.description}">Описание</p>
+            <div class="timer" th:if="${promotion.endsAt != null}" th:attr="data-countdown=${promotion.endsAt}">До окончания: —</div>
+        </a>
+    </div>
+    <div class="empty" th:if="${promotions.isEmpty()}">Сейчас нет активных акций.</div>
+</main>
+<script>
+document.querySelectorAll('[data-countdown]').forEach(el=>{const end=new Date(el.dataset.countdown).getTime();const tick=()=>{const left=end-Date.now();if(left<=0){el.textContent='Акция завершена';return}const d=Math.floor(left/86400000),h=Math.floor(left/3600000)%24,m=Math.floor(left/60000)%60,s=Math.floor(left/1000)%60;el.textContent=`До окончания: ${d} д. ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`};tick();setInterval(tick,1000)});
+</script>
+</body></html>

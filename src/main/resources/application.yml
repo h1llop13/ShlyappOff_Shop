@@ -50,6 +50,9 @@ app:
     password: ${APP_ADMIN_PASSWORD:}
   notifications:
     fixed-delay-ms: ${APP_NOTIFICATION_FIXED_DELAY_MS:5000}
+    stock-check-ms: ${APP_STOCK_NOTIFICATION_CHECK_MS:60000}
+  analytics:
+    abandoned-cart-check-ms: ${APP_ABANDONED_CART_CHECK_MS:3600000}
   orders:
     reservation-minutes: ${APP_ORDER_RESERVATION_MINUTES:15}
     reservation-cleanup-ms: ${APP_ORDER_RESERVATION_CLEANUP_MS:60000}

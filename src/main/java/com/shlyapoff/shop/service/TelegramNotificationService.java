@@ -5,6 +5,8 @@ import com.shlyapoff.shop.model.Admin;
 import com.shlyapoff.shop.model.Order;
 import com.shlyapoff.shop.model.OrderItem;
 import com.shlyapoff.shop.model.OrderStatus;
+import com.shlyapoff.shop.model.Product;
+import com.shlyapoff.shop.model.PromoCode;
 import com.shlyapoff.shop.repository.AdminRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -70,6 +72,29 @@ public class TelegramNotificationService {
         if (!delivered) {
             throw new IllegalStateException("Telegram временно недоступен");
         }
+    }
+
+    public void notifyStockAvailable(Long telegramUserId, Product product) {
+        String message = "✅ <b>Снова в наличии</b>\n" + escapeHtml(product.getName())
+                + "\nУспейте заказать, пока товар есть на складе.";
+        boolean delivered = bot.sendMessageWithButton(
+                telegramUserId, message, "Открыть товар", baseUrl + "/product/" + product.getId());
+        if (!delivered) throw new IllegalStateException("Telegram временно недоступен");
+    }
+
+    public void notifyPersonalPromoCode(Long telegramUserId, PromoCode promoCode) {
+        StringBuilder message = new StringBuilder("🎁 <b>Ваш персональный промокод</b>\n<code>")
+                .append(escapeHtml(promoCode.getCode())).append("</code>");
+        if (promoCode.getDescription() != null && !promoCode.getDescription().isBlank()) {
+            message.append("\n").append(escapeHtml(promoCode.getDescription()));
+        }
+        if (promoCode.getEndsAt() != null) {
+            message.append("\nДействует до ")
+                    .append(promoCode.getEndsAt().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")));
+        }
+        boolean delivered = bot.sendMessageWithButton(
+                telegramUserId, message.toString(), "Перейти к покупкам", baseUrl + "/catalog");
+        if (!delivered) throw new IllegalStateException("Telegram временно недоступен");
     }
 
     private String formatOrderMessage(Order order) {

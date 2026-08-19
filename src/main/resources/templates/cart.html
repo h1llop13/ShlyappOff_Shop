@@ -198,6 +198,14 @@
     </div>
 </div>
 
+<form th:if="${cart != null && !#lists.isEmpty(cart.items)}" action="/cart/abandon" method="post" style="margin:8px 16px 120px;padding:16px;background:var(--secondary-bg);border-radius:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+    <label for="abandonmentReason" style="width:100%;font-size:13px;color:var(--hint)">Не готовы оформить сейчас? Подскажите причину — корзина останется сохранённой.</label>
+    <select id="abandonmentReason" name="reason" required style="flex:1;min-width:210px;padding:11px;border-radius:10px;background:var(--bg);color:var(--text);border:1px solid var(--border)">
+        <option value="NEED_MORE_TIME">Нужно время подумать</option><option value="TOTAL_PRICE">Высокая итоговая цена</option><option value="DELIVERY_COST">Дорогая доставка</option><option value="PAYMENT_METHOD">Не подошёл способ оплаты</option><option value="TECHNICAL_PROBLEM">Техническая проблема</option><option value="OTHER">Другая причина</option>
+    </select>
+    <button type="submit" style="padding:11px 14px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--text)">Сохранить на потом</button>
+</form>
+
 <!-- BOTTOM BAR (HTML Fallback) -->
 <div th:if="${cart != null && !#lists.isEmpty(cart.items)}" class="bottom-bar" id="htmlBottomBar">
     <div class="total-row">

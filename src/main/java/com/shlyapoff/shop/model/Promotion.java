@@ -49,6 +49,13 @@ public class Promotion {
     @Column(name = "publish_at")
     private LocalDateTime publishAt;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "promo_code_id")
+    private PromoCode promoCode;
+
+    @Column(columnDefinition = "TEXT")
+    private String terms;
+
     @CreatedDate
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

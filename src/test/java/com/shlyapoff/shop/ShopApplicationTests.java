@@ -7,6 +7,10 @@ import com.shlyapoff.shop.model.OrderStatus;
 import com.shlyapoff.shop.model.OrderStatusHistory;
 import com.shlyapoff.shop.repository.OrderRepository;
 import com.shlyapoff.shop.repository.OrderStatusHistoryRepository;
+import com.shlyapoff.shop.repository.ProductRepository;
+import com.shlyapoff.shop.repository.PromotionRepository;
+import com.shlyapoff.shop.model.Product;
+import com.shlyapoff.shop.model.Promotion;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -47,6 +51,12 @@ class ShopApplicationTests {
 
 	@Autowired
 	private OrderStatusHistoryRepository orderStatusHistoryRepository;
+
+	@Autowired
+	private ProductRepository productRepository;
+
+	@Autowired
+	private PromotionRepository promotionRepository;
 
 	@Test
 	void contextLoads() {
@@ -135,6 +145,43 @@ class ShopApplicationTests {
 		mockMvc.perform(get("/admin/promo-codes"))
 				.andExpect(status().isOk())
 				.andExpect(content().string(containsString("Промокоды")));
+		mockMvc.perform(get("/admin/promotions/create"))
+				.andExpect(status().isOk())
+				.andExpect(content().string(containsString("Условия акции")))
+				.andExpect(content().string(containsString("Промокод")));
+	}
+
+	@Test
+	void profileContainsRepeatOrderAction() throws Exception {
+		mockMvc.perform(get("/profile"))
+				.andExpect(status().isOk())
+				.andExpect(content().string(containsString("Повторить заказ")));
+	}
+
+	@Test
+	@Transactional
+	void personalizationAndPromotionPagesRender() throws Exception {
+		Product product = new Product();
+		product.setName("Товар для рекомендаций");
+		product.setPrice(new BigDecimal("250.00"));
+		product.setStockQuantity(3);
+		product = productRepository.saveAndFlush(product);
+
+		Promotion promotion = new Promotion();
+		promotion.setTitle("Тестовая акция");
+		promotion.setDescription("Проверка промо-страницы");
+		promotion.setActive(true);
+		promotion = promotionRepository.saveAndFlush(promotion);
+
+		mockMvc.perform(get("/product/" + product.getId()))
+				.andExpect(status().isOk())
+				.andExpect(content().string(containsString("Характеристики")));
+		mockMvc.perform(get("/promotions"))
+				.andExpect(status().isOk())
+				.andExpect(content().string(containsString("Тестовая акция")));
+		mockMvc.perform(get("/promotions/" + promotion.getId()))
+				.andExpect(status().isOk())
+				.andExpect(content().string(containsString("Условия акции")));
 	}
 
 	@Test

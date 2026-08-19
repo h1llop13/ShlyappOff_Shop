@@ -49,3 +49,5 @@ databaseChangeLog:
       file: db/changelog/changes/024-order-lifecycle.sql
   - include:
       file: db/changelog/changes/025-inventory-and-publication.sql
+  - include:
+      file: db/changelog/changes/026-personalization-and-funnel.sql

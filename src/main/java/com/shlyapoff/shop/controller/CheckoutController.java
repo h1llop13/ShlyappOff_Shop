@@ -6,6 +6,7 @@ import com.shlyapoff.shop.service.OrderService;
 import com.shlyapoff.shop.service.PricingService;
 import com.shlyapoff.shop.service.TelegramWebAppAuthService;
 import com.shlyapoff.shop.service.TelegramCartSessionService;
+import com.shlyapoff.shop.service.ShoppingEventService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -29,21 +30,23 @@ public class CheckoutController {
     private final TelegramWebAppAuthService telegramWebAppAuthService;
     private final TelegramCartSessionService telegramCartSessionService;
     private final PricingService pricingService;
+    private final ShoppingEventService shoppingEventService;
 
     @Autowired
     public CheckoutController(OrderService orderService, TelegramWebAppAuthService telegramWebAppAuthService,
                               TelegramCartSessionService telegramCartSessionService,
-                              PricingService pricingService) {
+                              PricingService pricingService, ShoppingEventService shoppingEventService) {
         this.orderService = orderService;
         this.telegramWebAppAuthService = telegramWebAppAuthService;
         this.telegramCartSessionService = telegramCartSessionService;
         this.pricingService = pricingService;
+        this.shoppingEventService = shoppingEventService;
     }
 
     /** Совместимость с существующими изолированными тестами контроллера. */
     public CheckoutController(OrderService orderService, TelegramWebAppAuthService telegramWebAppAuthService) {
         this(orderService, telegramWebAppAuthService, new TelegramCartSessionService(),
-                new PricingService(BigDecimal.ZERO));
+                new PricingService(BigDecimal.ZERO), null);
     }
 
     /**
@@ -57,6 +60,10 @@ public class CheckoutController {
 
         if (!populateCheckoutModel(request.getSession().getId(), telegramCartSessionService.getTelegramUserId(request.getSession()), model)) {
             return "redirect:/cart";
+        }
+        if (shoppingEventService != null) {
+            shoppingEventService.recordCheckoutStarted(request.getSession().getId(),
+                    telegramCartSessionService.getTelegramUserId(request.getSession()));
         }
 
         // Если имя пришло из Telegram — подставляем в форму
@@ -114,8 +121,11 @@ public class CheckoutController {
                     orderDto.getComment(), telegramUser != null ? telegramUser.id() : null,
                     telegramUser != null ? telegramUser.username() : null, orderDto.isUseBonuses(),
                     orderDto.getPromoCode());
-
-            // TODO: Здесь будет отправка уведомления в Telegram
+            if (shoppingEventService != null) {
+                shoppingEventService.recordOrderCreated(sessionId,
+                        telegramUser != null ? telegramUser.id()
+                                : telegramCartSessionService.getTelegramUserId(request.getSession()), savedOrder);
+            }
 
             // Передаем ID заказа прямо в URL
             return "redirect:/success?orderId=" + savedOrder.getId();

@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+    <title th:text="${promotion.title} + ' — ShlyapOff'">Акция</title>
+    <style>
+        :root{--bg:var(--tg-theme-bg-color,#080808);--text:var(--tg-theme-text-color,#fff);--muted:var(--tg-theme-hint-color,#999);--card:var(--tg-theme-secondary-bg-color,#171717);--accent:#ffd54a}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.wrap{max-width:760px;margin:auto;padding:24px 16px 60px}.back{color:var(--text);text-decoration:none;font-size:24px}.hero{margin-top:24px;padding:32px;border-radius:24px;background:linear-gradient(135deg,#2b2100,var(--card));border:1px solid #ffd54a55}.eyebrow{color:var(--accent);font-weight:800;font-size:13px}.hero h1{font-size:clamp(30px,7vw,52px);margin:12px 0}.description{color:var(--muted);font-size:18px;line-height:1.55}.timer{font-size:clamp(24px,6vw,42px);font-weight:900;font-variant-numeric:tabular-nums;margin:26px 0;color:var(--accent)}.promo{padding:20px;background:#ffffff0d;border:1px dashed var(--accent);border-radius:16px;margin-top:24px}.code{font-size:28px;font-weight:900;letter-spacing:2px}.button{display:block;text-align:center;background:var(--accent);color:#111;padding:16px;border-radius:14px;text-decoration:none;font-weight:800;margin-top:24px}.terms{margin-top:28px;background:var(--card);border-radius:16px;padding:20px;white-space:pre-line;line-height:1.55}.terms h2{font-size:18px}.terms p{color:var(--muted)}
+    </style>
+</head>
+<body><main class="wrap">
+    <a class="back" href="/promotions">←</a>
+    <section class="hero">
+        <div class="eyebrow">АКЦИЯ</div><h1 th:text="${promotion.title}">Название</h1>
+        <p class="description" th:text="${promotion.description}">Описание</p>
+        <div id="countdown" class="timer" th:if="${promotion.endsAt != null}" th:attr="data-end=${promotion.endsAt}">—</div>
+        <div class="promo" th:if="${promotion.promoCode != null}">
+            <div>Промокод</div><div class="code" th:text="${promotion.promoCode.code}">CODE</div>
+            <p th:if="${promotion.promoCode.description != null}" th:text="${promotion.promoCode.description}"></p>
+            <p th:if="${promotion.promoCode.minOrderAmount != null && promotion.promoCode.minOrderAmount.signum() > 0}" th:text="${'Минимальная сумма заказа: ' + promotion.promoCode.minOrderAmount + ' ₽'}"></p>
+        </div>
+        <a class="button" href="/catalog">Выбрать товары</a>
+    </section>
+    <section class="terms"><h2>Условия акции</h2><p th:text="${promotion.terms ?: 'Акция действует в указанный период. Скидка применяется при выполнении условий промокода.'}"></p></section>
+</main>
+<script>
+const el=document.getElementById('countdown');if(el){const end=new Date(el.dataset.end).getTime();const tick=()=>{const left=end-Date.now();if(left<=0){el.textContent='Акция завершена';return}const d=Math.floor(left/86400000),h=Math.floor(left/3600000)%24,m=Math.floor(left/60000)%60,s=Math.floor(left/1000)%60;el.textContent=`${d} д. ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`};tick();setInterval(tick,1000)}
+</script></body></html>

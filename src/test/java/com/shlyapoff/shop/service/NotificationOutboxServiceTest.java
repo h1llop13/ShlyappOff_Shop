@@ -4,6 +4,8 @@ import com.shlyapoff.shop.model.NotificationOutbox;
 import com.shlyapoff.shop.model.NotificationType;
 import com.shlyapoff.shop.model.Order;
 import com.shlyapoff.shop.model.OrderStatus;
+import com.shlyapoff.shop.model.Product;
+import com.shlyapoff.shop.model.PromoCode;
 import com.shlyapoff.shop.repository.NotificationOutboxRepository;
 import com.shlyapoff.shop.repository.OrderRepository;
 import org.junit.jupiter.api.Test;
@@ -53,5 +55,30 @@ class NotificationOutboxServiceTest {
         verify(telegramNotificationService).notifyCustomerAboutStatusChange(
                 order, OrderStatus.PAID, OrderStatus.CANCELLED, "Ошибка комплектации");
         assertThat(outbox.getSentAt()).isNotNull();
+    }
+
+    @Test
+    void deliversStockAndPersonalPromoNotificationsWithoutOrderPayload() {
+        Product product = new Product();
+        product.setId(9L);
+        PromoCode promoCode = new PromoCode();
+        promoCode.setId(11L);
+        ArgumentCaptor<NotificationOutbox> captor = ArgumentCaptor.forClass(NotificationOutbox.class);
+
+        service.enqueueStockAvailable(product, 77L);
+        service.enqueuePersonalPromoCode(promoCode, 88L);
+        verify(notificationOutboxRepository, org.mockito.Mockito.times(2)).save(captor.capture());
+
+        NotificationOutbox stock = captor.getAllValues().get(0);
+        stock.setId(1L);
+        when(notificationOutboxRepository.findById(1L)).thenReturn(Optional.of(stock));
+        service.deliver(1L);
+        verify(telegramNotificationService).notifyStockAvailable(77L, product);
+
+        NotificationOutbox promo = captor.getAllValues().get(1);
+        promo.setId(2L);
+        when(notificationOutboxRepository.findById(2L)).thenReturn(Optional.of(promo));
+        service.deliver(2L);
+        verify(telegramNotificationService).notifyPersonalPromoCode(88L, promoCode);
     }
 }
