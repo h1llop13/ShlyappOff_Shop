@@ -7,9 +7,11 @@ import com.shlyapoff.shop.model.Customer;
 import com.shlyapoff.shop.model.Order;
 import com.shlyapoff.shop.model.OrderItem;
 import com.shlyapoff.shop.model.OrderStatus;
+import com.shlyapoff.shop.model.OrderStatusHistory;
 import com.shlyapoff.shop.model.Product;
 import com.shlyapoff.shop.model.ProductVariant;
 import com.shlyapoff.shop.repository.OrderRepository;
+import com.shlyapoff.shop.repository.OrderStatusHistoryRepository;
 import com.shlyapoff.shop.repository.ProductRepository;
 import com.shlyapoff.shop.repository.ProductVariantRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -43,6 +45,9 @@ class OrderServiceTest {
 
     @Mock
     private OrderRepository orderRepository;
+
+    @Mock
+    private OrderStatusHistoryRepository orderStatusHistoryRepository;
 
     @Mock
     private CartService cartService;
@@ -143,6 +148,8 @@ class OrderServiceTest {
 
         verify(cartService).clearCart(SESSION_ID, 12345L);
         verify(notificationOutboxService).enqueueNewOrderNotification(result);
+        verify(notificationOutboxService).enqueueCustomerStatusNotification(
+                result, null, OrderStatus.NEW, null);
         // Заказ ещё не подтверждён администратором — сумма НЕ должна начисляться клиенту сразу.
         verify(customerService, never()).registerOrderAndRecalculateDiscount(any(), any());
 
@@ -224,25 +231,31 @@ class OrderServiceTest {
     }
 
     @Test
-    @DisplayName("обновляет статус существующего заказа")
+    @DisplayName("подтверждает новый заказ")
     void updatesOrderStatus() {
         Order order = new Order();
         order.setId(1L);
         order.setStatus(OrderStatus.NEW);
 
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(order));
 
-        orderService.updateStatus(1L, "COMPLETED", "order-admin");
+        orderService.updateStatus(1L, "CONFIRMED", "order-admin");
 
-        assertThat(order.getStatus()).isEqualTo(OrderStatus.COMPLETED);
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.CONFIRMED);
         verify(orderRepository).save(order);
         verify(adminAuditLogService).recordChange(
                 "order-admin", AdminAuditAction.ORDER_STATUS_CHANGED,
-                "ORDER", 1L, "status", OrderStatus.NEW, OrderStatus.COMPLETED);
+                "ORDER", 1L, "status", OrderStatus.NEW, OrderStatus.CONFIRMED);
+        ArgumentCaptor<OrderStatusHistory> historyCaptor = ArgumentCaptor.forClass(OrderStatusHistory.class);
+        verify(orderStatusHistoryRepository).save(historyCaptor.capture());
+        assertThat(historyCaptor.getValue().getPreviousStatus()).isEqualTo(OrderStatus.NEW);
+        assertThat(historyCaptor.getValue().getNewStatus()).isEqualTo(OrderStatus.CONFIRMED);
+        assertThat(historyCaptor.getValue().getChangedBy()).isEqualTo("order-admin");
+        assertThat(historyCaptor.getValue().getChangedAt()).isNotNull();
     }
 
     @Test
-    @DisplayName("списывает остаток обычного товара при подтверждении заказа")
+    @DisplayName("повторно резервирует остаток обычного товара при подтверждении заказа")
     void deductsProductStockWhenOrderIsCompleted() {
         Product product = new Product();
         product.setId(1L);
@@ -255,18 +268,18 @@ class OrderServiceTest {
         order.setId(1L);
         order.setStatus(OrderStatus.NEW);
         order.addItem(item);
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(order));
         when(productRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(product));
 
-        orderService.updateStatus(1L, "COMPLETED");
+        orderService.updateStatus(1L, "CONFIRMED");
 
         assertThat(product.getStockQuantity()).isEqualTo(3);
-        assertThat(order.getStatus()).isEqualTo(OrderStatus.COMPLETED);
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.CONFIRMED);
         verify(productRepository).findByIdForUpdate(1L);
     }
 
     @Test
-    @DisplayName("списывает остаток конкретного варианта при подтверждении заказа")
+    @DisplayName("повторно резервирует остаток конкретного варианта при подтверждении заказа")
     void deductsVariantStockWhenOrderIsCompleted() {
         Product product = new Product();
         product.setId(1L);
@@ -283,10 +296,10 @@ class OrderServiceTest {
         order.setId(1L);
         order.setStatus(OrderStatus.NEW);
         order.addItem(item);
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(order));
         when(productVariantRepository.findByIdForUpdate(7L)).thenReturn(Optional.of(variant));
 
-        orderService.updateStatus(1L, "COMPLETED");
+        orderService.updateStatus(1L, "CONFIRMED");
 
         assertThat(variant.getStockQuantity()).isEqualTo(1);
         assertThat(variant.getInStock()).isTrue();
@@ -294,7 +307,7 @@ class OrderServiceTest {
     }
 
     @Test
-    @DisplayName("не завершает заказ, если для списания недостаточно остатка")
+    @DisplayName("не подтверждает заказ, если для повторного резерва недостаточно остатка")
     void doesNotCompleteOrderWhenStockIsInsufficient() {
         Product product = new Product();
         product.setId(1L);
@@ -307,10 +320,10 @@ class OrderServiceTest {
         order.setId(1L);
         order.setStatus(OrderStatus.NEW);
         order.addItem(item);
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(order));
         when(productRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(product));
 
-        assertThatThrownBy(() -> orderService.updateStatus(1L, "COMPLETED"))
+        assertThatThrownBy(() -> orderService.updateStatus(1L, "CONFIRMED"))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("Недостаточно остатка");
 
@@ -325,7 +338,7 @@ class OrderServiceTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Недопустимый статус заказа");
 
-        verify(orderRepository, never()).findById(any());
+        verify(orderRepository, never()).findByIdForUpdate(any());
         verify(orderRepository, never()).save(any());
     }
 
@@ -335,7 +348,7 @@ class OrderServiceTest {
         Order order = new Order();
         order.setId(1L);
         order.setStatus(OrderStatus.COMPLETED);
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(order));
 
         assertThatThrownBy(() -> orderService.updateStatus(1L, "CANCELLED"))
                 .isInstanceOf(IllegalStateException.class)
@@ -352,11 +365,13 @@ class OrderServiceTest {
         Customer customer = new Customer();
         Order order = new Order();
         order.setId(1L);
-        order.setStatus(OrderStatus.NEW);
+        order.setStatus(OrderStatus.READY);
+        order.setDeliveryType("Самовывоз");
+        order.setInventoryReserved(true);
         order.setCustomer(customer);
         order.setSubtotalAmount(new BigDecimal("450.50"));
         order.setTotalAmount(new BigDecimal("450.50"));
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(order));
         when(customerService.registerOrderAndAccrueBonuses(customer, new BigDecimal("450.50"), new BigDecimal("450.50")))
                 .thenReturn(customer);
 
@@ -370,9 +385,81 @@ class OrderServiceTest {
     }
 
     @Test
+    @DisplayName("проводит заказ по полному жизненному циклу самовывоза")
+    void followsCompletePickupLifecycle() {
+        Order order = new Order();
+        order.setId(15L);
+        order.setStatus(OrderStatus.NEW);
+        order.setDeliveryType("Самовывоз");
+        order.setInventoryReserved(true);
+        when(orderRepository.findByIdForUpdate(15L)).thenReturn(Optional.of(order));
+
+        orderService.updateStatus(15L, "CONFIRMED", "admin");
+        orderService.updateStatus(15L, "PAYMENT_PENDING", "admin");
+        orderService.updateStatus(15L, "PAID", "admin");
+        orderService.updateStatus(15L, "ASSEMBLING", "admin");
+        orderService.updateStatus(15L, "READY", "admin");
+        orderService.updateStatus(15L, "COMPLETED", "admin");
+
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.COMPLETED);
+        assertThat(order.getCompletedAt()).isNotNull();
+        assertThat(order.getInventoryReserved()).isFalse();
+        verify(orderRepository, times(6)).save(order);
+        verify(notificationOutboxService, times(6)).enqueueCustomerStatusNotification(
+                eq(order), any(), any(), isNull());
+    }
+
+    @Test
+    @DisplayName("отмена требует причину и возвращает зарезервированный остаток")
+    void cancellationRequiresReasonAndRestoresInventory() {
+        Product product = new Product();
+        product.setId(1L);
+        product.setStockQuantity(3);
+        OrderItem item = new OrderItem();
+        item.setProduct(product);
+        item.setQuantity(2);
+        Order order = new Order();
+        order.setId(20L);
+        order.setStatus(OrderStatus.PAID);
+        order.setInventoryReserved(true);
+        order.addItem(item);
+        when(orderRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(order));
+        when(productRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(product));
+
+        assertThatThrownBy(() -> orderService.updateStatus(20L, "CANCELLED", " ", "admin"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("причину отмены");
+
+        orderService.updateStatus(20L, "CANCELLED", "Покупатель отказался", "admin");
+
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.CANCELLED);
+        assertThat(order.getCancellationReason()).isEqualTo("Покупатель отказался");
+        assertThat(order.getCancelledAt()).isNotNull();
+        assertThat(product.getStockQuantity()).isEqualTo(5);
+        verify(notificationOutboxService).enqueueCustomerStatusNotification(
+                order, OrderStatus.PAID, OrderStatus.CANCELLED, "Покупатель отказался");
+    }
+
+    @Test
+    @DisplayName("не позволяет отправить заказ с самовывозом в доставку")
+    void rejectsShippedForPickup() {
+        Order order = new Order();
+        order.setId(21L);
+        order.setStatus(OrderStatus.ASSEMBLING);
+        order.setDeliveryType("Самовывоз");
+        when(orderRepository.findByIdForUpdate(21L)).thenReturn(Optional.of(order));
+
+        assertThatThrownBy(() -> orderService.updateStatus(21L, "SHIPPED", "admin"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("только для доставки");
+
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
     @DisplayName("выбрасывает исключение при обновлении статуса несуществующего заказа")
     void throwsWhenUpdatingStatusOfMissingOrder() {
-        when(orderRepository.findById(404L)).thenReturn(Optional.empty());
+        when(orderRepository.findByIdForUpdate(404L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> orderService.updateStatus(404L, "COMPLETED"))
                 .isInstanceOf(RuntimeException.class)

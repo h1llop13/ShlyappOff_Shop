@@ -67,8 +67,21 @@ public class SalesDashboardService {
                 .sorted(Comparator.comparingLong(TopProduct::quantity).reversed()).limit(5).toList();
 
         return new DashboardData(todayRevenue, periodRevenue, completed.size(), average,
-                orderRepository.countByStatus(OrderStatus.NEW), orderRepository.countByStatus(OrderStatus.PROCESSING),
+                orderRepository.countByStatus(OrderStatus.NEW), countActiveOrders(),
                 daily, topProducts);
+    }
+
+    private long countActiveOrders() {
+        return List.of(
+                        OrderStatus.CONFIRMED,
+                        OrderStatus.PAYMENT_PENDING,
+                        OrderStatus.PAID,
+                        OrderStatus.ASSEMBLING,
+                        OrderStatus.READY,
+                        OrderStatus.SHIPPED)
+                .stream()
+                .mapToLong(orderRepository::countByStatus)
+                .sum();
     }
 
     private static class ProductAccumulator {

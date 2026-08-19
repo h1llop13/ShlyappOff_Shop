@@ -2,6 +2,8 @@ package com.shlyapoff.shop.model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -25,6 +27,21 @@ public class NotificationOutbox {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "order_id", nullable = false)
     private Order order;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "notification_type", nullable = false, length = 40)
+    private NotificationType notificationType = NotificationType.ADMIN_NEW_ORDER;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "previous_status")
+    private OrderStatus previousStatus;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "target_status")
+    private OrderStatus targetStatus;
+
+    @Column(name = "cancellation_reason", length = 500)
+    private String cancellationReason;
 
     @Column(nullable = false)
     private Integer attempts = 0;

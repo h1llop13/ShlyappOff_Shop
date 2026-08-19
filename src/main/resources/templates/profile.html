@@ -184,8 +184,22 @@
     }
 
     const STATUS_LABELS = {
-        NEW: 'Новый', PROCESSING: 'В обработке', COMPLETED: 'Выполнен', CANCELLED: 'Отменён'
+        NEW: 'Новый',
+        CONFIRMED: 'Подтверждён',
+        PAYMENT_PENDING: 'Ожидает оплаты',
+        PAID: 'Оплачен',
+        ASSEMBLING: 'Собирается',
+        READY: 'Готов к выдаче',
+        SHIPPED: 'Передан в доставку',
+        COMPLETED: 'Выполнен',
+        CANCELLED: 'Отменён'
     };
+
+    function escapeHtml(value) {
+        return String(value || '').replace(/[&<>"']/g, ch => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        })[ch]);
+    }
 
     function renderLoyalty(loyalty) {
         const current = loyalty.currentBonusPercent || 0;
@@ -222,8 +236,11 @@
 
         ordersList.innerHTML = orders.map(order => {
             const itemsHtml = order.items.map(i =>
-                `<div>${i.quantity} × ${i.productName}</div>`
+                `<div>${i.quantity} × ${escapeHtml(i.productName)}</div>`
             ).join('');
+            const cancellationHtml = order.cancellationReason
+                ? `<div class="order-date">Причина отмены: ${escapeHtml(order.cancellationReason)}</div>`
+                : '';
 
             const spent = order.bonusesSpent || 0;
             const earned = order.bonusesEarned || 0;
@@ -240,6 +257,7 @@
                         <span class="order-status">${STATUS_LABELS[order.status] || order.status}</span>
                     </div>
                     <div class="order-date">${formatDate(order.createdAt)}</div>
+                    ${cancellationHtml}
                     <div class="order-items">${itemsHtml}</div>
                     <div class="order-totals">${totalsHtml}${earned > 0 ? `<span class="order-discount-badge">+${formatMoney(earned)} бонусов</span>` : ''}</div>
                 </div>

@@ -4,6 +4,7 @@ import com.shlyapoff.shop.bot.ShlyapOffBot;
 import com.shlyapoff.shop.model.Admin;
 import com.shlyapoff.shop.model.Order;
 import com.shlyapoff.shop.model.OrderItem;
+import com.shlyapoff.shop.model.OrderStatus;
 import com.shlyapoff.shop.repository.AdminRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -39,6 +40,33 @@ public class TelegramNotificationService {
                 delivered = bot.sendMessageWithButton(admin.getTelegramChatId(), message, "📋 Открыть заказы", ordersUrl) && delivered;
             }
         }
+        if (!delivered) {
+            throw new IllegalStateException("Telegram временно недоступен");
+        }
+    }
+
+    public void notifyCustomerAboutStatusChange(Order order, OrderStatus previousStatus,
+                                                OrderStatus targetStatus, String cancellationReason) {
+        if (order.getTelegramUserId() == null || targetStatus == null) {
+            return;
+        }
+
+        StringBuilder message = new StringBuilder();
+        message.append("📦 <b>Заказ #").append(order.getId()).append("</b>\n");
+        if (previousStatus == null) {
+            message.append("Статус: <b>").append(targetStatus.getDisplayName()).append("</b>");
+        } else {
+            message.append("Статус изменён: <b>")
+                    .append(previousStatus.getDisplayName())
+                    .append(" → ")
+                    .append(targetStatus.getDisplayName())
+                    .append("</b>");
+        }
+        if (targetStatus == OrderStatus.CANCELLED && cancellationReason != null && !cancellationReason.isBlank()) {
+            message.append("\nПричина: ").append(escapeHtml(cancellationReason));
+        }
+
+        boolean delivered = bot.sendMessage(order.getTelegramUserId(), message.toString());
         if (!delivered) {
             throw new IllegalStateException("Telegram временно недоступен");
         }
@@ -92,5 +120,11 @@ public class TelegramNotificationService {
         }
 
         return sb.toString();
+    }
+
+    private String escapeHtml(String value) {
+        return value.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;");
     }
 }

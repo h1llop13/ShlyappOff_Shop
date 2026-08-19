@@ -65,7 +65,7 @@ class OrderCheckoutIntegrationTest {
         Integer changeSetCount = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM databasechangelog WHERE filename = ?",
                 Integer.class,
-                "db/changelog/changes/023-add-pricing-and-admin-audit.sql"
+                "db/changelog/changes/024-order-lifecycle.sql"
         );
         String deliveryColumnType = jdbcTemplate.queryForObject(
                 "SELECT data_type FROM information_schema.columns " +
@@ -117,7 +117,11 @@ class OrderCheckoutIntegrationTest {
         assertThat(customerRepository.findById(customer.getId()).orElseThrow().getBonusBalance())
                 .isEqualByComparingTo("0.00");
 
-        orderService.updateStatus(order.getId(), "PROCESSING");
+        orderService.updateStatus(order.getId(), "CONFIRMED");
+        orderService.updateStatus(order.getId(), "PAYMENT_PENDING");
+        orderService.updateStatus(order.getId(), "PAID");
+        orderService.updateStatus(order.getId(), "ASSEMBLING");
+        orderService.updateStatus(order.getId(), "READY");
         orderService.updateStatus(order.getId(), "COMPLETED");
 
         Order completed = orderRepository.findById(order.getId()).orElseThrow();
@@ -178,11 +182,11 @@ class OrderCheckoutIntegrationTest {
         assertThat(expired.getReservationExpiresAt()).isNull();
         assertThat(productRepository.findById(product.getId()).orElseThrow().getStockQuantity()).isEqualTo(5);
 
-        orderService.updateStatus(order.getId(), "PROCESSING");
+        orderService.updateStatus(order.getId(), "CONFIRMED");
 
-        Order processing = orderRepository.findById(order.getId()).orElseThrow();
-        assertThat(processing.getStatus()).isEqualTo(OrderStatus.PROCESSING);
-        assertThat(processing.getInventoryReserved()).isTrue();
+        Order confirmed = orderRepository.findById(order.getId()).orElseThrow();
+        assertThat(confirmed.getStatus()).isEqualTo(OrderStatus.CONFIRMED);
+        assertThat(confirmed.getInventoryReserved()).isTrue();
         assertThat(productRepository.findById(product.getId()).orElseThrow().getStockQuantity()).isEqualTo(3);
     }
 
