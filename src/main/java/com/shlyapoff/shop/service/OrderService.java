@@ -9,6 +9,7 @@ import com.shlyapoff.shop.model.OrderStatus;
 import com.shlyapoff.shop.model.OrderStatusHistory;
 import com.shlyapoff.shop.model.Product;
 import com.shlyapoff.shop.model.ProductVariant;
+import com.shlyapoff.shop.model.InventoryMovementType;
 import com.shlyapoff.shop.repository.OrderRepository;
 import com.shlyapoff.shop.repository.OrderStatusHistoryRepository;
 import com.shlyapoff.shop.repository.ProductRepository;
@@ -45,6 +46,7 @@ public class OrderService {
     private final PromoCodeService promoCodeService;
     private final PricingService pricingService;
     private final AdminAuditLogService auditLogService;
+    private final InventoryService inventoryService;
 
     @Value("${app.orders.reservation-minutes:15}")
     private long reservationMinutes;
@@ -128,11 +130,11 @@ public class OrderService {
         order.setDeliveryAmount(pricing.deliveryAmount());
         order.setTotalAmount(pricing.totalAmount());
         order.setCustomer(customer);
-        reserveInventory(order);
+        Order savedOrder = orderRepository.save(order);
+        reserveInventory(savedOrder);
         order.setInventoryReserved(true);
         order.setReservationExpiresAt(LocalDateTime.now().plusMinutes(Math.max(1, reservationMinutes)));
 
-        Order savedOrder = orderRepository.save(order);
         recordStatusChange(savedOrder, null, OrderStatus.NEW, creationActor(savedOrder), null);
 
         if (telegramUserId == null) cartService.clearCart(sessionId);
@@ -303,13 +305,13 @@ public class OrderService {
             if (item.getProductVariant() != null) {
                 ProductVariant variant = productVariantRepository.findByIdForUpdate(item.getProductVariant().getId())
                         .orElseThrow(() -> new IllegalStateException("Вариант товара для резервирования не найден"));
-                deductVariantQuantity(variant, item.getQuantity());
+                deductVariantQuantity(variant, item.getQuantity(), order.getId());
             } else if (item.getVariantValue() != null) {
                 throw new IllegalStateException("Нельзя зарезервировать остаток: у позиции заказа не указан вариант товара");
             } else {
                 Product product = productRepository.findByIdForUpdate(item.getProduct().getId())
                         .orElseThrow(() -> new IllegalStateException("Товар для резервирования не найден"));
-                deductProductQuantity(product, item.getQuantity());
+                deductProductQuantity(product, item.getQuantity(), order.getId());
             }
         }
     }
@@ -323,29 +325,43 @@ public class OrderService {
             if (item.getProductVariant() != null) {
                 ProductVariant variant = productVariantRepository.findByIdForUpdate(item.getProductVariant().getId())
                         .orElseThrow(() -> new IllegalStateException("Вариант товара для возврата резерва не найден"));
-                variant.setStockQuantity(variant.getStockQuantity() + item.getQuantity());
+                int before = variant.getStockQuantity();
+                variant.setStockQuantity(before + item.getQuantity());
+                inventoryService.record(variant.getProduct(), variant, InventoryMovementType.RESERVATION_RELEASE,
+                        before, variant.getStockQuantity(), "Возврат резерва заказа", "system",
+                        "ORDER", order.getId());
             } else {
                 Product product = productRepository.findByIdForUpdate(item.getProduct().getId())
                         .orElseThrow(() -> new IllegalStateException("Товар для возврата резерва не найден"));
-                product.setStockQuantity(product.getStockQuantity() + item.getQuantity());
+                int before = product.getStockQuantity();
+                product.setStockQuantity(before + item.getQuantity());
+                inventoryService.record(product, null, InventoryMovementType.RESERVATION_RELEASE,
+                        before, product.getStockQuantity(), "Возврат резерва заказа", "system",
+                        "ORDER", order.getId());
             }
         }
     }
 
-    private void deductProductQuantity(Product product, int quantity) {
+    private void deductProductQuantity(Product product, int quantity, Long orderId) {
         int currentQuantity = product.getStockQuantity() == null ? 0 : product.getStockQuantity();
         if (currentQuantity < quantity) {
             throw new IllegalStateException("Недостаточно остатка для товара: " + product.getName());
         }
         product.setStockQuantity(currentQuantity - quantity);
+        inventoryService.record(product, null, InventoryMovementType.ORDER_RESERVATION,
+                currentQuantity, product.getStockQuantity(), "Резервирование заказа", "customer",
+                "ORDER", orderId);
     }
 
-    private void deductVariantQuantity(ProductVariant variant, int quantity) {
+    private void deductVariantQuantity(ProductVariant variant, int quantity, Long orderId) {
         int currentQuantity = variant.getStockQuantity() == null ? 0 : variant.getStockQuantity();
         if (currentQuantity < quantity) {
             throw new IllegalStateException("Недостаточно остатка для варианта: " + variant.getValue());
         }
         variant.setStockQuantity(currentQuantity - quantity);
+        inventoryService.record(variant.getProduct(), variant, InventoryMovementType.ORDER_RESERVATION,
+                currentQuantity, variant.getStockQuantity(), "Резервирование заказа", "customer",
+                "ORDER", orderId);
     }
 
     private void recordStatusChange(Order order, OrderStatus previousStatus, OrderStatus newStatus,

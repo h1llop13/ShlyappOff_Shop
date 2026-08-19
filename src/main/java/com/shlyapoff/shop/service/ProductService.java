@@ -18,6 +18,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.time.LocalDateTime;
+import com.shlyapoff.shop.model.PublicationStatus;
+import org.springframework.scheduling.annotation.Scheduled;
 
 @Service
 @RequiredArgsConstructor
@@ -39,7 +42,7 @@ public class ProductService {
 
     @Transactional(readOnly = true)
     public Page<Product> findAdminProductsByCategory(Long categoryId, int page) {
-        return productRepository.findByCategory_IdAndActiveTrue(
+        return productRepository.findByCategory_Id(
                 categoryId,
                 PageRequest.of(Math.max(page, 0), 30, Sort.by(Sort.Direction.DESC, "createdAt")));
     }
@@ -63,6 +66,7 @@ public class ProductService {
 
     @CacheEvict(cacheNames = "latestProducts", allEntries = true)
     public Product save(Product product) {
+        applyPublicationState(product);
         return productRepository.save(product);
     }
 
@@ -85,6 +89,8 @@ public class ProductService {
                 .map(product -> {
                     // Keep completed orders intact: they reference the product for order history.
                     product.setActive(false);
+                    product.setPublicationStatus(PublicationStatus.DRAFT);
+                    product.setPublishAt(null);
                     return true;
                 })
                 .orElse(false);
@@ -124,5 +130,27 @@ public class ProductService {
     @Transactional(readOnly = true)
     public Optional<Product> findByIdWithVariants(Long id) {
         return productRepository.findByIdWithVariants(id);
+    }
+
+    @Scheduled(fixedDelayString = "${app.publication.check-ms:30000}")
+    @Transactional
+    @CacheEvict(cacheNames = "latestProducts", allEntries = true)
+    public void publishScheduledProducts() {
+        productRepository.publishScheduled(LocalDateTime.now(), PublicationStatus.SCHEDULED, PublicationStatus.PUBLISHED);
+    }
+
+    public void applyPublicationState(Product product) {
+        PublicationStatus status = product.getPublicationStatus() == null
+                ? PublicationStatus.DRAFT : product.getPublicationStatus();
+        product.setPublicationStatus(status);
+        if (status == PublicationStatus.SCHEDULED && product.getPublishAt() == null) {
+            throw new IllegalArgumentException("Для отложенной публикации укажите дату и время");
+        }
+        if (status == PublicationStatus.SCHEDULED && !product.getPublishAt().isAfter(LocalDateTime.now())) {
+            status = PublicationStatus.PUBLISHED;
+            product.setPublicationStatus(status);
+        }
+        product.setActive(status == PublicationStatus.PUBLISHED);
+        if (status != PublicationStatus.SCHEDULED) product.setPublishAt(null);
     }
 }

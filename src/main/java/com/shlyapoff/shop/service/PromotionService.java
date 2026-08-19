@@ -8,6 +8,9 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import com.shlyapoff.shop.model.PublicationStatus;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -23,6 +26,7 @@ public class PromotionService {
     }
 
     public Promotion save(Promotion promotion) {
+        applyPublicationState(promotion);
         return promotionRepository.save(promotion);
     }
 
@@ -33,5 +37,26 @@ public class PromotionService {
     public boolean hasValidSchedule(Promotion promotion) {
         return promotion.getStartsAt() == null || promotion.getEndsAt() == null
                 || promotion.getEndsAt().isAfter(promotion.getStartsAt());
+    }
+
+    @Scheduled(fixedDelayString = "${app.publication.check-ms:30000}")
+    @Transactional
+    public void publishScheduledPromotions() {
+        promotionRepository.publishScheduled(LocalDateTime.now(), PublicationStatus.SCHEDULED, PublicationStatus.PUBLISHED);
+    }
+
+    public void applyPublicationState(Promotion promotion) {
+        PublicationStatus status = promotion.getPublicationStatus() == null
+                ? PublicationStatus.DRAFT : promotion.getPublicationStatus();
+        promotion.setPublicationStatus(status);
+        if (status == PublicationStatus.SCHEDULED && promotion.getPublishAt() == null) {
+            throw new IllegalArgumentException("Для отложенной публикации укажите дату и время");
+        }
+        if (status == PublicationStatus.SCHEDULED && !promotion.getPublishAt().isAfter(LocalDateTime.now())) {
+            status = PublicationStatus.PUBLISHED;
+            promotion.setPublicationStatus(status);
+        }
+        promotion.setActive(status == PublicationStatus.PUBLISHED);
+        if (status != PublicationStatus.SCHEDULED) promotion.setPublishAt(null);
     }
 }

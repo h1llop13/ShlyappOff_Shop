@@ -14,6 +14,7 @@
         <div class="collapse navbar-collapse">
             <ul class="navbar-nav ms-auto">
                 <li class="nav-item"><a class="nav-link active" href="/admin">Каталог</a></li>
+                <li class="nav-item"><a class="nav-link" href="/admin/inventory">Склад</a></li>
                 <li class="nav-item"><a class="nav-link" href="/admin/categories">Категории</a></li>
                 <li class="nav-item"><a class="nav-link" href="/admin/brands">Бренды</a></li>
                 <li class="nav-item"><a class="nav-link" href="/">На сайт</a></li>
@@ -56,6 +57,7 @@
                 <th>Варианты</th>
                 <th>Остаток</th>
                 <th>Цена</th>
+                <th>Публикация</th>
                 <th>Действия</th>
             </tr>
             </thead>
@@ -72,6 +74,7 @@
                     th:text="${product.stockQuantity} + ' шт.'">0 шт.</td>
                 <td th:unless="${product.category == null || product.category.variantType == null || product.category.variantType.name() == 'NONE'}">По вариантам</td>
                 <td th:text="${product.price} + ' ₽'">0 ₽</td>
+                <td><span class="badge bg-secondary" th:text="${product.publicationStatus.displayName}">Статус</span><div th:if="${product.publishAt}" class="small" th:text="${product.publishAt}"></div></td>
                 <td class="text-nowrap">
                     <a th:href="@{/admin/product/edit/{id}(id=${product.id})}" class="btn btn-sm btn-outline-light">Редактировать</a>
                     <form th:action="@{/admin/product/delete/{id}(id=${product.id})}" method="post" class="d-inline">

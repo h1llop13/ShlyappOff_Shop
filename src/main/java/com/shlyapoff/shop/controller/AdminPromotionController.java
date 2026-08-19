@@ -2,6 +2,7 @@ package com.shlyapoff.shop.controller;
 
 import com.shlyapoff.shop.model.Promotion;
 import com.shlyapoff.shop.model.PromotionKind;
+import com.shlyapoff.shop.model.PublicationStatus;
 import com.shlyapoff.shop.service.PromotionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
@@ -25,14 +26,16 @@ public class AdminPromotionController {
 
     @GetMapping("/create")
     public String createForm(Model model) {
-        addFormData(model, new Promotion());
+        Promotion promotion = new Promotion();
+        promotion.setPublicationStatus(PublicationStatus.DRAFT);
+        promotion.setActive(false);
+        addFormData(model, promotion);
         return "admin/promotion-form";
     }
 
     @PostMapping("/create")
-    public String create(@ModelAttribute Promotion promotion, @RequestParam(defaultValue = "false") boolean active,
+    public String create(@ModelAttribute Promotion promotion,
                          RedirectAttributes attributes) {
-        promotion.setActive(active);
         String error = validate(promotion);
         if (error != null) {
             attributes.addFlashAttribute("errorMessage", error);
@@ -54,9 +57,8 @@ public class AdminPromotionController {
     }
 
     @PostMapping("/edit/{id}")
-    public String edit(@PathVariable Long id, @ModelAttribute Promotion form, @RequestParam(defaultValue = "false") boolean active,
+    public String edit(@PathVariable Long id, @ModelAttribute Promotion form,
                        RedirectAttributes attributes) {
-        form.setActive(active);
         var existing = promotionService.findById(id);
         if (existing.isEmpty()) return "redirect:/admin/promotions";
         String error = validate(form);
@@ -70,9 +72,10 @@ public class AdminPromotionController {
         promotion.setKind(form.getKind());
         promotion.setBonusMultiplier(form.getBonusMultiplier());
         promotion.setDisplayPriority(form.getDisplayPriority());
-        promotion.setActive(Boolean.TRUE.equals(form.getActive()));
         promotion.setStartsAt(form.getStartsAt());
         promotion.setEndsAt(form.getEndsAt());
+        promotion.setPublicationStatus(form.getPublicationStatus());
+        promotion.setPublishAt(form.getPublishAt());
         promotionService.save(normalize(promotion));
         attributes.addFlashAttribute("successMessage", "Акция обновлена");
         return "redirect:/admin/promotions";
@@ -88,6 +91,7 @@ public class AdminPromotionController {
     private void addFormData(Model model, Promotion promotion) {
         model.addAttribute("promotion", promotion);
         model.addAttribute("kinds", PromotionKind.values());
+        model.addAttribute("publicationStatuses", PublicationStatus.values());
     }
 
     private String validate(Promotion promotion) {
@@ -96,6 +100,9 @@ public class AdminPromotionController {
         if (promotion.getBonusMultiplier() == null || promotion.getBonusMultiplier().compareTo(BigDecimal.ONE) < 0) {
             return "Множитель бонусов не может быть меньше 1";
         }
+        if (promotion.getPublicationStatus() == PublicationStatus.SCHEDULED && promotion.getPublishAt() == null) {
+            return "Для отложенной публикации укажите дату и время";
+        }
         return promotionService.hasValidSchedule(promotion) ? null : "Дата окончания должна быть позже даты начала";
     }
 
@@ -103,7 +110,6 @@ public class AdminPromotionController {
         promotion.setTitle(promotion.getTitle().trim());
         if (promotion.getDescription() != null && promotion.getDescription().isBlank()) promotion.setDescription(null);
         if (promotion.getDisplayPriority() == null) promotion.setDisplayPriority(0);
-        if (promotion.getActive() == null) promotion.setActive(false);
         return promotion;
     }
 }

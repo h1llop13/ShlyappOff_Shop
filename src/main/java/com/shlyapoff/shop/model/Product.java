@@ -62,6 +62,17 @@ public class Product {
     @Column(name = "stock_quantity", nullable = false)
     private Integer stockQuantity = 0;
 
+    @PositiveOrZero
+    @Column(name = "low_stock_threshold", nullable = false)
+    private Integer lowStockThreshold = 5;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "publication_status", nullable = false, length = 20)
+    private PublicationStatus publicationStatus = PublicationStatus.PUBLISHED;
+
+    @Column(name = "publish_at")
+    private LocalDateTime publishAt;
+
     @CreatedDate
     @Column(updatable = false)
     private LocalDateTime createdAt;
@@ -83,5 +94,14 @@ public class Product {
                 .filter(java.util.Objects::nonNull)
                 .mapToInt(Integer::intValue)
                 .sum();
+    }
+
+    public boolean isOutOfStock() {
+        return getAvailableStockQuantity() == 0;
+    }
+
+    public boolean isLowStock() {
+        int available = getAvailableStockQuantity();
+        return available > 0 && available <= (lowStockThreshold == null ? 0 : lowStockThreshold);
     }
 }

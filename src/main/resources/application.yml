@@ -55,6 +55,8 @@ app:
     reservation-cleanup-ms: ${APP_ORDER_RESERVATION_CLEANUP_MS:60000}
   pricing:
     delivery-fee: ${APP_DELIVERY_FEE:0.00}
+  publication:
+    check-ms: ${APP_PUBLICATION_CHECK_MS:30000}
 
 management:
   endpoints:

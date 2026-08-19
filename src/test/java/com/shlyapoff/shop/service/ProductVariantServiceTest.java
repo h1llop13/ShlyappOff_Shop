@@ -22,6 +22,7 @@ class ProductVariantServiceTest {
     @Mock private ProductVariantRepository productVariantRepository;
     @Mock private ProductRepository productRepository;
     @Mock private AdminAuditLogService auditLogService;
+    @Mock private InventoryService inventoryService;
     @InjectMocks private ProductVariantService productVariantService;
 
     @Test

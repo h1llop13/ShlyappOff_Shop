@@ -15,6 +15,7 @@
             <ul class="navbar-nav ms-auto">
                 <li class="nav-item"><a class="nav-link" href="/admin/dashboard">Дашборд</a></li>
                 <li class="nav-item"><a class="nav-link active" href="/admin">Каталог</a></li>
+                <li class="nav-item"><a class="nav-link" href="/admin/inventory">Склад</a></li>
                 <li class="nav-item"><a class="nav-link" href="/admin/categories">Категории</a></li>
                 <li class="nav-item"><a class="nav-link" href="/admin/brands">Бренды</a></li>
                 <li class="nav-item"><a class="nav-link" href="/admin/customers">Клиенты</a></li>
@@ -40,6 +41,11 @@
             <p class="text-white-50 mb-0">Выберите категорию, чтобы работать только с её товарами.</p>
         </div>
         <a href="/admin/categories" class="btn btn-outline-light">Настроить категории</a>
+    </div>
+
+    <div class="d-flex gap-2 mb-4">
+        <a href="/admin/inventory" class="btn btn-warning">Склад: мало товара <span class="badge text-bg-dark" th:text="${lowStockCount}">0</span></a>
+        <a href="/admin/inventory" class="btn btn-danger">Нет в наличии <span class="badge text-bg-light" th:text="${outOfStockCount}">0</span></a>
     </div>
 
     <div th:if="${#lists.isEmpty(categories)}" class="alert alert-secondary">

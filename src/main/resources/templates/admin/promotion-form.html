@@ -20,7 +20,10 @@
             <div class="col-md-4"><label class="form-label">Начало</label><input name="startsAt" type="datetime-local" class="form-control bg-dark text-white" th:value="${promotion.startsAt}"></div>
             <div class="col-md-4"><label class="form-label">Окончание</label><input name="endsAt" type="datetime-local" class="form-control bg-dark text-white" th:value="${promotion.endsAt}"></div>
         </div>
-        <div class="form-check form-switch mt-4"><input class="form-check-input" type="checkbox" name="active" value="true" th:checked="${promotion.active}" id="active"><label class="form-check-label" for="active">Акция активна</label></div>
+        <div class="row g-3 mt-2">
+            <div class="col-md-6"><label class="form-label">Публикация</label><select name="publicationStatus" class="form-select bg-dark text-white"><option th:each="status : ${publicationStatuses}" th:value="${status}" th:text="${status.displayName}" th:selected="${status == promotion.publicationStatus}"></option></select></div>
+            <div class="col-md-6"><label class="form-label">Опубликовать в</label><input name="publishAt" type="datetime-local" class="form-control bg-dark text-white" th:value="${promotion.publishAt}"></div>
+        </div>
         <div class="mt-4 d-flex gap-2"><button class="btn btn-warning">Сохранить</button><a href="/admin/promotions" class="btn btn-outline-light">Отмена</a></div>
     </form>
 </main>

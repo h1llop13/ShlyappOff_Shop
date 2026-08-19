@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Админка — Склад</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-dark text-white">
+<nav class="navbar navbar-expand-lg navbar-dark bg-black sticky-top"><div class="container">
+    <a class="navbar-brand fw-bold" href="/admin">Админка ShlyapOff</a>
+    <div class="navbar-nav ms-auto"><a class="nav-link" href="/admin">Товары</a><a class="nav-link active" href="/admin/inventory">Склад</a><a class="nav-link" href="/admin/promotions">Акции</a><a class="nav-link" href="/">На сайт</a></div>
+</div></nav>
+
+<main class="container py-5">
+    <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
+    <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div><h1 class="mb-1">Склад</h1><p class="text-white-50 mb-0">Быстрое редактирование, уведомления и история каждого изменения.</p></div>
+        <div class="d-flex gap-2"><a href="/admin/inventory/export" class="btn btn-outline-light">Экспорт CSV</a></div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-6"><div class="card text-bg-warning h-100"><div class="card-body"><div class="display-6" th:text="${lowStockCount}">0</div><b>Мало товара</b><div>Остаток достиг заданного порога.</div></div></div></div>
+        <div class="col-md-6"><div class="card text-bg-danger h-100"><div class="card-body"><div class="display-6" th:text="${outOfStockCount}">0</div><b>Нет в наличии</b><div>Товары с нулевым суммарным остатком.</div></div></div></div>
+    </div>
+
+    <section class="card bg-black text-white mb-4"><div class="card-body">
+        <h2 class="h5">Импорт CSV</h2>
+        <p class="small text-white-50">Сначала скачайте экспорт как шаблон. Импорт обновляет строки по product_id/variant_id; пустой product_id создаёт товар.</p>
+        <form action="/admin/inventory/import" method="post" enctype="multipart/form-data" class="d-flex flex-wrap gap-2">
+            <input type="file" name="file" accept=".csv,text/csv" class="form-control bg-dark text-white" style="max-width:520px" required>
+            <button class="btn btn-warning">Импортировать</button>
+        </form>
+    </div></section>
+
+    <section class="mb-5">
+        <h2 class="h4 mb-3">Товары и остатки</h2>
+        <div class="table-responsive"><table class="table table-dark table-striped align-middle">
+            <thead><tr><th>Товар</th><th>Статус</th><th>Цена / остаток / порог</th><th>Варианты</th></tr></thead>
+            <tbody>
+            <tr th:each="product : ${products}" th:classappend="${product.outOfStock} ? 'table-danger' : (${product.lowStock} ? 'table-warning' : '')">
+                <td><b th:text="${product.name}">Товар</b><div class="small text-white-50" th:text="${'ID ' + product.id}"></div></td>
+                <td><span class="badge bg-secondary" th:text="${product.publicationStatus.displayName}">Статус</span><div class="small mt-1" th:if="${product.publishAt}" th:text="${product.publishAt}"></div></td>
+                <td>
+                    <form th:action="@{/admin/inventory/product/{id}(id=${product.id})}" method="post" class="d-flex flex-wrap gap-2">
+                        <input type="number" step="0.01" min="0" name="price" th:value="${product.price}" class="form-control form-control-sm bg-dark text-white" style="width:120px" title="Цена" required>
+                        <input type="number" min="0" name="stockQuantity" th:value="${product.stockQuantity}" class="form-control form-control-sm bg-dark text-white" style="width:90px" title="Остаток" required>
+                        <input type="number" min="0" name="lowStockThreshold" th:value="${product.lowStockThreshold}" class="form-control form-control-sm bg-dark text-white" style="width:90px" title="Порог" required>
+                        <input name="reason" class="form-control form-control-sm bg-dark text-white" style="width:180px" placeholder="Причина изменения">
+                        <button class="btn btn-sm btn-warning">Сохранить</button>
+                    </form>
+                </td>
+                <td>
+                    <div th:if="${product.variants.empty}" class="text-white-50">—</div>
+                    <form th:each="variant : ${product.variants}" th:action="@{/admin/inventory/variant/{id}(id=${variant.id})}" method="post" class="d-flex gap-2 mb-2">
+                        <span class="small align-self-center" style="min-width:100px" th:text="${variant.value}">Вариант</span>
+                        <input type="number" min="0" name="stockQuantity" th:value="${variant.stockQuantity}" class="form-control form-control-sm bg-dark text-white" style="width:90px" required>
+                        <input name="reason" class="form-control form-control-sm bg-dark text-white" placeholder="Причина">
+                        <button class="btn btn-sm btn-outline-warning">Сохранить</button>
+                    </form>
+                </td>
+            </tr>
+            </tbody>
+        </table></div>
+    </section>
+
+    <section><h2 class="h4 mb-3">Журнал движений</h2>
+        <div class="table-responsive"><table class="table table-dark table-striped align-middle">
+            <thead><tr><th>Время</th><th>Товар</th><th>Тип</th><th>Было</th><th>Изменение</th><th>Стало</th><th>Причина / автор</th></tr></thead>
+            <tbody>
+            <tr th:each="movement : ${movements}">
+                <td class="small" th:text="${movement.createdAt}"></td>
+                <td><span th:text="${movement.product.name}"></span><div class="small text-info" th:if="${movement.productVariant}" th:text="${movement.productVariant.value}"></div></td>
+                <td th:text="${movement.movementType.displayName}"></td><td th:text="${movement.quantityBefore}"></td>
+                <td th:text="${movement.quantityDelta > 0 ? '+' + movement.quantityDelta : movement.quantityDelta}" th:classappend="${movement.quantityDelta > 0} ? 'text-success' : 'text-danger'"></td>
+                <td th:text="${movement.quantityAfter}"></td>
+                <td><span th:text="${movement.reason ?: '—'}"></span><div class="small text-white-50" th:text="${movement.actorUsername}"></div></td>
+            </tr>
+            <tr th:if="${movements.empty}"><td colspan="7" class="text-center text-white-50 py-4">Движений пока нет.</td></tr>
+            </tbody>
+        </table></div>
+        <nav th:if="${totalPages > 1}" class="d-flex gap-2"><a th:if="${currentPage > 0}" th:href="@{/admin/inventory(page=${currentPage - 1})}" class="btn btn-outline-light">Назад</a><span class="align-self-center" th:text="${currentPage + 1 + ' / ' + totalPages}"></span><a th:if="${currentPage < totalPages - 1}" th:href="@{/admin/inventory(page=${currentPage + 1})}" class="btn btn-outline-light">Вперёд</a></nav>
+    </section>
+</main>
+</body></html>

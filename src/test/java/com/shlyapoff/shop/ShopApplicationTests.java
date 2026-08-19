@@ -53,6 +53,26 @@ class ShopApplicationTests {
 	}
 
 	@Test
+	@WithMockUser(authorities = "ROLE_ADMIN")
+	void inventoryAdminPageRendersJournalAndCsvActions() throws Exception {
+		mockMvc.perform(get("/admin/inventory"))
+				.andExpect(status().isOk())
+				.andExpect(content().string(containsString("Журнал движений")))
+				.andExpect(content().string(containsString("Экспорт CSV")))
+				.andExpect(content().string(containsString("Мало товара")));
+	}
+
+	@Test
+	@WithMockUser(authorities = "ROLE_ADMIN")
+	void inventoryCsvExportUsesUtf8Template() throws Exception {
+		mockMvc.perform(get("/admin/inventory/export"))
+				.andExpect(status().isOk())
+				.andExpect(header().string("Content-Disposition", "attachment; filename=inventory.csv"))
+				.andExpect(content().contentType("text/csv;charset=UTF-8"))
+				.andExpect(content().string(containsString("product_id,name,description,price")));
+	}
+
+	@Test
 	void productCardQueriesExecuteForEveryFilterCombination() {
 		productService.findWithFilters(null, null, null, 0, 12);
 		productService.findWithFilters("vape", null, null, 0, 12);

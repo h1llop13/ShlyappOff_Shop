@@ -14,6 +14,9 @@ import org.springframework.data.domain.Page;
 
 import java.util.List;
 import java.util.Optional;
+import java.time.LocalDateTime;
+import com.shlyapoff.shop.model.PublicationStatus;
+import org.springframework.data.jpa.repository.Modifying;
 
 @Repository
 public interface ProductRepository extends JpaRepository<Product, Long> {
@@ -152,4 +155,17 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     @Query("SELECT p FROM Product p LEFT JOIN FETCH p.variants LEFT JOIN FETCH p.category LEFT JOIN FETCH p.brand WHERE p.id = :id")
     Optional<Product> findByIdWithVariants(@Param("id") Long id);
+
+    @Query("SELECT DISTINCT p FROM Product p LEFT JOIN FETCH p.variants LEFT JOIN FETCH p.category LEFT JOIN FETCH p.brand ORDER BY p.name")
+    List<Product> findAllForInventory();
+
+    @EntityGraph(attributePaths = {"category", "brand"})
+    Page<Product> findByCategory_Id(Long categoryId, Pageable pageable);
+
+    @Modifying
+    @Query("UPDATE Product p SET p.publicationStatus = :published, p.active = true " +
+            "WHERE p.publicationStatus = :scheduled AND p.publishAt <= :now")
+    int publishScheduled(@Param("now") LocalDateTime now,
+                         @Param("scheduled") PublicationStatus scheduled,
+                         @Param("published") PublicationStatus published);
 }

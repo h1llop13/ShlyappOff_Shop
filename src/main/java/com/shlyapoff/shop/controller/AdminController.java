@@ -9,6 +9,9 @@ import com.shlyapoff.shop.service.BrandService;
 import com.shlyapoff.shop.service.CategoryService;
 import com.shlyapoff.shop.service.ProductService;
 import com.shlyapoff.shop.service.ProductVariantService;
+import com.shlyapoff.shop.service.InventoryService;
+import com.shlyapoff.shop.model.InventoryMovementType;
+import com.shlyapoff.shop.model.PublicationStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
@@ -53,6 +56,7 @@ public class AdminController {
     private final BrandService brandService;
     private final ProductVariantService productVariantService;
     private final ProductVariantRepository productVariantRepository;
+    private final InventoryService inventoryService;
 
     @Value("${app.upload.dir}")
     private String uploadDir;
@@ -62,6 +66,9 @@ public class AdminController {
     public String adminPage(Model model) {
         model.addAttribute("categories", categoryService.findAll());
         model.addAttribute("productCounts", productService.activeProductCountsByCategory());
+        var inventory = inventoryService.findInventory();
+        model.addAttribute("lowStockCount", inventoryService.lowStockCount(inventory));
+        model.addAttribute("outOfStockCount", inventoryService.outOfStockCount(inventory));
         return "admin/catalog";
     }
 
@@ -92,6 +99,8 @@ public class AdminController {
 
         Product product = new Product();
         product.setCategory(category.get());
+        product.setPublicationStatus(PublicationStatus.DRAFT);
+        product.setActive(false);
         model.addAttribute("product", product);
         addProductFormData(model, category.get());
         return "admin/product-form";
@@ -107,6 +116,7 @@ public class AdminController {
             @RequestParam("imageFile") MultipartFile imageFile,
             @RequestParam(required = false) List<String> variantValues,
             @RequestParam(required = false) List<Integer> variantStockQuantities,
+            Authentication authentication,
             Model model,
             RedirectAttributes redirectAttributes) {
 
@@ -141,7 +151,9 @@ public class AdminController {
         }
 
         Product savedProduct = productService.save(product);
-        saveProductVariants(savedProduct.getId(), variantValues, variantStockQuantities);
+        inventoryService.record(savedProduct, null, InventoryMovementType.INITIAL_STOCK,
+                0, savedProduct.getStockQuantity(), "Создание товара", authentication.getName(), null, null);
+        saveProductVariants(savedProduct.getId(), variantValues, variantStockQuantities, authentication.getName());
         redirectAttributes.addFlashAttribute("successMessage", "Товар успешно добавлен!");
         return redirectToCategoryProducts(categoryId);
     }
@@ -203,7 +215,10 @@ public class AdminController {
         productToUpdate.setMaxPower(product.getMaxPower());
         productToUpdate.setPackageQuantity(product.getPackageQuantity());
         productToUpdate.setStockQuantity(product.getStockQuantity());
-        productToUpdate.setActive(true);
+        productToUpdate.setLowStockThreshold(product.getLowStockThreshold());
+        productToUpdate.setPublicationStatus(product.getPublicationStatus());
+        productToUpdate.setPublishAt(product.getPublishAt());
+        productService.applyPublicationState(productToUpdate);
 
         // Обновляем категорию и бренд
         brand.ifPresent(productToUpdate::setBrand);
@@ -216,6 +231,9 @@ public class AdminController {
         }
 
         productService.saveAdminEdit(productToUpdate, previousPrice, previousStock, authentication.getName());
+        inventoryService.record(productToUpdate, null, InventoryMovementType.MANUAL_ADJUSTMENT,
+                previousStock == null ? 0 : previousStock, productToUpdate.getStockQuantity(),
+                "Редактирование карточки товара", authentication.getName(), null, null);
         redirectAttributes.addFlashAttribute("successMessage", "Товар успешно обновлен!");
         return redirectToCategoryProducts(productToUpdate.getCategory().getId());
     }
@@ -448,7 +466,7 @@ public class AdminController {
             redirectAttributes.addFlashAttribute("errorMessage", "Остаток варианта не может быть отрицательным");
             return "redirect:/admin/product/" + id + "/variants";
         }
-        productVariantService.save(id, value, stockQuantity);
+        productVariantService.save(id, value, stockQuantity, "admin");
         redirectAttributes.addFlashAttribute("successMessage", "Вариант добавлен!");
         return "redirect:/admin/product/" + id + "/variants";
     }
@@ -491,7 +509,8 @@ public class AdminController {
         return product.getCategory().getVariantType();
     }
 
-    private void saveProductVariants(Long productId, List<String> variantValues, List<Integer> variantStockQuantities) {
+    private void saveProductVariants(Long productId, List<String> variantValues, List<Integer> variantStockQuantities,
+                                     String actorUsername) {
         if (variantValues == null) {
             return;
         }
@@ -502,7 +521,7 @@ public class AdminController {
                 Integer stockQuantity = variantStockQuantities != null && index < variantStockQuantities.size()
                         ? variantStockQuantities.get(index)
                         : 0;
-                productVariantService.save(productId, value.trim(), stockQuantity);
+                productVariantService.save(productId, value.trim(), stockQuantity, actorUsername);
             }
         }
     }
@@ -511,6 +530,7 @@ public class AdminController {
         model.addAttribute("category", category);
         model.addAttribute("brands", brandService.findAll());
         model.addAttribute("fields", ProductField.forCategory(category));
+        model.addAttribute("publicationStatuses", PublicationStatus.values());
     }
 
     private String redirectToCategoryProducts(Long categoryId) {
@@ -526,6 +546,12 @@ public class AdminController {
         }
         if (product.getStockQuantity() == null || product.getStockQuantity() < 0) {
             return "Остаток товара не может быть отрицательным";
+        }
+        if (product.getLowStockThreshold() == null || product.getLowStockThreshold() < 0) {
+            return "Порог низкого остатка не может быть отрицательным";
+        }
+        if (product.getPublicationStatus() == PublicationStatus.SCHEDULED && product.getPublishAt() == null) {
+            return "Для отложенной публикации укажите дату и время";
         }
         if (product.getCategory() == null || product.getBrand() == null) {
             return "Выберите существующие категорию и бренд";

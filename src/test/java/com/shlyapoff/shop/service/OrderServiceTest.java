@@ -73,6 +73,9 @@ class OrderServiceTest {
     @Mock
     private AdminAuditLogService adminAuditLogService;
 
+    @Mock
+    private InventoryService inventoryService;
+
     @InjectMocks
     private OrderService orderService;
 

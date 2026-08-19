@@ -12,6 +12,7 @@
         <div class="collapse navbar-collapse">
             <ul class="navbar-nav ms-auto">
                 <li class="nav-item"><a class="nav-link" href="/admin">Товары</a></li>
+                <li class="nav-item"><a class="nav-link" href="/admin/inventory">Склад</a></li>
                 <li class="nav-item"><a class="nav-link" href="/admin/dashboard">Дашборд</a></li>
                 <li class="nav-item"><a class="nav-link" href="/admin/loyalty">Лояльность</a></li>
                 <li class="nav-item"><a class="nav-link active" href="/admin/promotions">Акции</a></li>
@@ -41,7 +42,7 @@
                 <td th:text="${promotion.kind.displayName}">Подборка товаров</td>
                 <td class="small"><span th:text="${promotion.startsAt ?: 'сразу'}"></span><span> — </span><span th:text="${promotion.endsAt ?: 'без срока'}"></span></td>
                 <td th:text="${promotion.displayPriority}">0</td>
-                <td><span class="badge" th:classappend="${promotion.active} ? ' bg-success' : ' bg-secondary'" th:text="${promotion.active} ? 'Активна' : 'Черновик'"></span></td>
+                <td><span class="badge" th:classappend="${promotion.publicationStatus.name() == 'PUBLISHED'} ? ' bg-success' : ' bg-secondary'" th:text="${promotion.publicationStatus.displayName}"></span><div th:if="${promotion.publishAt}" class="small mt-1" th:text="${promotion.publishAt}"></div></td>
                 <td class="text-end"><a th:href="@{/admin/promotions/edit/{id}(id=${promotion.id})}" class="btn btn-sm btn-outline-light">Изменить</a>
                     <form th:action="@{/admin/promotions/delete/{id}(id=${promotion.id})}" method="post" class="d-inline"><button class="btn btn-sm btn-outline-danger" onclick="return confirm('Удалить акцию?')">Удалить</button></form></td>
             </tr>

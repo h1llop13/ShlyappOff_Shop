@@ -118,7 +118,7 @@ public class HomeController {
         // Используем новый метод, который сразу загружает варианты
         Optional<Product> product = productService.findByIdWithVariants(id);
 
-        if (product.isEmpty()) {
+        if (product.isEmpty() || !Boolean.TRUE.equals(product.get().getActive())) {
             return "redirect:/";
         }
 

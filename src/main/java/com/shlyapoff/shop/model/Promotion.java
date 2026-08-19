@@ -42,6 +42,13 @@ public class Promotion {
     @Column(name = "ends_at")
     private LocalDateTime endsAt;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "publication_status", nullable = false, length = 20)
+    private PublicationStatus publicationStatus = PublicationStatus.PUBLISHED;
+
+    @Column(name = "publish_at")
+    private LocalDateTime publishAt;
+
     @CreatedDate
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

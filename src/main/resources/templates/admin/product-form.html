@@ -78,6 +78,23 @@
             <input type="number" min="0" class="form-control bg-dark text-white" id="stockQuantity" name="stockQuantity" th:value="${product.stockQuantity}" required>
         </div>
 
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <label for="lowStockThreshold" class="form-label">Порог уведомления «мало товара»</label>
+                <input type="number" min="0" class="form-control bg-dark text-white" id="lowStockThreshold" name="lowStockThreshold" th:value="${product.lowStockThreshold}" required>
+            </div>
+            <div class="col-md-3">
+                <label for="publicationStatus" class="form-label">Публикация</label>
+                <select id="publicationStatus" name="publicationStatus" class="form-select bg-dark text-white">
+                    <option th:each="status : ${publicationStatuses}" th:value="${status}" th:text="${status.displayName}" th:selected="${status == product.publicationStatus}"></option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="publishAt" class="form-label">Опубликовать в</label>
+                <input id="publishAt" name="publishAt" type="datetime-local" class="form-control bg-dark text-white" th:value="${product.publishAt}">
+            </div>
+        </div>
+
         <section th:if="${product.id == null && category.variantType.name() != 'NONE'}" class="card bg-black mb-3">
             <div class="card-body">
                 <h2 class="h5 mb-3" th:text="${category.variantType.displayTitle}">Варианты</h2>

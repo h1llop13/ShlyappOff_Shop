@@ -9,6 +9,7 @@ import com.shlyapoff.shop.service.BrandService;
 import com.shlyapoff.shop.service.CategoryService;
 import com.shlyapoff.shop.service.ProductService;
 import com.shlyapoff.shop.service.ProductVariantService;
+import com.shlyapoff.shop.service.InventoryService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.PageImpl;
@@ -32,6 +33,7 @@ class AdminControllerTest {
     private ProductVariantRepository productVariantRepository;
     private CategoryService categoryService;
     private BrandService brandService;
+    private InventoryService inventoryService;
     private AdminController controller;
 
     @BeforeEach
@@ -41,10 +43,12 @@ class AdminControllerTest {
         productVariantRepository = mock(ProductVariantRepository.class);
         categoryService = mock(CategoryService.class);
         brandService = mock(BrandService.class);
+        inventoryService = mock(InventoryService.class);
         when(categoryService.findAll()).thenReturn(List.of());
         when(brandService.findAll()).thenReturn(List.of());
+        when(inventoryService.findInventory()).thenReturn(List.of());
         controller = new AdminController(productService, categoryService, brandService,
-                productVariantService, productVariantRepository);
+                productVariantService, productVariantRepository, inventoryService);
     }
 
     @Test
