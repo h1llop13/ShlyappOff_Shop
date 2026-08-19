@@ -167,6 +167,7 @@ TELEGRAM_BOT_TOKEN=xxxxxxxxxxxxxxxx
 TELEGRAM_ADMIN_CHAT_ID=123456789
 
 APP_BASE_URL=https://example.com
+APP_DELIVERY_FEE=0.00
 ```
 
 ---

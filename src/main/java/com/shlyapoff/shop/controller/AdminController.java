@@ -12,6 +12,7 @@ import com.shlyapoff.shop.service.ProductVariantService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
+import org.springframework.security.core.Authentication;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -33,6 +34,7 @@ import javax.imageio.ImageIO;
 import javax.imageio.ImageWriteParam;
 import javax.imageio.ImageWriter;
 import javax.imageio.stream.ImageOutputStream;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -164,6 +166,7 @@ public class AdminController {
             @RequestParam("category_id") Long categoryId,
             @RequestParam("brand_id") Long brandId,
             @RequestParam("imageFile") MultipartFile imageFile,
+            Authentication authentication,
             Model model,
             RedirectAttributes redirectAttributes) {
 
@@ -174,6 +177,8 @@ public class AdminController {
         }
 
         Product productToUpdate = existingProduct.get();
+        BigDecimal previousPrice = productToUpdate.getPrice();
+        Integer previousStock = productToUpdate.getStockQuantity();
 
         Optional<Brand> brand = brandService.findById(brandId);
         product.setCategory(productToUpdate.getCategory());
@@ -210,7 +215,7 @@ public class AdminController {
             productToUpdate.setImageThumbnailUrl(image.thumbnailUrl());
         }
 
-        productService.save(productToUpdate);
+        productService.saveAdminEdit(productToUpdate, previousPrice, previousStock, authentication.getName());
         redirectAttributes.addFlashAttribute("successMessage", "Товар успешно обновлен!");
         return redirectToCategoryProducts(productToUpdate.getCategory().getId());
     }
@@ -451,6 +456,7 @@ public class AdminController {
     @PostMapping("/product/variant/{variantId}/stock")
     public String updateVariantStock(@PathVariable Long variantId,
                                      @RequestParam Integer stockQuantity,
+                                     Authentication authentication,
                                      RedirectAttributes redirectAttributes) {
         Optional<ProductVariant> variantOpt = productVariantRepository.findByIdWithProduct(variantId);
         if (variantOpt.isPresent()) {
@@ -459,7 +465,7 @@ public class AdminController {
                 redirectAttributes.addFlashAttribute("errorMessage", "Остаток варианта не может быть отрицательным");
                 return "redirect:/admin/product/" + variant.getProduct().getId() + "/variants";
             }
-            productVariantService.updateStockQuantity(variantId, stockQuantity);
+            productVariantService.updateStockQuantity(variantId, stockQuantity, authentication.getName());
             redirectAttributes.addFlashAttribute("successMessage", "Наличие обновлено!");
             return "redirect:/admin/product/" + variant.getProduct().getId() + "/variants";
         }

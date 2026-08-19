@@ -43,6 +43,7 @@ services:
       UPLOAD_DIR: /app/uploads
       # Публичный домен приложения (нужен для ссылок и Telegram Mini App)
       APP_BASE_URL: ${APP_BASE_URL}
+      APP_DELIVERY_FEE: ${APP_DELIVERY_FEE:-0.00}
       # Переменные Telegram-бота
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       TELEGRAM_ADMIN_CHAT_ID: ${TELEGRAM_ADMIN_CHAT_ID}

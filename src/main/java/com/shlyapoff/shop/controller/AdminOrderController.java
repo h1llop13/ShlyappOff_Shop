@@ -3,6 +3,7 @@ package com.shlyapoff.shop.controller;
 import com.shlyapoff.shop.service.OrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
+import org.springframework.security.core.Authentication;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
@@ -29,9 +30,10 @@ public class AdminOrderController {
     @PostMapping("/{id}/status")
     public String updateStatus(@PathVariable Long id,
                                 @RequestParam String status,
+                                Authentication authentication,
                                 RedirectAttributes redirectAttributes) {
         try {
-            orderService.updateStatus(id, status);
+            orderService.updateStatus(id, status, authentication.getName());
             redirectAttributes.addFlashAttribute("successMessage", "Статус заказа обновлён!");
         } catch (IllegalArgumentException | IllegalStateException exception) {
             redirectAttributes.addFlashAttribute("errorMessage", exception.getMessage());

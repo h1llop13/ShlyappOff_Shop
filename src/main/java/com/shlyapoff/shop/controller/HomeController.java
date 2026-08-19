@@ -11,6 +11,7 @@ import com.shlyapoff.shop.service.BrandService;
 import com.shlyapoff.shop.service.CartService;
 import com.shlyapoff.shop.service.CategoryService;
 import com.shlyapoff.shop.service.ProductService;
+import com.shlyapoff.shop.service.PricingService;
 import com.shlyapoff.shop.service.TelegramCartSessionService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -39,21 +40,25 @@ public class HomeController {
     private final BrandService brandService;
     private final CartService cartService;
     private final TelegramCartSessionService telegramCartSessionService;
+    private final PricingService pricingService;
 
     @Autowired
     public HomeController(ProductService productService, CategoryService categoryService, BrandService brandService,
-                          CartService cartService, TelegramCartSessionService telegramCartSessionService) {
+                          CartService cartService, TelegramCartSessionService telegramCartSessionService,
+                          PricingService pricingService) {
         this.productService = productService;
         this.categoryService = categoryService;
         this.brandService = brandService;
         this.cartService = cartService;
         this.telegramCartSessionService = telegramCartSessionService;
+        this.pricingService = pricingService;
     }
 
     /** Совместимость с существующими изолированными тестами контроллера. */
     public HomeController(ProductService productService, CategoryService categoryService, BrandService brandService,
                           CartService cartService) {
-        this(productService, categoryService, brandService, cartService, new TelegramCartSessionService());
+        this(productService, categoryService, brandService, cartService,
+                new TelegramCartSessionService(), new PricingService(BigDecimal.ZERO));
     }
 
     @GetMapping("/")
@@ -190,10 +195,7 @@ public class HomeController {
             Cart cart = cartOpt.get();
             model.addAttribute("cart", cart);
 
-            double total = cart.getItems().stream()
-                    .mapToDouble(item -> item.getProduct().getPrice().doubleValue() * item.getQuantity())
-                    .sum();
-            model.addAttribute("total", total);
+            model.addAttribute("total", pricingService.cartSubtotal(cart));
         } else {
             model.addAttribute("cart", null);
         }

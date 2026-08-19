@@ -15,30 +15,73 @@ import com.shlyapoff.shop.service.OrderService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@Testcontainers(disabledWithoutDocker = true)
 @SpringBootTest(properties = {
-        "spring.datasource.url=jdbc:h2:mem:order-flow;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1",
-        "spring.datasource.username=sa",
-        "spring.datasource.password=",
-        "spring.datasource.driver-class-name=org.h2.Driver",
         "telegram.enabled=false",
         "telegram.bot-token=test-token",
         "telegram.admin-chat-id=1",
         "app.notifications.fixed-delay-ms=3600000",
-        "app.orders.reservation-cleanup-ms=3600000"
+        "app.orders.reservation-cleanup-ms=3600000",
+        "app.pricing.delivery-fee=300.00"
 })
 class OrderCheckoutIntegrationTest {
+
+    @Container
+    static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:16-alpine")
+            .withDatabaseName("shop_test")
+            .withUsername("shop_test")
+            .withPassword("shop_test");
+
+    @DynamicPropertySource
+    static void postgresProperties(DynamicPropertyRegistry registry) {
+        registry.add("spring.datasource.url", postgres::getJdbcUrl);
+        registry.add("spring.datasource.username", postgres::getUsername);
+        registry.add("spring.datasource.password", postgres::getPassword);
+        registry.add("spring.datasource.driver-class-name", postgres::getDriverClassName);
+    }
+
     @Autowired private CartService cartService;
     @Autowired private OrderService orderService;
     @Autowired private ProductRepository productRepository;
     @Autowired private CustomerRepository customerRepository;
     @Autowired private OrderRepository orderRepository;
     @Autowired private PromoCodeRepository promoCodeRepository;
+    @Autowired private JdbcTemplate jdbcTemplate;
+
+    @Test
+    void liquibaseAppliesTheCompleteSchemaOnPostgresql() {
+        Integer changeSetCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM databasechangelog WHERE filename = ?",
+                Integer.class,
+                "db/changelog/changes/023-add-pricing-and-admin-audit.sql"
+        );
+        String deliveryColumnType = jdbcTemplate.queryForObject(
+                "SELECT data_type FROM information_schema.columns " +
+                        "WHERE table_schema = 'public' AND table_name = 'orders' AND column_name = 'delivery_amount'",
+                String.class
+        );
+        Integer auditTableCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM information_schema.tables " +
+                        "WHERE table_schema = 'public' AND table_name = 'admin_audit_log'",
+                Integer.class
+        );
+
+        assertThat(changeSetCount).isEqualTo(1);
+        assertThat(deliveryColumnType).isEqualTo("numeric");
+        assertThat(auditTableCount).isEqualTo(1);
+    }
 
     @Test
     void cartToCompletedOrderReservesStockAndUpdatesBonuses() {
@@ -141,6 +184,39 @@ class OrderCheckoutIntegrationTest {
         assertThat(processing.getStatus()).isEqualTo(OrderStatus.PROCESSING);
         assertThat(processing.getInventoryReserved()).isTrue();
         assertThat(productRepository.findById(product.getId()).orElseThrow().getStockQuantity()).isEqualTo(3);
+    }
+
+    @Test
+    void deliveryPromoAndBonusesUseOneBigDecimalCheckoutCalculation() {
+        Product product = product("Единый расчёт", "99.99", 10);
+        Customer customer = new Customer();
+        customer.setTelegramUserId(88005550001L);
+        customer.setTelegramUsername("pricing_customer");
+        customer.setTotalSpent(BigDecimal.ZERO);
+        customer.setDiscountPercent(0);
+        customer.setBonusBalance(new BigDecimal("25.00"));
+        customer = customerRepository.saveAndFlush(customer);
+
+        PromoCode promoCode = new PromoCode();
+        promoCode.setCode("TENPERCENT");
+        promoCode.setDiscountType(DiscountType.PERCENTAGE);
+        promoCode.setDiscountValue(new BigDecimal("10.00"));
+        promoCode.setMinOrderAmount(BigDecimal.ZERO);
+        promoCode.setActive(true);
+        promoCode = promoCodeRepository.saveAndFlush(promoCode);
+
+        cartService.addToCart("pricing-session", customer.getTelegramUserId(), product.getId(), null, 3);
+        Order order = orderService.createOrderFromCart(
+                "pricing-session", "Покупатель", "+79990000004", "Доставка", null,
+                customer.getTelegramUserId(), customer.getTelegramUsername(), true, promoCode.getCode());
+
+        assertThat(order.getSubtotalAmount()).isEqualByComparingTo("299.97");
+        assertThat(order.getPromoDiscountAmount()).isEqualByComparingTo("30.00");
+        assertThat(order.getBonusesSpent()).isEqualByComparingTo("25.00");
+        assertThat(order.getDeliveryAmount()).isEqualByComparingTo("300.00");
+        assertThat(order.getTotalAmount()).isEqualByComparingTo("544.97");
+        assertThat(orderRepository.findById(order.getId()).orElseThrow().getTotalAmount())
+                .isEqualByComparingTo("544.97");
     }
 
     private Product product(String name, String price, int stock) {

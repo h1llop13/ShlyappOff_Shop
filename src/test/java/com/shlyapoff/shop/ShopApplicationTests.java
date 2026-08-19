@@ -94,6 +94,9 @@ class ShopApplicationTests {
 		mockMvc.perform(get("/admin/dashboard"))
 				.andExpect(status().isOk())
 				.andExpect(content().string(containsString("Продажи")));
+		mockMvc.perform(get("/admin/audit"))
+				.andExpect(status().isOk())
+				.andExpect(content().string(containsString("Журнал действий администраторов")));
 		mockMvc.perform(get("/admin/promo-codes"))
 				.andExpect(status().isOk())
 				.andExpect(content().string(containsString("Промокоды")));

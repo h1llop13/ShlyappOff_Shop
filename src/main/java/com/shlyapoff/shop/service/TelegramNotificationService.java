@@ -75,6 +75,10 @@ public class TelegramNotificationService {
                     .append(itemTotal).append(" ₽\n");
         }
 
+        if (order.getDeliveryAmount() != null && order.getDeliveryAmount().signum() > 0) {
+            sb.append("\n🚚 <b>Доставка:</b> ").append(order.getDeliveryAmount()).append(" ₽\n");
+        }
+
         if (order.getBonusesSpent() != null && order.getBonusesSpent().signum() > 0) {
             sb.append("\n🎁 <b>Списано бонусов:</b> ").append(order.getBonusesSpent()).append(" ₽")
                     .append(" (было ").append(order.getSubtotalAmount()).append(" ₽)\n");

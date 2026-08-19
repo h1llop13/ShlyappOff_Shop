@@ -5,6 +5,7 @@ import lombok.Data;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -38,4 +39,12 @@ public class CartItem {
     @CreatedDate
     @Column(updatable = false)
     private LocalDateTime createdAt;
+
+    @Transient
+    public BigDecimal getTotalPrice() {
+        if (product == null || product.getPrice() == null || quantity == null) {
+            return BigDecimal.ZERO.setScale(2);
+        }
+        return com.shlyapoff.shop.money.Money.of(product.getPrice()).multiply(quantity).amount();
+    }
 }

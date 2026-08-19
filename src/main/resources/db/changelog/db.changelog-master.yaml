@@ -43,3 +43,5 @@ databaseChangeLog:
       file: db/changelog/changes/021-remove-favorites.sql
   - include:
       file: db/changelog/changes/022-add-reservations-and-promo-codes.sql
+  - include:
+      file: db/changelog/changes/023-add-pricing-and-admin-audit.sql

@@ -60,6 +60,9 @@ public class Order {
     @Column(name = "promo_discount_amount", nullable = false)
     private BigDecimal promoDiscountAmount = BigDecimal.ZERO;
 
+    @Column(name = "delivery_amount", nullable = false)
+    private BigDecimal deliveryAmount = BigDecimal.ZERO;
+
     /**
      * Итоговая сумма к оплате (subtotalAmount за вычетом скидки).
      */
