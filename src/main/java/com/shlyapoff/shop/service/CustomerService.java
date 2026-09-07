@@ -19,6 +19,7 @@ public class CustomerService {
 
     private final CustomerRepository customerRepository;
     private final LoyaltyTierService loyaltyTierService;
+    private final PricingService pricingService;
 
     public Optional<Customer> findByTelegramUserId(Long telegramUserId) {
         return customerRepository.findByTelegramUserId(telegramUserId);
@@ -81,8 +82,7 @@ public class CustomerService {
         BigDecimal newTotal = customer.getTotalSpent().add(orderSubtotal);
         customer.setTotalSpent(newTotal);
         int bonusPercent = loyaltyTierService.resolveBonusPercent(newTotal);
-        BigDecimal earned = orderTotal.multiply(BigDecimal.valueOf(bonusPercent))
-                .movePointLeft(2).setScale(2, java.math.RoundingMode.HALF_UP);
+        BigDecimal earned = pricingService.percentageOf(orderTotal, BigDecimal.valueOf(bonusPercent));
         customer.setBonusBalance(customer.getBonusBalance().add(earned));
         return customerRepository.save(customer);
     }

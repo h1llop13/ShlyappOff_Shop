@@ -1,6 +1,7 @@
 package com.shlyapoff.shop.service;
 
 import com.shlyapoff.shop.model.Cart;
+import com.shlyapoff.shop.model.AdminAuditAction;
 import com.shlyapoff.shop.model.CartItem;
 import com.shlyapoff.shop.model.Customer;
 import com.shlyapoff.shop.model.Order;
@@ -18,6 +19,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
@@ -59,6 +61,12 @@ class OrderServiceTest {
 
     @Mock
     private PromoCodeService promoCodeService;
+
+    @Spy
+    private PricingService pricingService = new PricingService(BigDecimal.ZERO);
+
+    @Mock
+    private AdminAuditLogService adminAuditLogService;
 
     @InjectMocks
     private OrderService orderService;
@@ -224,10 +232,13 @@ class OrderServiceTest {
 
         when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
 
-        orderService.updateStatus(1L, "COMPLETED");
+        orderService.updateStatus(1L, "COMPLETED", "order-admin");
 
         assertThat(order.getStatus()).isEqualTo(OrderStatus.COMPLETED);
         verify(orderRepository).save(order);
+        verify(adminAuditLogService).recordChange(
+                "order-admin", AdminAuditAction.ORDER_STATUS_CHANGED,
+                "ORDER", 1L, "status", OrderStatus.NEW, OrderStatus.COMPLETED);
     }
 
     @Test

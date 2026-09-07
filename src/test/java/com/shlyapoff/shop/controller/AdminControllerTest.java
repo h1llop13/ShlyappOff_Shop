@@ -12,6 +12,7 @@ import com.shlyapoff.shop.service.ProductVariantService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.security.core.Authentication;
 import org.springframework.ui.ExtendedModelMap;
 import org.springframework.web.servlet.mvc.support.RedirectAttributesModelMap;
 
@@ -107,10 +108,13 @@ class AdminControllerTest {
         variant.setProduct(product);
         when(productVariantRepository.findByIdWithProduct(3L)).thenReturn(Optional.of(variant));
 
-        String view = controller.updateVariantStock(3L, 5, new RedirectAttributesModelMap());
+        Authentication authentication = mock(Authentication.class);
+        when(authentication.getName()).thenReturn("admin");
+
+        String view = controller.updateVariantStock(3L, 5, authentication, new RedirectAttributesModelMap());
 
         assertThat(view).isEqualTo("redirect:/admin/product/7/variants");
-        verify(productVariantService).updateStockQuantity(3L, 5);
+        verify(productVariantService).updateStockQuantity(3L, 5, "admin");
     }
 
     @Test

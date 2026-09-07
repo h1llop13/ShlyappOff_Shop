@@ -46,6 +46,7 @@
         <thead>
         <tr>
             <th>#</th>
+            <th>Доставка</th>
             <th>Клиент</th>
             <th>Телефон</th>
             <th>Сумма</th>
@@ -59,6 +60,7 @@
         <tbody>
         <tr th:each="order : ${orders}">
             <td th:text="${order.id}">1</td>
+            <td th:text="${order.deliveryAmount} + ' ₽'">0 ₽</td>
             <td th:text="${order.customerName}">Имя</td>
             <td th:text="${order.phone}">Телефон</td>
             <td th:text="${order.subtotalAmount} + ' ₽'">0 ₽</td>

@@ -53,6 +53,8 @@ app:
   orders:
     reservation-minutes: ${APP_ORDER_RESERVATION_MINUTES:15}
     reservation-cleanup-ms: ${APP_ORDER_RESERVATION_CLEANUP_MS:60000}
+  pricing:
+    delivery-fee: ${APP_DELIVERY_FEE:0.00}
 
 management:
   endpoints:

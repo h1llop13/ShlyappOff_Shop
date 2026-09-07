@@ -3,6 +3,7 @@ package com.shlyapoff.shop.controller;
 import com.shlyapoff.shop.dto.OrderDto;
 import com.shlyapoff.shop.model.Order;
 import com.shlyapoff.shop.service.OrderService;
+import com.shlyapoff.shop.service.PricingService;
 import com.shlyapoff.shop.service.TelegramWebAppAuthService;
 import com.shlyapoff.shop.service.TelegramCartSessionService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -27,18 +28,22 @@ public class CheckoutController {
     private final OrderService orderService;
     private final TelegramWebAppAuthService telegramWebAppAuthService;
     private final TelegramCartSessionService telegramCartSessionService;
+    private final PricingService pricingService;
 
     @Autowired
     public CheckoutController(OrderService orderService, TelegramWebAppAuthService telegramWebAppAuthService,
-                              TelegramCartSessionService telegramCartSessionService) {
+                              TelegramCartSessionService telegramCartSessionService,
+                              PricingService pricingService) {
         this.orderService = orderService;
         this.telegramWebAppAuthService = telegramWebAppAuthService;
         this.telegramCartSessionService = telegramCartSessionService;
+        this.pricingService = pricingService;
     }
 
     /** Совместимость с существующими изолированными тестами контроллера. */
     public CheckoutController(OrderService orderService, TelegramWebAppAuthService telegramWebAppAuthService) {
-        this(orderService, telegramWebAppAuthService, new TelegramCartSessionService());
+        this(orderService, telegramWebAppAuthService, new TelegramCartSessionService(),
+                new PricingService(BigDecimal.ZERO));
     }
 
     /**
@@ -143,10 +148,9 @@ public class CheckoutController {
 
         var cart = cartOpt.get();
         model.addAttribute("cart", cart);
-        double total = cart.getItems().stream()
-                .mapToDouble(item -> item.getProduct().getPrice().doubleValue() * item.getQuantity())
-                .sum();
-        model.addAttribute("total", total);
+        PricingService.PricingBreakdown pricing = pricingService.calculate(
+                cart, BigDecimal.ZERO, BigDecimal.ZERO, false, null);
+        model.addAttribute("pricing", pricing);
         return true;
     }
 }

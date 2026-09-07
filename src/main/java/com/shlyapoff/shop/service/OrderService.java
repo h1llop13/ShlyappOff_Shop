@@ -1,6 +1,7 @@
 package com.shlyapoff.shop.service;
 
 import com.shlyapoff.shop.model.Cart;
+import com.shlyapoff.shop.model.AdminAuditAction;
 import com.shlyapoff.shop.model.Customer;
 import com.shlyapoff.shop.model.Order;
 import com.shlyapoff.shop.model.OrderItem;
@@ -20,7 +21,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -37,6 +37,8 @@ public class OrderService {
     private final ProductRepository productRepository;
     private final ProductVariantRepository productVariantRepository;
     private final PromoCodeService promoCodeService;
+    private final PricingService pricingService;
+    private final AdminAuditLogService auditLogService;
 
     @Value("${app.orders.reservation-minutes:15}")
     private long reservationMinutes;
@@ -76,7 +78,6 @@ public class OrderService {
         order.setTelegramUserId(telegramUserId);
         order.setTelegramUsername(telegramUsername);
 
-        BigDecimal subtotal = BigDecimal.ZERO;
         for (var cartItem : cart.getItems()) {
             cartService.validateCartItemAvailability(cartItem);
 
@@ -88,11 +89,9 @@ public class OrderService {
                 orderItem.setVariantValue(cartItem.getProductVariant().getValue());
             }
             orderItem.setQuantity(cartItem.getQuantity());
-            orderItem.setPriceAtMoment(cartItem.getProduct().getPrice());
+            orderItem.setPriceAtMoment(pricingService.normalize(cartItem.getProduct().getPrice()));
 
             order.addItem(orderItem);
-
-            subtotal = subtotal.add(cartItem.getProduct().getPrice().multiply(BigDecimal.valueOf(cartItem.getQuantity())));
         }
 
         Customer customer = null;
@@ -100,23 +99,28 @@ public class OrderService {
             customer = customerService.findOrCreateByTelegram(telegramUserId, telegramUsername, null, null);
         }
 
+        BigDecimal subtotal = pricingService.cartSubtotal(cart);
         PromoCodeService.AppliedPromoCode appliedPromoCode = promoCodeService.apply(promoCode, subtotal, customer);
-        BigDecimal afterPromo = subtotal.subtract(appliedPromoCode.discountAmount());
-        BigDecimal bonusesSpent = BigDecimal.ZERO;
-        if (customer != null && useBonuses) {
-            BigDecimal balance = customer.getBonusBalance() == null ? BigDecimal.ZERO : customer.getBonusBalance();
-            bonusesSpent = balance.min(afterPromo);
-            customerService.spendBonuses(customer, bonusesSpent);
+        BigDecimal bonusBalance = customer == null ? BigDecimal.ZERO : customer.getBonusBalance();
+        PricingService.PricingBreakdown pricing = pricingService.calculate(
+                cart,
+                appliedPromoCode.discountAmount(),
+                bonusBalance,
+                customer != null && useBonuses,
+                deliveryType
+        );
+        if (customer != null) {
+            customerService.spendBonuses(customer, pricing.bonusesSpent());
         }
-        BigDecimal total = afterPromo.subtract(bonusesSpent).setScale(2, RoundingMode.HALF_UP);
 
-        order.setSubtotalAmount(subtotal);
+        order.setSubtotalAmount(pricing.subtotalAmount());
         order.setDiscountPercent(0);
         order.setPromoCodeEntity(appliedPromoCode.promoCode());
         order.setPromoCode(appliedPromoCode.promoCode() == null ? null : appliedPromoCode.promoCode().getCode());
-        order.setPromoDiscountAmount(appliedPromoCode.discountAmount());
-        order.setBonusesSpent(bonusesSpent);
-        order.setTotalAmount(total);
+        order.setPromoDiscountAmount(pricing.promoDiscountAmount());
+        order.setBonusesSpent(pricing.bonusesSpent());
+        order.setDeliveryAmount(pricing.deliveryAmount());
+        order.setTotalAmount(pricing.totalAmount());
         order.setCustomer(customer);
         reserveInventory(order);
         order.setInventoryReserved(true);
@@ -166,6 +170,11 @@ public class OrderService {
 
     @Transactional
     public void updateStatus(Long orderId, String status) {
+        updateStatus(orderId, status, "system");
+    }
+
+    @Transactional
+    public void updateStatus(Long orderId, String status, String actorUsername) {
         OrderStatus nextStatus = OrderStatus.from(status);
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Заказ не найден"));
@@ -201,6 +210,8 @@ public class OrderService {
 
         order.setStatus(nextStatus);
         orderRepository.save(order);
+        auditLogService.recordChange(actorUsername, AdminAuditAction.ORDER_STATUS_CHANGED,
+                "ORDER", order.getId(), "status", previousStatus, nextStatus);
 
         // Начисляем сумму заказа и бонусы только при первом завершении заказа.
         // ТОЛЬКО в момент, когда админ впервые подтверждает заказ статусом COMPLETED.
@@ -209,8 +220,10 @@ public class OrderService {
         if (nextStatus == OrderStatus.COMPLETED && order.getCustomer() != null) {
             BigDecimal balanceBefore = order.getCustomer().getBonusBalance() == null
                     ? BigDecimal.ZERO : order.getCustomer().getBonusBalance();
+            BigDecimal bonusAccrualBase = pricingService.bonusAccrualBase(
+                    order.getTotalAmount(), order.getDeliveryAmount());
             Customer customer = customerService.registerOrderAndAccrueBonuses(
-                    order.getCustomer(), order.getSubtotalAmount(), order.getTotalAmount());
+                    order.getCustomer(), order.getSubtotalAmount(), bonusAccrualBase);
             if (customer != null && customer.getBonusBalance() != null) {
                 order.setBonusesEarned(customer.getBonusBalance().subtract(balanceBefore));
             }

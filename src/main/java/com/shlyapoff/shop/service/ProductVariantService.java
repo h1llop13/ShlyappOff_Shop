@@ -1,6 +1,7 @@
 package com.shlyapoff.shop.service;
 
 import com.shlyapoff.shop.model.Product;
+import com.shlyapoff.shop.model.AdminAuditAction;
 import com.shlyapoff.shop.model.ProductVariant;
 import com.shlyapoff.shop.repository.ProductRepository;
 import com.shlyapoff.shop.repository.ProductVariantRepository;
@@ -18,6 +19,7 @@ public class ProductVariantService {
 
     private final ProductVariantRepository productVariantRepository;
     private final ProductRepository productRepository;
+    private final AdminAuditLogService auditLogService;
 
     public List<ProductVariant> findByProductId(Long productId) {
         return productVariantRepository.findByProductId(productId);
@@ -50,9 +52,18 @@ public class ProductVariantService {
     @Transactional
     @CacheEvict(cacheNames = "latestProducts", allEntries = true)
     public void updateStockQuantity(Long id, Integer stockQuantity) {
+        updateStockQuantity(id, stockQuantity, "system");
+    }
+
+    @Transactional
+    @CacheEvict(cacheNames = "latestProducts", allEntries = true)
+    public void updateStockQuantity(Long id, Integer stockQuantity, String actorUsername) {
         ProductVariant variant = productVariantRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Вариант не найден"));
+        Integer previousStock = variant.getStockQuantity();
         variant.setStockQuantity(stockQuantity);
         productVariantRepository.save(variant);
+        auditLogService.recordChange(actorUsername, AdminAuditAction.VARIANT_STOCK_CHANGED,
+                "PRODUCT_VARIANT", variant.getId(), "stockQuantity", previousStock, variant.getStockQuantity());
     }
 }
