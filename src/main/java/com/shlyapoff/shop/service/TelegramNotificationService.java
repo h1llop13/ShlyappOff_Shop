@@ -4,6 +4,7 @@ import com.shlyapoff.shop.bot.ShlyapOffBot;
 import com.shlyapoff.shop.model.Admin;
 import com.shlyapoff.shop.model.Order;
 import com.shlyapoff.shop.model.OrderItem;
+import com.shlyapoff.shop.model.OrderStatus;
 import com.shlyapoff.shop.repository.AdminRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -44,6 +45,33 @@ public class TelegramNotificationService {
         }
     }
 
+    public void notifyCustomerAboutStatusChange(Order order, OrderStatus previousStatus,
+                                                OrderStatus targetStatus, String cancellationReason) {
+        if (order.getTelegramUserId() == null || targetStatus == null) {
+            return;
+        }
+
+        StringBuilder message = new StringBuilder();
+        message.append("📦 <b>Заказ #").append(order.getId()).append("</b>\n");
+        if (previousStatus == null) {
+            message.append("Статус: <b>").append(targetStatus.getDisplayName()).append("</b>");
+        } else {
+            message.append("Статус изменён: <b>")
+                    .append(previousStatus.getDisplayName())
+                    .append(" → ")
+                    .append(targetStatus.getDisplayName())
+                    .append("</b>");
+        }
+        if (targetStatus == OrderStatus.CANCELLED && cancellationReason != null && !cancellationReason.isBlank()) {
+            message.append("\nПричина: ").append(escapeHtml(cancellationReason));
+        }
+
+        boolean delivered = bot.sendMessage(order.getTelegramUserId(), message.toString());
+        if (!delivered) {
+            throw new IllegalStateException("Telegram временно недоступен");
+        }
+    }
+
     private String formatOrderMessage(Order order) {
         StringBuilder sb = new StringBuilder();
         sb.append("🛍 <b>НОВЫЙ ЗАКАЗ #").append(order.getId()).append("</b>\n\n");
@@ -75,6 +103,10 @@ public class TelegramNotificationService {
                     .append(itemTotal).append(" ₽\n");
         }
 
+        if (order.getDeliveryAmount() != null && order.getDeliveryAmount().signum() > 0) {
+            sb.append("\n🚚 <b>Доставка:</b> ").append(order.getDeliveryAmount()).append(" ₽\n");
+        }
+
         if (order.getBonusesSpent() != null && order.getBonusesSpent().signum() > 0) {
             sb.append("\n🎁 <b>Списано бонусов:</b> ").append(order.getBonusesSpent()).append(" ₽")
                     .append(" (было ").append(order.getSubtotalAmount()).append(" ₽)\n");
@@ -88,5 +120,11 @@ public class TelegramNotificationService {
         }
 
         return sb.toString();
+    }
+
+    private String escapeHtml(String value) {
+        return value.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;");
     }
 }

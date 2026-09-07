@@ -1,13 +1,16 @@
 package com.shlyapoff.shop.service;
 
 import com.shlyapoff.shop.model.Cart;
+import com.shlyapoff.shop.model.AdminAuditAction;
 import com.shlyapoff.shop.model.Customer;
 import com.shlyapoff.shop.model.Order;
 import com.shlyapoff.shop.model.OrderItem;
 import com.shlyapoff.shop.model.OrderStatus;
+import com.shlyapoff.shop.model.OrderStatusHistory;
 import com.shlyapoff.shop.model.Product;
 import com.shlyapoff.shop.model.ProductVariant;
 import com.shlyapoff.shop.repository.OrderRepository;
+import com.shlyapoff.shop.repository.OrderStatusHistoryRepository;
 import com.shlyapoff.shop.repository.ProductRepository;
 import com.shlyapoff.shop.repository.ProductVariantRepository;
 import lombok.RequiredArgsConstructor;
@@ -20,23 +23,28 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Comparator;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
 
 @Service
 @RequiredArgsConstructor
 public class OrderService {
 
     private final OrderRepository orderRepository;
+    private final OrderStatusHistoryRepository orderStatusHistoryRepository;
     private final CartService cartService;
     private final NotificationOutboxService notificationOutboxService;
     private final CustomerService customerService;
     private final ProductRepository productRepository;
     private final ProductVariantRepository productVariantRepository;
     private final PromoCodeService promoCodeService;
+    private final PricingService pricingService;
+    private final AdminAuditLogService auditLogService;
 
     @Value("${app.orders.reservation-minutes:15}")
     private long reservationMinutes;
@@ -76,7 +84,6 @@ public class OrderService {
         order.setTelegramUserId(telegramUserId);
         order.setTelegramUsername(telegramUsername);
 
-        BigDecimal subtotal = BigDecimal.ZERO;
         for (var cartItem : cart.getItems()) {
             cartService.validateCartItemAvailability(cartItem);
 
@@ -88,11 +95,9 @@ public class OrderService {
                 orderItem.setVariantValue(cartItem.getProductVariant().getValue());
             }
             orderItem.setQuantity(cartItem.getQuantity());
-            orderItem.setPriceAtMoment(cartItem.getProduct().getPrice());
+            orderItem.setPriceAtMoment(pricingService.normalize(cartItem.getProduct().getPrice()));
 
             order.addItem(orderItem);
-
-            subtotal = subtotal.add(cartItem.getProduct().getPrice().multiply(BigDecimal.valueOf(cartItem.getQuantity())));
         }
 
         Customer customer = null;
@@ -100,34 +105,42 @@ public class OrderService {
             customer = customerService.findOrCreateByTelegram(telegramUserId, telegramUsername, null, null);
         }
 
+        BigDecimal subtotal = pricingService.cartSubtotal(cart);
         PromoCodeService.AppliedPromoCode appliedPromoCode = promoCodeService.apply(promoCode, subtotal, customer);
-        BigDecimal afterPromo = subtotal.subtract(appliedPromoCode.discountAmount());
-        BigDecimal bonusesSpent = BigDecimal.ZERO;
-        if (customer != null && useBonuses) {
-            BigDecimal balance = customer.getBonusBalance() == null ? BigDecimal.ZERO : customer.getBonusBalance();
-            bonusesSpent = balance.min(afterPromo);
-            customerService.spendBonuses(customer, bonusesSpent);
+        BigDecimal bonusBalance = customer == null ? BigDecimal.ZERO : customer.getBonusBalance();
+        PricingService.PricingBreakdown pricing = pricingService.calculate(
+                cart,
+                appliedPromoCode.discountAmount(),
+                bonusBalance,
+                customer != null && useBonuses,
+                deliveryType
+        );
+        if (customer != null) {
+            customerService.spendBonuses(customer, pricing.bonusesSpent());
         }
-        BigDecimal total = afterPromo.subtract(bonusesSpent).setScale(2, RoundingMode.HALF_UP);
 
-        order.setSubtotalAmount(subtotal);
+        order.setSubtotalAmount(pricing.subtotalAmount());
         order.setDiscountPercent(0);
         order.setPromoCodeEntity(appliedPromoCode.promoCode());
         order.setPromoCode(appliedPromoCode.promoCode() == null ? null : appliedPromoCode.promoCode().getCode());
-        order.setPromoDiscountAmount(appliedPromoCode.discountAmount());
-        order.setBonusesSpent(bonusesSpent);
-        order.setTotalAmount(total);
+        order.setPromoDiscountAmount(pricing.promoDiscountAmount());
+        order.setBonusesSpent(pricing.bonusesSpent());
+        order.setDeliveryAmount(pricing.deliveryAmount());
+        order.setTotalAmount(pricing.totalAmount());
         order.setCustomer(customer);
         reserveInventory(order);
         order.setInventoryReserved(true);
         order.setReservationExpiresAt(LocalDateTime.now().plusMinutes(Math.max(1, reservationMinutes)));
 
         Order savedOrder = orderRepository.save(order);
+        recordStatusChange(savedOrder, null, OrderStatus.NEW, creationActor(savedOrder), null);
 
         if (telegramUserId == null) cartService.clearCart(sessionId);
         else cartService.clearCart(sessionId, telegramUserId);
 
         notificationOutboxService.enqueueNewOrderNotification(savedOrder);
+        notificationOutboxService.enqueueCustomerStatusNotification(
+                savedOrder, null, OrderStatus.NEW, null);
 
         return savedOrder;
     }
@@ -147,17 +160,30 @@ public class OrderService {
         );
     }
 
+    @Transactional(readOnly = true)
     public List<Order> findByCustomerId(Long customerId) {
         return orderRepository.findByCustomerIdWithItems(customerId);
     }
 
-    /**
-     * История заказов для профиля клиента: показываем только заказы,
-     * подтверждённые администратором (статус COMPLETED). Пока заказ не подтверждён,
-     * он не должен быть виден клиенту в истории и не должен влиять на скидку.
-     */
-    public List<Order> findConfirmedByCustomerId(Long customerId) {
-        return orderRepository.findByCustomerIdAndStatusWithItems(customerId, OrderStatus.COMPLETED);
+    @Transactional(readOnly = true)
+    public Map<Long, List<OrderStatusHistory>> findStatusHistory(List<Order> orders) {
+        if (orders.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, List<OrderStatusHistory>> result = new LinkedHashMap<>();
+        orderStatusHistoryRepository.findByOrderIdInOrderByChangedAtAscIdAsc(
+                        orders.stream().map(Order::getId).toList())
+                .forEach(entry -> result.computeIfAbsent(entry.getOrder().getId(), ignored -> new java.util.ArrayList<>())
+                        .add(entry));
+        return result;
+    }
+
+    public List<OrderStatus> allowedNextStatuses(Order order) {
+        return Arrays.stream(OrderStatus.values())
+                .filter(status -> status != OrderStatus.CANCELLED)
+                .filter(order.getStatus()::canTransitionTo)
+                .filter(status -> isFulfilmentStatusAllowed(order, status))
+                .toList();
     }
 
     public Optional<Order> findById(Long id) {
@@ -166,8 +192,18 @@ public class OrderService {
 
     @Transactional
     public void updateStatus(Long orderId, String status) {
+        updateStatus(orderId, status, null, "system");
+    }
+
+    @Transactional
+    public void updateStatus(Long orderId, String status, String actorUsername) {
+        updateStatus(orderId, status, null, actorUsername);
+    }
+
+    @Transactional
+    public void updateStatus(Long orderId, String status, String cancellationReason, String actorUsername) {
         OrderStatus nextStatus = OrderStatus.from(status);
-        Order order = orderRepository.findById(orderId)
+        Order order = orderRepository.findByIdForUpdate(orderId)
                 .orElseThrow(() -> new RuntimeException("Заказ не найден"));
 
         OrderStatus previousStatus = order.getStatus();
@@ -180,12 +216,20 @@ public class OrderService {
             );
         }
 
-        if ((nextStatus == OrderStatus.PROCESSING || nextStatus == OrderStatus.COMPLETED)
+        if (!isFulfilmentStatusAllowed(order, nextStatus)) {
+            throw new IllegalStateException(nextStatus == OrderStatus.READY
+                    ? "Статус READY доступен только для самовывоза"
+                    : "Статус SHIPPED доступен только для доставки");
+        }
+
+        String normalizedCancellationReason = normalizeCancellationReason(nextStatus, cancellationReason);
+
+        if (!nextStatus.isTerminal() && nextStatus != OrderStatus.NEW
                 && !Boolean.TRUE.equals(order.getInventoryReserved())) {
             reserveInventory(order);
             order.setInventoryReserved(true);
         }
-        if (nextStatus == OrderStatus.PROCESSING) {
+        if (nextStatus == OrderStatus.CONFIRMED) {
             order.setReservationExpiresAt(null);
         }
         if (nextStatus == OrderStatus.COMPLETED) {
@@ -199,18 +243,32 @@ public class OrderService {
             order.setReservationExpiresAt(null);
         }
 
+        if (nextStatus == OrderStatus.CANCELLED) {
+            order.setCancelledAt(LocalDateTime.now());
+            order.setCancellationReason(normalizedCancellationReason);
+        }
+
         order.setStatus(nextStatus);
         orderRepository.save(order);
+        recordStatusChange(order, previousStatus, nextStatus, actorUsername, normalizedCancellationReason);
+        auditLogService.recordChange(actorUsername, AdminAuditAction.ORDER_STATUS_CHANGED,
+                "ORDER", order.getId(), "status", previousStatus, nextStatus);
+        if (nextStatus == OrderStatus.CANCELLED) {
+            auditLogService.recordChange(actorUsername, AdminAuditAction.ORDER_STATUS_CHANGED,
+                    "ORDER", order.getId(), "cancellation_reason", null, normalizedCancellationReason);
+        }
 
         // Начисляем сумму заказа и бонусы только при первом завершении заказа.
-        // ТОЛЬКО в момент, когда админ впервые подтверждает заказ статусом COMPLETED.
+        // ТОЛЬКО в момент, когда админ впервые завершает заказ статусом COMPLETED.
         // Проверка previousStatus защищает от повторного начисления,
         // если админ случайно ещё раз сохранит тот же статус.
         if (nextStatus == OrderStatus.COMPLETED && order.getCustomer() != null) {
             BigDecimal balanceBefore = order.getCustomer().getBonusBalance() == null
                     ? BigDecimal.ZERO : order.getCustomer().getBonusBalance();
+            BigDecimal bonusAccrualBase = pricingService.bonusAccrualBase(
+                    order.getTotalAmount(), order.getDeliveryAmount());
             Customer customer = customerService.registerOrderAndAccrueBonuses(
-                    order.getCustomer(), order.getSubtotalAmount(), order.getTotalAmount());
+                    order.getCustomer(), order.getSubtotalAmount(), bonusAccrualBase);
             if (customer != null && customer.getBonusBalance() != null) {
                 order.setBonusesEarned(customer.getBonusBalance().subtract(balanceBefore));
             }
@@ -219,6 +277,8 @@ public class OrderService {
                 && order.getBonusesSpent() != null && order.getBonusesSpent().signum() > 0) {
             customerService.restoreBonuses(order.getCustomer(), order.getBonusesSpent());
         }
+        notificationOutboxService.enqueueCustomerStatusNotification(
+                order, previousStatus, nextStatus, normalizedCancellationReason);
     }
 
     @Scheduled(fixedDelayString = "${app.orders.reservation-cleanup-ms:60000}")
@@ -286,6 +346,59 @@ public class OrderService {
             throw new IllegalStateException("Недостаточно остатка для варианта: " + variant.getValue());
         }
         variant.setStockQuantity(currentQuantity - quantity);
+    }
+
+    private void recordStatusChange(Order order, OrderStatus previousStatus, OrderStatus newStatus,
+                                    String actor, String cancellationReason) {
+        OrderStatusHistory history = new OrderStatusHistory();
+        history.setOrder(order);
+        history.setPreviousStatus(previousStatus);
+        history.setNewStatus(newStatus);
+        history.setChangedAt(LocalDateTime.now());
+        history.setChangedBy(normalizeActor(actor));
+        history.setCancellationReason(cancellationReason);
+        orderStatusHistoryRepository.save(history);
+    }
+
+    private String creationActor(Order order) {
+        if (order.getTelegramUsername() != null && !order.getTelegramUsername().isBlank()) {
+            return "customer:@" + order.getTelegramUsername();
+        }
+        if (order.getTelegramUserId() != null) {
+            return "customer:" + order.getTelegramUserId();
+        }
+        return "customer:web";
+    }
+
+    private String normalizeActor(String actor) {
+        return actor == null || actor.isBlank() ? "system" : actor.trim();
+    }
+
+    private String normalizeCancellationReason(OrderStatus nextStatus, String cancellationReason) {
+        if (nextStatus != OrderStatus.CANCELLED) {
+            return null;
+        }
+        if (cancellationReason == null || cancellationReason.isBlank()) {
+            throw new IllegalArgumentException("Укажите причину отмены заказа");
+        }
+        String normalized = cancellationReason.trim();
+        if (normalized.length() > 500) {
+            throw new IllegalArgumentException("Причина отмены не должна превышать 500 символов");
+        }
+        return normalized;
+    }
+
+    private boolean isFulfilmentStatusAllowed(Order order, OrderStatus status) {
+        boolean delivery = order.getDeliveryType() != null
+                && (order.getDeliveryType().equalsIgnoreCase("Доставка")
+                || order.getDeliveryType().equalsIgnoreCase("DELIVERY"));
+        if (status == OrderStatus.READY) {
+            return !delivery;
+        }
+        if (status == OrderStatus.SHIPPED) {
+            return delivery;
+        }
+        return true;
     }
 
     public Optional<Cart> getCartForCheckout(String sessionId, Long telegramUserId) {

@@ -12,7 +12,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
@@ -23,6 +22,7 @@ import java.util.Optional;
 public class PromoCodeService {
     private final PromoCodeRepository promoCodeRepository;
     private final OrderRepository orderRepository;
+    private final PricingService pricingService;
 
     public record AppliedPromoCode(PromoCode promoCode, BigDecimal discountAmount) {
         public static AppliedPromoCode none() {
@@ -73,11 +73,12 @@ public class PromoCodeService {
             }
         }
 
-        BigDecimal discount = promoCode.getDiscountType() == DiscountType.PERCENTAGE
-                ? subtotal.multiply(promoCode.getDiscountValue()).movePointLeft(2)
-                : promoCode.getDiscountValue();
-        if (promoCode.getMaxDiscountAmount() != null) discount = discount.min(promoCode.getMaxDiscountAmount());
-        discount = discount.min(subtotal).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal discount = pricingService.promoDiscount(
+                subtotal,
+                promoCode.getDiscountType(),
+                promoCode.getDiscountValue(),
+                promoCode.getMaxDiscountAmount()
+        );
         return new AppliedPromoCode(promoCode, discount);
     }
 

@@ -2,11 +2,20 @@ package com.shlyapoff.shop;
 
 import org.junit.jupiter.api.Test;
 import com.shlyapoff.shop.service.ProductService;
+import com.shlyapoff.shop.model.Order;
+import com.shlyapoff.shop.model.OrderStatus;
+import com.shlyapoff.shop.model.OrderStatusHistory;
+import com.shlyapoff.shop.repository.OrderRepository;
+import com.shlyapoff.shop.repository.OrderStatusHistoryRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
@@ -32,6 +41,12 @@ class ShopApplicationTests {
 
 	@Autowired
 	private MockMvc mockMvc;
+
+	@Autowired
+	private OrderRepository orderRepository;
+
+	@Autowired
+	private OrderStatusHistoryRepository orderStatusHistoryRepository;
 
 	@Test
 	void contextLoads() {
@@ -94,9 +109,37 @@ class ShopApplicationTests {
 		mockMvc.perform(get("/admin/dashboard"))
 				.andExpect(status().isOk())
 				.andExpect(content().string(containsString("Продажи")));
+		mockMvc.perform(get("/admin/audit"))
+				.andExpect(status().isOk())
+				.andExpect(content().string(containsString("Журнал действий администраторов")));
 		mockMvc.perform(get("/admin/promo-codes"))
 				.andExpect(status().isOk())
 				.andExpect(content().string(containsString("Промокоды")));
+	}
+
+	@Test
+	@Transactional
+	@WithMockUser(username = "admin", authorities = "ROLE_ADMIN")
+	void adminOrdersRenderLifecycleActionsAndHistory() throws Exception {
+		Order order = new Order();
+		order.setCustomerName("Тестовый покупатель");
+		order.setDeliveryType("Самовывоз");
+		order.setSubtotalAmount(new BigDecimal("100.00"));
+		order.setTotalAmount(new BigDecimal("100.00"));
+		order = orderRepository.saveAndFlush(order);
+
+		OrderStatusHistory history = new OrderStatusHistory();
+		history.setOrder(order);
+		history.setNewStatus(OrderStatus.NEW);
+		history.setChangedAt(LocalDateTime.now());
+		history.setChangedBy("customer:web");
+		orderStatusHistoryRepository.saveAndFlush(history);
+
+		mockMvc.perform(get("/admin/orders"))
+				.andExpect(status().isOk())
+				.andExpect(content().string(containsString("Переходов: 1")))
+				.andExpect(content().string(containsString("Подтверждён")))
+				.andExpect(content().string(containsString("Причина отмены")));
 	}
 
 	@Test

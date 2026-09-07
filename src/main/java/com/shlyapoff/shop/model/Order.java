@@ -2,6 +2,8 @@ package com.shlyapoff.shop.model;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.ToString;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
@@ -60,6 +62,9 @@ public class Order {
     @Column(name = "promo_discount_amount", nullable = false)
     private BigDecimal promoDiscountAmount = BigDecimal.ZERO;
 
+    @Column(name = "delivery_amount", nullable = false)
+    private BigDecimal deliveryAmount = BigDecimal.ZERO;
+
     /**
      * Итоговая сумма к оплате (subtotalAmount за вычетом скидки).
      */
@@ -75,6 +80,12 @@ public class Order {
 
     @Column(name = "completed_at")
     private LocalDateTime completedAt;
+
+    @Column(name = "cancelled_at")
+    private LocalDateTime cancelledAt;
+
+    @Column(name = "cancellation_reason", length = 500)
+    private String cancellationReason;
 
     @Column(name = "inventory_reserved", nullable = false)
     private Boolean inventoryReserved = false;
@@ -98,7 +109,15 @@ public class Order {
     private LocalDateTime createdAt;
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     private List<OrderItem> items = new ArrayList<>();
+
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("changedAt ASC, id ASC")
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private List<OrderStatusHistory> statusHistory = new ArrayList<>();
 
 
     public void addItem(OrderItem item) {

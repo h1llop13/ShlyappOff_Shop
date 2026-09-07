@@ -3,6 +3,7 @@ package com.shlyapoff.shop.service;
 import com.shlyapoff.shop.bot.ShlyapOffBot;
 import com.shlyapoff.shop.model.Order;
 import com.shlyapoff.shop.model.OrderItem;
+import com.shlyapoff.shop.model.OrderStatus;
 import com.shlyapoff.shop.repository.AdminRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
@@ -33,7 +34,7 @@ class TelegramNotificationServiceTest {
     private static final Long ADMIN_CHAT_ID = 999L;
 
     private TelegramNotificationService buildService() {
-        when(bot.sendMessageWithButton(anyLong(), anyString(), anyString(), anyString())).thenReturn(true);
+        lenient().when(bot.sendMessageWithButton(anyLong(), anyString(), anyString(), anyString())).thenReturn(true);
         TelegramNotificationService service = new TelegramNotificationService(bot, adminRepository);
         ReflectionTestUtils.setField(service, "superAdminChatId", ADMIN_CHAT_ID);
         ReflectionTestUtils.setField(service, "baseUrl", "https://test-shop.ru");
@@ -110,6 +111,25 @@ class TelegramNotificationServiceTest {
         verify(bot).sendMessageWithButton(eq(ADMIN_CHAT_ID), messageCaptor.capture(), anyString(), anyString());
 
         assertThat(messageCaptor.getValue()).doesNotContain("Telegram");
+    }
+
+    @Test
+    @DisplayName("уведомляет покупателя о переходе и безопасно экранирует причину отмены")
+    void notifiesCustomerAboutCancellation() {
+        Order order = buildOrder();
+        order.setTelegramUserId(12345L);
+        when(bot.sendMessage(eq(12345L), anyString())).thenReturn(true);
+        TelegramNotificationService service = buildService();
+
+        service.notifyCustomerAboutStatusChange(
+                order, OrderStatus.PAID, OrderStatus.CANCELLED, "Нет товара <редкий & важный>");
+
+        ArgumentCaptor<String> messageCaptor = ArgumentCaptor.forClass(String.class);
+        verify(bot).sendMessage(eq(12345L), messageCaptor.capture());
+        assertThat(messageCaptor.getValue())
+                .contains("Оплачен → Отменён")
+                .contains("Нет товара &lt;редкий &amp; важный&gt;")
+                .doesNotContain("<редкий & важный>");
     }
 
     @Test

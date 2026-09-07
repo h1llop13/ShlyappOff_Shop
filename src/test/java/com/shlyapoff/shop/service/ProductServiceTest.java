@@ -1,6 +1,7 @@
 package com.shlyapoff.shop.service;
 
 import com.shlyapoff.shop.dto.ProductCard;
+import com.shlyapoff.shop.model.AdminAuditAction;
 import com.shlyapoff.shop.model.Product;
 import com.shlyapoff.shop.repository.ProductRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -17,6 +18,7 @@ import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.Optional;
+import java.math.BigDecimal;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
@@ -30,6 +32,9 @@ class ProductServiceTest {
 
     @Mock
     private ProductRepository productRepository;
+
+    @Mock
+    private AdminAuditLogService adminAuditLogService;
 
     @InjectMocks
     private ProductService productService;
@@ -116,6 +121,24 @@ class ProductServiceTest {
         assertThat(result.getContent()).containsExactly(product);
         verify(productRepository).findCardsByNameAndCategoryAndBrand(
                 eq("vape"), eq(2L), eq(3L), any(Pageable.class));
+    }
+
+    @Test
+    void adminEditAuditsPriceAndStockWithTheAuthenticatedUsername() {
+        Product product = new Product();
+        product.setId(5L);
+        product.setPrice(new BigDecimal("120.00"));
+        product.setStockQuantity(9);
+        when(productRepository.save(product)).thenReturn(product);
+
+        productService.saveAdminEdit(product, new BigDecimal("100.00"), 4, "catalog-admin");
+
+        verify(adminAuditLogService).recordChange(
+                "catalog-admin", AdminAuditAction.PRODUCT_PRICE_CHANGED,
+                "PRODUCT", 5L, "price", new BigDecimal("100.00"), new BigDecimal("120.00"));
+        verify(adminAuditLogService).recordChange(
+                "catalog-admin", AdminAuditAction.PRODUCT_STOCK_CHANGED,
+                "PRODUCT", 5L, "stockQuantity", 4, 9);
     }
 
     @Test

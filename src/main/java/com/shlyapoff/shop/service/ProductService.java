@@ -1,6 +1,7 @@
 package com.shlyapoff.shop.service;
 
 import com.shlyapoff.shop.dto.ProductCard;
+import com.shlyapoff.shop.model.AdminAuditAction;
 import com.shlyapoff.shop.model.Product;
 import com.shlyapoff.shop.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
@@ -12,6 +13,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -22,6 +24,7 @@ import java.util.stream.Collectors;
 public class ProductService {
 
     private final ProductRepository productRepository;
+    private final AdminAuditLogService auditLogService;
 
     @Transactional(readOnly = true)
     @Cacheable("latestProducts")
@@ -61,6 +64,18 @@ public class ProductService {
     @CacheEvict(cacheNames = "latestProducts", allEntries = true)
     public Product save(Product product) {
         return productRepository.save(product);
+    }
+
+    @Transactional
+    @CacheEvict(cacheNames = "latestProducts", allEntries = true)
+    public Product saveAdminEdit(Product product, BigDecimal previousPrice, Integer previousStock,
+                                 String actorUsername) {
+        Product saved = productRepository.save(product);
+        auditLogService.recordChange(actorUsername, AdminAuditAction.PRODUCT_PRICE_CHANGED,
+                "PRODUCT", saved.getId(), "price", previousPrice, saved.getPrice());
+        auditLogService.recordChange(actorUsername, AdminAuditAction.PRODUCT_STOCK_CHANGED,
+                "PRODUCT", saved.getId(), "stockQuantity", previousStock, saved.getStockQuantity());
+        return saved;
     }
 
     @Transactional

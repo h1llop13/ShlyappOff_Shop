@@ -24,6 +24,7 @@ public class ProfileDto {
             BigDecimal bonusesSpent,
             BigDecimal bonusesEarned,
             BigDecimal totalAmount,
+            String cancellationReason,
             List<OrderItemView> items
     ) {}
 

@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <title>Админка - Заказы</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .order-actions { min-width: 260px; }
+        .status-history { min-width: 300px; max-width: 420px; }
+        .status-history li { margin-bottom: .45rem; }
+    </style>
 </head>
 <body class="bg-dark text-white">
 
@@ -38,14 +43,15 @@
     <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
 
     <p class="text-white-50">
-        Пока заказ не переведён в статус «Выполнен», он не отображается в истории заказов клиента
-        и не учитывается в программе лояльности.
+        Статусы меняются только по жизненному циклу заказа. Для самовывоза после сборки доступен
+        «Готов к выдаче», для доставки — «Передан в доставку». Бонусы начисляются после выполнения.
     </p>
 
     <table class="table table-dark table-striped align-middle">
         <thead>
         <tr>
             <th>#</th>
+            <th>Доставка</th>
             <th>Клиент</th>
             <th>Телефон</th>
             <th>Сумма</th>
@@ -54,11 +60,13 @@
             <th>Итого</th>
             <th>Статус</th>
             <th>Действие</th>
+            <th>История</th>
         </tr>
         </thead>
         <tbody>
         <tr th:each="order : ${orders}">
             <td th:text="${order.id}">1</td>
+            <td th:text="${order.deliveryAmount} + ' ₽'">0 ₽</td>
             <td th:text="${order.customerName}">Имя</td>
             <td th:text="${order.phone}">Телефон</td>
             <td th:text="${order.subtotalAmount} + ' ₽'">0 ₽</td>
@@ -68,29 +76,62 @@
             <td>
                 <span th:switch="${order.status.name()}">
                     <span th:case="'NEW'" class="badge bg-secondary">Новый</span>
-                    <span th:case="'PROCESSING'" class="badge bg-warning text-dark">В обработке</span>
+                    <span th:case="'CONFIRMED'" class="badge bg-info text-dark">Подтверждён</span>
+                    <span th:case="'PAYMENT_PENDING'" class="badge bg-warning text-dark">Ожидает оплаты</span>
+                    <span th:case="'PAID'" class="badge bg-primary">Оплачен</span>
+                    <span th:case="'ASSEMBLING'" class="badge bg-primary">Собирается</span>
+                    <span th:case="'READY'" class="badge bg-success">Готов к выдаче</span>
+                    <span th:case="'SHIPPED'" class="badge bg-success">Передан в доставку</span>
                     <span th:case="'COMPLETED'" class="badge bg-success">Выполнен</span>
                     <span th:case="'CANCELLED'" class="badge bg-danger">Отменён</span>
                     <span th:case="*" th:text="${order.status}" class="badge bg-secondary"></span>
                 </span>
+                <div th:if="${order.cancellationReason != null}" class="small text-danger mt-2"
+                     th:text="${'Причина: ' + order.cancellationReason}"></div>
             </td>
-            <td>
-                <form th:if="${order.status.name() == 'NEW' or order.status.name() == 'PROCESSING'}"
-                      th:action="@{/admin/orders/{id}/status(id=${order.id})}" method="post" class="d-flex gap-2">
+            <td class="order-actions">
+                <form th:if="${!nextStatusesByOrderId[order.id].isEmpty()}"
+                      th:action="@{/admin/orders/{id}/status(id=${order.id})}" method="post" class="d-flex gap-2 mb-2">
                     <select name="status" required class="form-select form-select-sm bg-dark text-white border-secondary">
                         <option value="" selected disabled>Новый статус</option>
-                        <option th:if="${order.status.name() == 'NEW'}" value="PROCESSING">В обработке</option>
-                        <option value="COMPLETED">Выполнен</option>
-                        <option value="CANCELLED">Отменён</option>
+                        <option th:each="nextStatus : ${nextStatusesByOrderId[order.id]}"
+                                th:value="${nextStatus.name()}" th:text="${nextStatus.displayName}"></option>
                     </select>
-                    <button type="submit" class="btn btn-sm btn-outline-light">Сохранить</button>
+                    <button type="submit" class="btn btn-sm btn-outline-light">Перевести</button>
                 </form>
-                <span th:if="${order.status.name() == 'COMPLETED' or order.status.name() == 'CANCELLED'}"
-                      class="text-white-50">Изменение недоступно</span>
+                <form th:if="${!order.status.terminal}"
+                      th:action="@{/admin/orders/{id}/status(id=${order.id})}" method="post" class="d-flex gap-2">
+                    <input type="hidden" name="status" value="CANCELLED">
+                    <input type="text" name="cancellationReason" required maxlength="500"
+                           class="form-control form-control-sm bg-dark text-white border-danger"
+                           placeholder="Причина отмены">
+                    <button type="submit" class="btn btn-sm btn-outline-danger">Отменить</button>
+                </form>
+                <span th:if="${order.status.terminal}" class="text-white-50">Изменение недоступно</span>
+            </td>
+            <td class="status-history">
+                <details>
+                    <summary th:text="${'Переходов: ' + historyByOrderId.getOrDefault(order.id, T(java.util.List).of()).size()}"></summary>
+                    <ol class="small mt-2 mb-0 ps-3">
+                        <li th:each="entry : ${historyByOrderId.getOrDefault(order.id, T(java.util.List).of())}">
+                            <div>
+                                <span th:if="${entry.previousStatus != null}"
+                                      th:text="${entry.previousStatus.displayName + ' → '}"></span>
+                                <strong th:text="${entry.newStatus.displayName}"></strong>
+                            </div>
+                            <div class="text-white-50">
+                                <span th:text="${#temporals.format(entry.changedAt, 'dd.MM.yyyy HH:mm:ss')}"></span>
+                                · <span th:text="${entry.changedBy}"></span>
+                            </div>
+                            <div th:if="${entry.cancellationReason != null}" class="text-danger"
+                                 th:text="${'Причина: ' + entry.cancellationReason}"></div>
+                        </li>
+                    </ol>
+                </details>
             </td>
         </tr>
         <tr th:if="${orders.isEmpty()}">
-            <td colspan="9" class="text-white-50">Заказов пока нет.</td>
+            <td colspan="11" class="text-white-50">Заказов пока нет.</td>
         </tr>
         </tbody>
     </table>

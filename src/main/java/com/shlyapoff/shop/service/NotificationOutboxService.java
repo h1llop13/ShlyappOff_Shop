@@ -1,7 +1,9 @@
 package com.shlyapoff.shop.service;
 
 import com.shlyapoff.shop.model.NotificationOutbox;
+import com.shlyapoff.shop.model.NotificationType;
 import com.shlyapoff.shop.model.Order;
+import com.shlyapoff.shop.model.OrderStatus;
 import com.shlyapoff.shop.repository.NotificationOutboxRepository;
 import com.shlyapoff.shop.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
@@ -24,10 +26,19 @@ public class NotificationOutboxService {
 
     @Transactional
     public void enqueueNewOrderNotification(Order order) {
-        NotificationOutbox outbox = new NotificationOutbox();
-        outbox.setOrder(order);
-        outbox.setCreatedAt(LocalDateTime.now());
-        outbox.setNextAttemptAt(LocalDateTime.now());
+        notificationOutboxRepository.save(newOutbox(order, NotificationType.ADMIN_NEW_ORDER));
+    }
+
+    @Transactional
+    public void enqueueCustomerStatusNotification(Order order, OrderStatus previousStatus,
+                                                  OrderStatus targetStatus, String cancellationReason) {
+        if (order.getTelegramUserId() == null) {
+            return;
+        }
+        NotificationOutbox outbox = newOutbox(order, NotificationType.CUSTOMER_STATUS_CHANGED);
+        outbox.setPreviousStatus(previousStatus);
+        outbox.setTargetStatus(targetStatus);
+        outbox.setCancellationReason(cancellationReason);
         notificationOutboxRepository.save(outbox);
     }
 
@@ -49,7 +60,11 @@ public class NotificationOutboxService {
         try {
             Order order = orderRepository.findByIdWithItems(outbox.getOrder().getId())
                     .orElseThrow(() -> new IllegalStateException("Заказ для уведомления не найден"));
-            telegramNotificationService.notifyAdminAboutNewOrder(order);
+            switch (outbox.getNotificationType()) {
+                case ADMIN_NEW_ORDER -> telegramNotificationService.notifyAdminAboutNewOrder(order);
+                case CUSTOMER_STATUS_CHANGED -> telegramNotificationService.notifyCustomerAboutStatusChange(
+                        order, outbox.getPreviousStatus(), outbox.getTargetStatus(), outbox.getCancellationReason());
+            }
             outbox.setSentAt(LocalDateTime.now());
             outbox.setLastError(null);
         } catch (RuntimeException exception) {
@@ -60,5 +75,15 @@ public class NotificationOutboxService {
             outbox.setNextAttemptAt(LocalDateTime.now().plusSeconds(delaySeconds));
             log.warn("Не удалось отправить уведомление по outbox {}. Повтор через {} сек.", outboxId, delaySeconds, exception);
         }
+    }
+
+    private NotificationOutbox newOutbox(Order order, NotificationType notificationType) {
+        LocalDateTime now = LocalDateTime.now();
+        NotificationOutbox outbox = new NotificationOutbox();
+        outbox.setOrder(order);
+        outbox.setNotificationType(notificationType);
+        outbox.setCreatedAt(now);
+        outbox.setNextAttemptAt(now);
+        return outbox;
     }
 }

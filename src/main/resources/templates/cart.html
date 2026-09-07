@@ -193,7 +193,7 @@
                 <input th:if="${item.productVariant != null}" type="hidden" name="variantId" th:value="${item.productVariant.id}">
                 <button type="submit" class="delete-btn" title="Удалить">×</button>
             </form>
-            <div class="item-total" th:text="${item.product.price.doubleValue() * item.quantity} + ' ₽'">0 ₽</div>
+            <div class="item-total" th:text="${item.totalPrice} + ' ₽'">0 ₽</div>
         </div>
     </div>
 </div>
