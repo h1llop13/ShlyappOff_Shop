@@ -6,241 +6,157 @@
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat-square&logo=docker)](https://www.docker.com/)
 [![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
 
-**ShlyapOff Shop** — интернет-магазин с интеграцией **Telegram Mini App** и административной панелью для управления каталогом, заказами и клиентами.
 
-Backend разработан на **Spring Boot** с использованием **PostgreSQL**, **Spring Security**, **Liquibase** и **Docker Compose**. Проект постепенно развивается и служит площадкой для изучения современных подходов к backend-разработке.
+**ShlyapOff Shop** - полнофункциональный e-commerce сервис с клиентским интерфейсом, интеграцией **Telegram Mini App** и отдельной административной панелью. 
 
----
+Проект построен на **Java 21 + Spring Boot**, использует PostgreSQL, Spring Security, Liquibase, Docker Compose и Telegram Bot API.
 
-## Содержание
-
-- [Возможности](#-возможности)
-- [Технологический стек](#-технологический-стек)
-- [Архитектура](#-архитектура)
-- [Структура проекта](#-структура-проекта)
-- [Быстрый запуск](#-быстрый-запуск)
-- [Roadmap](#-roadmap)
-- [Контакты](#-контакты)
-- [Лицензия](#-лицензия)
+Это не демонстрационный CRUD: приложение содержит полноценную работу с каталогом, корзиной, заказами, остатками товаров, протоколами, акциями, программой лояльности и Telegram-интеграцией. 
 
 ---
 
-# Возможности
+## Возможности
 
-## Клиентская часть (Telegram Mini App)
+### Магазин
 
-- Просмотр каталога товаров
-- Поиск и фильтрация товаров
-- Корзина покупок
-- Оформление заказов
-- История заказов
-- Программа лояльности и персональные скидки
-- Автоматическая авторизация через Telegram
+- каталог товаров;
+- категории и бренды;
+- варианты товаров;
+- характеристики товаров;
+- поиск и фильтрация;
+- корзина;
+- сохранение корзины;
+- контроль остатков;
+- оформление заказа;
+- история заказов;
+- профиль покупателя.
 
----
+### Скидки и лояльность
 
-## Административная панель
+- уровни программы лояльности;
+- персональные скидки;
+- промокод;
+- акции;
+- автоматический расчет итоговой стоимости заказа.
 
-- Управление товарами
-- Управление категориями
-- Управление брендами
-- Управление вариантами товаров
-- Загрузка изображений
-- Управление заказами
-- Управление клиентами
-- Telegram-уведомления о новых заказах
+### Telegram Mini App
 
----
+- запуск магазина внутри Telegram;
+- автоматическая идентификация пользователя;
+- серверная проверка Telegram initData;
+- связь Telegram-пользователя с профилем магазина;
+- уведомления администратора о новых заказах.
 
-## Безопасность
+### Административная панель
 
-- Авторизация администраторов через Spring Security
-- Хранение паролей в виде BCrypt-хешей
-- Серверная проверка Telegram `initData`
-- Защита административной панели
-- Валидация входящих данных
-- Контроль изменения статусов заказов
+Администратор может управлять:
 
----
+- товарами;
+- категориями;
+- брендами;
+- вариантами товаров;
+- остатками;
+- заказами;
+- клиентами;
+- программой лояльности;
+- протоколами;
+- акциями.
 
-# Технологический стек
-
-| Категория | Технологии |
-|-----------|------------|
-| **Backend** | Java 21, Spring Boot 4 |
-| **Database** | PostgreSQL 16 |
-| **ORM** | Spring Data JPA (Hibernate) |
-| **Security** | Spring Security |
-| **Database migrations** | Liquibase |
-| **Frontend** | Thymeleaf, Bootstrap 5 |
-| **Integrations** | Telegram Bot API, Telegram Mini App |
-| **Build Tool** | Maven |
-| **Containerization** | Docker, Docker Compose |
-| **Testing** | JUnit 5, Mockito |
+Также доступна dashboard-страница со статистикой продаж.
 
 ---
 
-# Архитектура
+## Backend
 
-Проект построен по классической слоистой архитектуре.
+Приложение построено по классической многослойной архитектуре:
 
-```
-Controller
-    │
-    ▼
- Service
-    │
-    ▼
-Repository
-    │
-    ▼
-PostgreSQL
-```
+HTTP / Telegram
+       │
+       ▼
+ Controllers
+       │
+       ▼
+   Services
+       │
+       ▼
+ Repositories
+       │
+       ▼
+ PostgreSQL
 
-### Используемые подходы
 
-- Layered Architecture
-- MVC
-- Dependency Injection
-- Repository Pattern
-- DTO
-- Bean Validation
-- Exception Handling
-- Database Migrations
-- Environment-based Configuration
+ Основная бизнес-логика находится в service-слое, доступ к данным реализован через Spring Data JPA.
 
----
+ Дата изменения структуры базы данных используются версионированные Liquibase migrations.
 
-# Структура проекта
+ ---
 
-```
-src
-└── main
-    ├── java
-    │   └── ...
-    │       ├── config
-    │       ├── controller
-    │       ├── dto
-    │       ├── entity
-    │       ├── exception
-    │       ├── repository
-    │       ├── security
-    │       ├── service
-    │       ├── util
-    │       └── validation
-    │
-    └── resources
-        ├── db
-        ├── static
-        ├── templates
-        └── application.yml
-```
+ ## Технологический стек
 
----
+ | Область | Технологии |
+ |---|---|
+ | Language | Java 21 |
+ | Framework | Spring Boot 4.0.7 |
+ | Web | Spring MVC |
+ | ORM | Spring Data JPA | Hibernate |
+ | Database | PostgreSQL 16 |
+ | Migrations | Liquibase |
+ | Security | Spring Security, BCrypt |
+ | Templates | Thymeleaf |
+ | Frontend | HTML, CSS, JavaScript |
+ | Telegram | Telegram Bot API, Telegram Mini App |
+ | Cache | Spring Cache, Ceffeine |
+ | Monitoring | Spring Boot Actuator |
+ | Build | Maven |
+ | Containers | Docker, Docker Compose |
+ | Testing | JUnit 5, Mockito, AssertJ |
+ | Reserve Proxy | nginx |
 
-# Быстрый запуск
+ ---
 
-## 1. Клонирование репозитория
+ ## Структура проекта
 
-```bash
-git clone https://github.com/USERNAME/ShlyapOff_Shop.git
+ src/
+├── main/
+│   ├── java/com/shlyapoff/shop/
+│   │   ├── bot/          # Telegram Bot
+│   │   ├── config/       # Spring, Security и Telegram configuration
+│   │   ├── controller/   # MVC и API controllers
+│   │   ├── dto/          # Data Transfer Objects
+│   │   ├── model/        # JPA entities и enums
+│   │   ├── repository/   # Spring Data repositories
+│   │   └── service/      # Business logic
+│   │
+│   └── resources/
+│       ├── db/changelog/ # Liquibase migrations
+│       ├── static/       # CSS, JavaScript, images
+│       ├── templates/    # Thymeleaf templates
+│       └── application.yml
+│
+└── test/
+    └── java/com/shlyapoff/shop/
+        ├── controller/
+        ├── integration/
+        └── service/
 
-cd ShlyapOff_Shop
-```
-
----
-
-## 2. Создание `.env`
-
-Создайте файл `.env` в корне проекта.
-
-Пример переменных окружения:
-
-```env
-DB_USERNAME=postgres
-DB_PASSWORD=password
-
-ADMIN_USERNAME=admin
-ADMIN_PASSWORD=password
-
-TELEGRAM_BOT_TOKEN=xxxxxxxxxxxxxxxx
-TELEGRAM_ADMIN_CHAT_ID=123456789
-
-APP_BASE_URL=https://example.com
-```
 
 ---
 
-## 3. Запуск
+## База данных
 
-```bash
-docker compose up --build -d
-```
+Схема базы данных управляется через **Liquibase**.
 
----
+Миграции покрывают создание и развитие:
 
-## 4. Доступ к приложению
-
-| Сервис | Адрес |
-|---------|--------|
-| Сайт | http://localhost:8080 |
-| Административная панель | http://localhost:8080/admin |
-
----
-
-# Используемые технологии
-
-Проект позволяет попрактиковаться в работе с:
-
-- Spring Boot
-- Spring Security
-- Spring Data JPA
-- PostgreSQL
-- Liquibase
-- Docker Compose
-- Telegram Bot API
-- Telegram Mini App
-- Thymeleaf
-- Bootstrap
-- JUnit 5
-- Mockito
-
----
-
-# Roadmap
-
-- ✅ Telegram Mini App
-- ✅ Каталог товаров
-- ✅ Корзина
-- ✅ История заказов
-- ✅ Административная панель
-- ✅ Spring Security
-- ✅ Программа лояльности
-- ✅ Docker Compose
-- ✅ Liquibase
-
-### Планируется
-
-- REST API для внешних клиентов
-- Покрытие проекта большим количеством тестов
-- CI/CD
-- Кэширование
-- Улучшение интерфейса административной панели
-
----
-
-# Контакты
-
-Если вы нашли ошибку или хотите предложить улучшение проекта, создайте **Issue** в репозитории.
-
-**Telegram:** https://t.me/h1llop
-
-**Email:** h1llapple13@gmail.com
-
----
-
-# Лицензия
-
-Проект распространяется по лицензии **MIT**.
-
-Подробности можно найти в файле **LICENSE**.
+- товаров;
+- категорий;
+- брендов;
+- вариантов товаров;
+- корзин;
+- заказов;
+- программы лояльности;
+- остатков;
+- уведомлений;
+- акций;
+- промокодов;
+- индексов производительности. 
