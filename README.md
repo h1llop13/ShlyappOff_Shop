@@ -462,4 +462,4 @@ Telegram: [@h1llop](https://t.me/h1llop)
 
 Проект распространяется под лицензией MIT.
 
-Подробнее по вкладке LICENSE
+Подробнее по вкладке MIT license
