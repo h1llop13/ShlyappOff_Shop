@@ -268,18 +268,21 @@ copy .env.example .env
 ``` txt
 DB_PASSWORD=your_secure_password
 
+TELEGRAM_ENABLED=true
 TELEGRAM_BOT_TOKEN=
 TELEGRAM_ADMIN_CHAT_ID=
+TELEGRAM_BOT_USERNAME=ShlyapOffBot
 
 TELEGRAM_FEEDBACK_URL=https://t.me/h1llop
 
-APP_BASE_URL=https://localhost:8080
+APP_BASE_URL=https://your-domain.ru
 
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=your_admin_password
 ```
 
-Telegram-переменные необходимы для полноценной работы Telegram-интеграции.
+`APP_BASE_URL` должен быть публичным HTTPS-доменом и быть указан в настройках Mini App у BotFather.
+Установите `TELEGRAM_ENABLED=false`, если запускаете магазин локально без бота.
 
 ---
 

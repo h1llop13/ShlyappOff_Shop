@@ -66,6 +66,7 @@ class CartServiceTest {
         product.setId(PRODUCT_ID);
         product.setName("Test Product");
         product.setStockQuantity(10);
+        product.setActive(true);
     }
 
     @Nested
@@ -223,6 +224,33 @@ class CartServiceTest {
                     .isInstanceOf(RuntimeException.class)
                     .hasMessageContaining("Корзина не найдена");
         }
+    }
+
+    @Test
+    void rejectsMergingCartsBeyondAvailableStock() {
+        Cart persistent = new Cart();
+        persistent.setId(20L);
+        persistent.setTelegramUserId(123L);
+
+        CartItem guestItem = new CartItem();
+        guestItem.setProduct(product);
+        guestItem.setQuantity(6);
+        cart.getItems().add(guestItem);
+
+        CartItem savedItem = new CartItem();
+        savedItem.setProduct(product);
+        savedItem.setQuantity(5);
+
+        when(cartRepository.findBySessionId(SESSION_ID)).thenReturn(Optional.of(cart));
+        when(cartRepository.findByTelegramUserId(123L)).thenReturn(Optional.of(persistent));
+        when(cartItemRepository.findByCartIdAndProductId(20L, PRODUCT_ID))
+                .thenReturn(Optional.of(savedItem));
+
+        assertThatThrownBy(() -> cartService.bindTelegramCart(SESSION_ID, 123L))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Недостаточно товара");
+        assertThat(savedItem.getQuantity()).isEqualTo(5);
+        verify(cartRepository, never()).delete(cart);
     }
 
     @Nested

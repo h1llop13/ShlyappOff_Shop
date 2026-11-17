@@ -7,6 +7,7 @@ import com.shlyapoff.shop.model.Order;
 import com.shlyapoff.shop.model.Product;
 import com.shlyapoff.shop.service.OrderService;
 import com.shlyapoff.shop.service.TelegramWebAppAuthService;
+import com.shlyapoff.shop.service.TelegramCartSessionService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import org.junit.jupiter.api.BeforeEach;
@@ -150,6 +151,27 @@ class CheckoutControllerTest {
                 false,
                 null
         );
+    }
+
+    @Test
+    void usesPreviouslyVerifiedTelegramIdentityAtCheckout() {
+        OrderDto orderDto = validOrderDto();
+        var bindingResult = new BeanPropertyBindingResult(orderDto, "orderDto");
+        Order savedOrder = new Order();
+        savedOrder.setId(44L);
+        TelegramCartSessionService sessionService = mock(TelegramCartSessionService.class);
+        when(sessionService.getTelegramUserId(request.getSession())).thenReturn(12345L);
+        when(orderService.createOrderFromCart(
+                eq(SESSION_ID), any(), any(), any(), any(), eq(12345L), isNull(), eq(false), isNull()
+        )).thenReturn(savedOrder);
+        controller = new CheckoutController(orderService, telegramWebAppAuthService, sessionService);
+
+        String view = controller.processOrder(orderDto, bindingResult, request, null,
+                new ConcurrentModel(), new RedirectAttributesModelMap());
+
+        assertThat(view).isEqualTo("redirect:/success?orderId=44");
+        verify(orderService).createOrderFromCart(eq(SESSION_ID), any(), any(), any(), any(),
+                eq(12345L), isNull(), eq(false), isNull());
     }
 
     private OrderDto validOrderDto() {

@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 import org.telegram.telegrambots.meta.TelegramBotsApi;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
@@ -18,15 +19,20 @@ import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
  * так как для неё регистрация не требуется.
  */
 @Component
-@ConditionalOnProperty(name = "telegram.enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(name = "telegram.enabled", havingValue = "true")
 @RequiredArgsConstructor
 @Slf4j
 public class TelegramBotInitializer {
 
     private final ShlyapOffBot shlyapOffBot;
+    private final TelegramConfig telegramConfig;
 
     @PostConstruct
     public void registerBot() {
+        if (!StringUtils.hasText(telegramConfig.getBotToken())) {
+            log.warn("Telegram-бот включён, но TELEGRAM_BOT_TOKEN не задан. Регистрация пропущена.");
+            return;
+        }
         try {
             TelegramBotsApi botsApi = new TelegramBotsApi(DefaultBotSession.class);
             botsApi.registerBot(shlyapOffBot);

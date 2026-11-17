@@ -54,7 +54,9 @@
     }
 
     const script = document.createElement('script');
-    script.src = '/js/telegram-web-app.js';
+    // Локального telegram-web-app.js в приложении нет. Официальный SDK
+    // загружается асинхронно, поэтому не задерживает рендер витрины.
+    script.src = 'https://telegram.org/js/telegram-web-app.js?61';
     script.async = true;
     script.onload = notifyReady;
     script.onerror = notifyUnavailable;

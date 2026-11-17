@@ -91,8 +91,8 @@ public class CheckoutController {
                 );
             }
             else {
-                telegramCartSessionService.bind(request.getSession(), telegramUser.id());
                 orderService.bindTelegramCart(request.getSession().getId(), telegramUser.id());
+                telegramCartSessionService.bind(request.getSession(), telegramUser.id());
             }
         }
 
@@ -106,7 +106,8 @@ public class CheckoutController {
             String sessionId = request.getSession().getId();
             Order savedOrder = orderService.createOrderFromCart(
                     sessionId, orderDto.getCustomerName(), orderDto.getPhone(), orderDto.getDeliveryType(),
-                    orderDto.getComment(), telegramUser != null ? telegramUser.id() : null,
+                    orderDto.getComment(), telegramUser != null ? telegramUser.id()
+                            : telegramCartSessionService.getTelegramUserId(request.getSession()),
                     telegramUser != null ? telegramUser.username() : null, orderDto.isUseBonuses(),
                     orderDto.getPromoCode());
 

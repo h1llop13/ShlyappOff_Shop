@@ -147,35 +147,36 @@
     </style>
     <link rel="stylesheet" href="/css/cart-feedback.css">
     <link rel="stylesheet" href="/css/loading-states.css">
+    <link rel="stylesheet" href="/css/storefront.css">
 </head>
 <body>
 <div class="header">
     <h1>Каталог</h1>
     <form th:action="@{/catalog}" method="get" class="filters">
         <div class="search-box">
-            <input type="text" name="search" placeholder="Поиск товаров..." th:value="${search}">
+            <input type="search" name="search" aria-label="Поиск товаров" placeholder="Поиск товаров" th:value="${search}">
         </div>
         <div class="filters-panel">
             <div class="filter-row">
-                <select name="categoryId" class="filter-select">
+                <select name="categoryId" class="filter-select" aria-label="Категория">
                     <option value="">Категория</option>
                     <option th:each="cat : ${categories}" th:value="${cat.id}" th:text="${cat.name}"
                             th:selected="${cat.id == categoryId}"></option>
                 </select>
-                <select name="brandId" class="filter-select">
+                <select name="brandId" class="filter-select" aria-label="Бренд">
                     <option value="">Бренд</option>
                     <option th:each="br : ${brands}" th:value="${br.id}" th:text="${br.name}"
                             th:selected="${br.id == brandId}"></option>
                 </select>
-                <select name="sort" class="filter-select">
+                <select name="sort" class="filter-select" aria-label="Сортировка">
                     <option value="newest" th:selected="${sort == 'newest'}">Сначала новые</option>
                     <option value="price_asc" th:selected="${sort == 'price_asc'}">Сначала дешевле</option>
                     <option value="price_desc" th:selected="${sort == 'price_desc'}">Сначала дороже</option>
                 </select>
             </div>
             <div class="price-row">
-                <input class="filter-input" type="number" min="0" step="1" name="minPrice" placeholder="Цена от" th:value="${minPrice}">
-                <input class="filter-input" type="number" min="0" step="1" name="maxPrice" placeholder="Цена до" th:value="${maxPrice}">
+                <input class="filter-input" type="number" min="0" step="1" name="minPrice" aria-label="Минимальная цена" placeholder="Цена от" th:value="${minPrice}">
+                <input class="filter-input" type="number" min="0" step="1" name="maxPrice" aria-label="Максимальная цена" placeholder="Цена до" th:value="${maxPrice}">
             </div>
             <div class="filter-actions">
                 <label class="stock-toggle"><input type="checkbox" name="onlyInStock" value="true" th:checked="${onlyInStock}"> Только в наличии</label>

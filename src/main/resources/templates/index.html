@@ -285,14 +285,15 @@
     </style>
     <link rel="stylesheet" href="/css/cart-feedback.css">
     <link rel="stylesheet" href="/css/loading-states.css">
+    <link rel="stylesheet" href="/css/storefront.css">
 </head>
 <body>
 <!-- HERO SECTION -->
 <section class="hero">
     <div class="hero-greeting" id="userGreeting">Добро пожаловать!</div>
     <h1 class="hero-title">ShlyapOff</h1>
-    <p class="hero-subtitle">Лучший выбор вейп-продукции с доставкой</p>
-    <a href="/catalog" class="hero-btn">Перейти в каталог</a>
+    <p class="hero-subtitle">Каталог, который удобно листать. Выбирайте своё в пару касаний.</p>
+    <a href="/catalog" class="hero-btn">Смотреть каталог <span aria-hidden="true">↗</span></a>
 </section>
 
 <!-- CATEGORIES -->
@@ -303,10 +304,8 @@
     </div>
     <div class="categories-scroll">
         <a href="/catalog" class="category-chip">Все товары</a>
-        <a href="/catalog?categoryId=1" class="category-chip">Одноразки</a>
-        <a href="/catalog?categoryId=2" class="category-chip">Жидкости</a>
-        <a href="/catalog?brandId=1" class="category-chip">HQD</a>
-        <a href="/catalog?brandId=2" class="category-chip">ELFBAR</a>
+        <a th:each="category : ${categories}" th:href="@{/catalog(categoryId=${category.id})}"
+           th:text="${category.name}" class="category-chip">Категория</a>
     </div>
 </section>
 

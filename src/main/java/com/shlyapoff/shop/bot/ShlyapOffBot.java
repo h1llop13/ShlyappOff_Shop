@@ -1,12 +1,15 @@
 package com.shlyapoff.shop.bot;
 
+import com.shlyapoff.shop.config.TelegramConfig;
 import com.shlyapoff.shop.model.Admin;
 import com.shlyapoff.shop.repository.AdminRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.webapp.WebAppInfo;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import lombok.RequiredArgsConstructor;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
@@ -15,7 +18,9 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 @Component
 @RequiredArgsConstructor // Используем конструктор для внедрения зависимостей
@@ -23,26 +28,21 @@ import java.util.List;
 public class ShlyapOffBot extends TelegramLongPollingBot {
 
     private final AdminRepository adminRepository;
+    private final TelegramConfig telegramConfig;
 
-    @Value("${telegram.bot-token}")
-    private String botToken;
-
-    // Твой основной ID админа из конфига (как "супер-админ")
-    @Value("${telegram.admin-chat-id}")
-    private Long superAdminChatId;
-
-    /** Ссылка на личный чат или чат поддержки в Telegram. */
-    @Value("${telegram.feedback-url:https://t.me/h1llop}")
-    private String feedbackUrl;
+    @Value("${app.base-url}")
+    private String baseUrl;
 
     @Override
     public String getBotUsername() {
-        return "ShlyapOffBot";
+        return StringUtils.hasText(telegramConfig.getBotUsername())
+                ? telegramConfig.getBotUsername()
+                : "ShlyapOffBot";
     }
 
     @Override
     public String getBotToken() {
-        return botToken;
+        return telegramConfig.getBotToken();
     }
 
     @Override
@@ -51,53 +51,53 @@ public class ShlyapOffBot extends TelegramLongPollingBot {
             String messageText = update.getMessage().getText();
             long chatId = update.getMessage().getChatId();
 
-            if (isCommand(messageText, "/start") || isCommand(messageText, "/support")) {
+            if (isCommand(messageText, "/start") || isCommand(messageText, "/help")) {
                 sendWelcomeMessage(chatId);
             }
-
-            // Логика добавления админа
-            else if (messageText.startsWith("/add_admin")) {
+            else if (isCommand(messageText, "/support")) {
+                sendSupportMessage(chatId);
+            }
+            else if (isCommand(messageText, "/myid")) {
+                sendMessage(chatId, "Ваш Telegram ID: <code>" + chatId + "</code>");
+            }
+            else if (isCommand(messageText, "/add_admin")) {
                 handleAddAdmin(chatId, messageText);
             }
         }
     }
 
     private void handleAddAdmin(long requesterChatId, String command) {
-        // 1. Проверка прав: может ли этот человек добавлять админов?
-        // Разрешаем, если это супер-админ из конфига ИЛИ если он уже есть в базе админов
-        boolean isAuthorized = requesterChatId == superAdminChatId ||
-                adminRepository.existsByTelegramChatId(requesterChatId);
-
-        if (!isAuthorized) {
+        if (!Objects.equals(requesterChatId, telegramConfig.getAdminChatId())) {
             sendMessage(requesterChatId, "❌ У вас нет прав для выполнения этой команды.");
             return;
         }
 
-        // 2. Парсинг ID нового админа из команды (формат: /add_admin 123456789)
-        String[] parts = command.split(" "); // <--- Вот здесь мы объявляем parts
+        String[] parts = command.trim().split("\\s+");
 
         if (parts.length < 2) {
-            sendMessage(requesterChatId, "⚠️ Использование: /add_admin [ID_пользователя]");
+            sendMessage(requesterChatId, "⚠️ Использование: /add_admin ID_пользователя\n"
+                    + "Пользователь может узнать свой ID командой /myid.");
             return;
         }
 
         try {
             Long newAdminId = Long.parseLong(parts[1]); // <--- А здесь используем
 
-            // 3. Проверка, нет ли его уже в базе
             if (adminRepository.existsByTelegramChatId(newAdminId)) {
                 sendMessage(requesterChatId, "ℹ️ Этот пользователь уже является администратором.");
                 return;
             }
 
-            // 4. Сохранение
             Admin newAdmin = new Admin();
             newAdmin.setTelegramChatId(newAdminId);
             adminRepository.save(newAdmin);
 
             sendMessage(requesterChatId, "✅ Администратор с ID " + newAdminId + " успешно добавлен!");
-            // Можно сразу отправить приветственное сообщение новому админу
-            sendMessage(newAdminId, "👋 Привет! Теперь вы будете получать уведомления о новых заказах.");
+            if (!sendMessage(newAdminId, "👋 Привет! Теперь вы будете получать уведомления о новых заказах.")) {
+                sendMessage(requesterChatId,
+                        "⚠️ Администратор добавлен, но ещё не начал чат с ботом. "
+                                + "Пусть сначала отправит /start.");
+            }
 
         } catch (NumberFormatException e) {
             sendMessage(requesterChatId, "❌ Ошибка: ID должен состоять только из цифр.");
@@ -120,12 +120,41 @@ public class ShlyapOffBot extends TelegramLongPollingBot {
     }
 
     private void sendWelcomeMessage(long chatId) {
-        sendMessageWithButton(
-                chatId,
-                "Привет! Я бот магазина ShlyapOff. Если есть вопрос по заказу или товару, напишите нам.",
-                "💬 Связаться с нами",
-                feedbackUrl
-        );
+        List<List<InlineKeyboardButton>> rows = new ArrayList<>();
+        if (isPublicHttpsUrl(baseUrl)) {
+            InlineKeyboardButton storeButton = new InlineKeyboardButton();
+            storeButton.setText("🛍 Открыть магазин");
+            storeButton.setWebApp(new WebAppInfo(baseUrl));
+            rows.add(List.of(storeButton));
+        } else {
+            log.warn("APP_BASE_URL is not a public HTTPS URL; Mini App button is hidden: {}", baseUrl);
+        }
+
+        String feedbackUrl = telegramConfig.getFeedbackUrl();
+        if (isPublicHttpsUrl(feedbackUrl)) {
+            InlineKeyboardButton supportButton = new InlineKeyboardButton();
+            supportButton.setText("💬 Поддержка");
+            supportButton.setUrl(feedbackUrl);
+            rows.add(List.of(supportButton));
+        }
+
+        String text = "Привет! Это ShlyapOff — магазин в Telegram.\n"
+                + "Открой каталог, добавь товары в корзину и оформи заказ прямо здесь.";
+        if (rows.isEmpty()) {
+            sendMessage(chatId, text + "\n\nМагазин сейчас временно недоступен.");
+            return;
+        }
+        sendMessageWithKeyboard(chatId, text, rows);
+    }
+
+    private void sendSupportMessage(long chatId) {
+        String feedbackUrl = telegramConfig.getFeedbackUrl();
+        String text = "Если есть вопрос по заказу или товару — напишите нам, поможем.";
+        if (!isPublicHttpsUrl(feedbackUrl)) {
+            sendMessage(chatId, text);
+            return;
+        }
+        sendMessageWithButton(chatId, text, "💬 Связаться с нами", feedbackUrl);
     }
 
     private boolean isCommand(String messageText, String command) {
@@ -140,19 +169,21 @@ public class ShlyapOffBot extends TelegramLongPollingBot {
             return sendMessage(chatId, text);
         }
 
+        InlineKeyboardButton urlButton = new InlineKeyboardButton();
+        urlButton.setText(buttonText);
+        urlButton.setUrl(buttonUrl);
+
+        return sendMessageWithKeyboard(chatId, text, List.of(List.of(urlButton)));
+    }
+
+    private boolean sendMessageWithKeyboard(Long chatId, String text, List<List<InlineKeyboardButton>> rows) {
         SendMessage message = new SendMessage();
         message.setChatId(String.valueOf(chatId));
         message.setText(text);
         message.enableHtml(true);
 
-        // Создаем кнопку
-        InlineKeyboardButton urlButton = new InlineKeyboardButton();
-        urlButton.setText(buttonText);
-        urlButton.setUrl(buttonUrl); // Именно setUrl делает её кликабельной ссылкой
-
-        // Клавиатура — это список рядов кнопок. У нас 1 ряд и 1 кнопка.
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
-        markup.setKeyboard(List.of(List.of(urlButton)));
+        markup.setKeyboard(rows);
 
         message.setReplyMarkup(markup);
 

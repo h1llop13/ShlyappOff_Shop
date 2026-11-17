@@ -41,7 +41,7 @@ public class CartService {
         Optional<CartItem> existingItem = findCartItem(cart.getId(), productId, variantId);
         if (existingItem.isPresent()) {
             CartItem item = existingItem.get();
-            int requestedQuantity = item.getQuantity() + quantity;
+            int requestedQuantity = Math.addExact(item.getQuantity(), quantity);
             validateProductAvailability(item.getProduct(), variantId, requestedQuantity);
             item.setQuantity(requestedQuantity);
             cartItemRepository.save(item);
@@ -140,6 +140,9 @@ public class CartService {
         Cart guest = cartRepository.findBySessionId(sessionId).orElse(null);
         Cart persistent = cartRepository.findByTelegramUserId(telegramUserId).orElse(null);
         if (guest == null) return;
+        if (guest.getTelegramUserId() != null && !guest.getTelegramUserId().equals(telegramUserId)) {
+            throw new IllegalStateException("Эта корзина принадлежит другому аккаунту Telegram");
+        }
         if (persistent == null || persistent.getId().equals(guest.getId())) {
             guest.setTelegramUserId(telegramUserId);
             cartRepository.save(guest);
@@ -151,10 +154,13 @@ public class CartService {
             Optional<CartItem> existing = findCartItem(persistent.getId(), guestItem.getProduct().getId(), variantId);
             if (existing.isPresent()) {
                 CartItem target = existing.get();
-                target.setQuantity(target.getQuantity() + guestItem.getQuantity());
+                int mergedQuantity = Math.addExact(target.getQuantity(), guestItem.getQuantity());
+                validateProductAvailability(target.getProduct(), variantId, mergedQuantity);
+                target.setQuantity(mergedQuantity);
                 cartItemRepository.save(target);
                 cartItemRepository.delete(guestItem);
             } else {
+                validateProductAvailability(guestItem.getProduct(), variantId, guestItem.getQuantity());
                 guestItem.setCart(persistent);
                 cartItemRepository.save(guestItem);
             }

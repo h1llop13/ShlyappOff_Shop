@@ -24,8 +24,8 @@ public class CartIdentityController {
     public ResponseEntity<BindResponse> bind(@RequestBody BindRequest request, HttpServletRequest servletRequest) {
         var user = telegramWebAppAuthService.validate(request.initData()).orElse(null);
         if (user == null) return ResponseEntity.status(401).build();
-        boolean changed = telegramCartSessionService.bind(servletRequest.getSession(), user.id());
         cartService.bindTelegramCart(servletRequest.getSession().getId(), user.id());
+        boolean changed = telegramCartSessionService.bind(servletRequest.getSession(), user.id());
         return ResponseEntity.ok(new BindResponse(true, changed));
     }
 }

@@ -44,8 +44,10 @@ services:
       # Публичный домен приложения (нужен для ссылок и Telegram Mini App)
       APP_BASE_URL: ${APP_BASE_URL}
       # Переменные Telegram-бота
+      TELEGRAM_ENABLED: ${TELEGRAM_ENABLED:-true}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       TELEGRAM_ADMIN_CHAT_ID: ${TELEGRAM_ADMIN_CHAT_ID}
+      TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-ShlyapOffBot}
       TELEGRAM_FEEDBACK_URL: ${TELEGRAM_FEEDBACK_URL:-https://t.me/h1llop}
       # Логин/пароль первого админа (пароль опционален, см. .env.example)
       APP_ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}

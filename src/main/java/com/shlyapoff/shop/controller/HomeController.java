@@ -61,6 +61,7 @@ public class HomeController {
         List<ProductCard> products = productService.findLatestActive();
 
         model.addAttribute("products", products);
+        model.addAttribute("categories", categoryService.findAll());
 
         return "index";
     }

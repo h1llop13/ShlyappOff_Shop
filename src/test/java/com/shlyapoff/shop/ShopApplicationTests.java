@@ -100,12 +100,12 @@ class ShopApplicationTests {
 	}
 
 	@Test
-	void telegramLoaderIsServedLocallyAndLoadsSdkAsynchronously() throws Exception {
+	void telegramLoaderLoadsOfficialSdkAsynchronously() throws Exception {
 		mockMvc.perform(get("/js/telegram-loader.js"))
 				.andExpect(status().isOk())
 				.andExpect(content().string(containsString("script.async = true")))
 				.andExpect(content().string(containsString(
-						"script.src = '/js/telegram-web-app.js'"
+						"script.src = 'https://telegram.org/js/telegram-web-app.js?61'"
 				)));
 	}
 
