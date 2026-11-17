@@ -4,48 +4,30 @@
     <meta charset="UTF-8">
     <title>Админка - Программа лояльности</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="/css/admin.css">
 </head>
-<body class="bg-dark text-white">
+<body class="admin-page">
 
-<nav class="navbar navbar-expand-lg navbar-dark bg-black sticky-top">
-    <div class="container">
-        <a class="navbar-brand fw-bold" href="/admin">Админка ShlyapOff</a>
-        <div class="collapse navbar-collapse">
-            <ul class="navbar-nav ms-auto">
-                <li class="nav-item"><a class="nav-link" href="/admin">Товары</a></li>
-                <li class="nav-item"><a class="nav-link" href="/admin/categories">Категории</a></li>
-                <li class="nav-item"><a class="nav-link" href="/admin/brands">Бренды</a></li>
-                <li class="nav-item"><a class="nav-link" href="/admin/customers">Клиенты</a></li>
-                <li class="nav-item"><a class="nav-link active" href="/admin/loyalty">Лояльность</a></li>
-                <li class="nav-item"><a class="nav-link" href="/admin/promotions">Акции</a></li>
-                <li class="nav-item"><a class="nav-link" href="/">На сайт</a></li>
-                <li class="nav-item">
-                    <form th:action="@{/logout}" method="post" class="d-inline">
-                        <button type="submit" class="nav-link btn btn-link text-white-50 text-decoration-none p-0 border-0">Выйти</button>
-                    </form>
-                </li>
-            </ul>
-        </div>
-    </div>
-</nav>
+<header th:replace="~{fragments/admin :: navigation('loyalty')}"></header>
 
 <div class="container mt-5">
-    <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show">
+    <div th:if="${successMessage}" class="alert alert-secondary admin-notice alert-dismissible fade show">
         <span th:text="${successMessage}"></span>
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
 
-    <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex justify-content-between flex-wrap gap-2 align-items-center mb-3">
         <h1>Программа лояльности</h1>
-        <a href="/admin/loyalty/create" class="btn btn-warning">Добавить порог</a>
+        <a href="/admin/loyalty/create" class="btn btn-dark">Добавить порог</a>
     </div>
-    <p class="text-white-50">
+    <p class="text-body-secondary">
         Как только сумма всех заказов клиента достигает указанного порога, ему автоматически
         начинает начисляться кешбэк в бонусах за каждый подтверждённый заказ. Один бонус равен одному рублю,
         а покупатель может списать бонусы при оформлении.
     </p>
 
-    <table class="table table-dark table-striped">
+    <div class="table-responsive"><table class="table table-striped">
         <thead>
         <tr>
             <th>Порог (сумма заказов, ₽)</th>
@@ -58,17 +40,17 @@
             <td th:text="${tier.minAmount} + ' ₽'">5000 ₽</td>
             <td th:text="${tier.bonusPercent} + '%'">5%</td>
             <td>
-                <a th:href="@{/admin/loyalty/edit/{id}(id=${tier.id})}" class="btn btn-sm btn-outline-light">Редактировать</a>
+                <a th:href="@{/admin/loyalty/edit/{id}(id=${tier.id})}" class="btn btn-sm btn-outline-dark">Редактировать</a>
                 <form th:action="@{/admin/loyalty/delete/{id}(id=${tier.id})}" method="post" style="display: inline;">
-                    <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Удалить порог?')">Удалить</button>
+                    <button type="submit" class="btn btn-sm btn-outline-dark admin-delete" onclick="return confirm('Удалить порог?')">Удалить</button>
                 </form>
             </td>
         </tr>
         <tr th:if="${tiers.isEmpty()}">
-            <td colspan="3" class="text-white-50">Пороги ещё не заданы — бонусы по программе лояльности не начисляются.</td>
+            <td colspan="3" class="text-body-secondary">Пороги ещё не заданы — бонусы по программе лояльности не начисляются.</td>
         </tr>
         </tbody>
-    </table>
+    </table></div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

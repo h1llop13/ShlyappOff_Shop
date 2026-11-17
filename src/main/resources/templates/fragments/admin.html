@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<body>
+<header th:fragment="navigation(active)" class="admin-header">
+    <div class="container admin-header-top">
+        <a class="admin-wordmark" href="/admin">ShlyapOff · Управление</a>
+        <div class="admin-account">
+            <a href="/">Магазин</a>
+            <form th:action="@{/logout}" method="post">
+                <button type="submit" class="btn btn-sm btn-outline-dark">Выйти</button>
+            </form>
+        </div>
+    </div>
+    <nav class="container admin-nav" aria-label="Управление магазином">
+        <a href="/admin" th:attr="aria-current=${active == 'catalog' ? 'page' : null}">Каталог</a>
+        <a href="/admin/orders" th:attr="aria-current=${active == 'orders' ? 'page' : null}">Заказы</a>
+        <a href="/admin/dashboard" th:attr="aria-current=${active == 'dashboard' ? 'page' : null}">Продажи</a>
+        <a href="/admin/categories" th:attr="aria-current=${active == 'categories' ? 'page' : null}">Категории</a>
+        <a href="/admin/brands" th:attr="aria-current=${active == 'brands' ? 'page' : null}">Бренды</a>
+        <a href="/admin/customers" th:attr="aria-current=${active == 'customers' ? 'page' : null}">Клиенты</a>
+        <a href="/admin/loyalty" th:attr="aria-current=${active == 'loyalty' ? 'page' : null}">Лояльность</a>
+        <a href="/admin/promotions" th:attr="aria-current=${active == 'promotions' ? 'page' : null}">Акции</a>
+        <a href="/admin/promo-codes" th:attr="aria-current=${active == 'promo-codes' ? 'page' : null}">Промокоды</a>
+    </nav>
+</header>
+</body>
+</html>

@@ -4,45 +4,25 @@
     <meta charset="UTF-8">
     <title>Админка - Заказы</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="/css/admin.css">
 </head>
-<body class="bg-dark text-white">
+<body class="admin-page">
 
-<nav class="navbar navbar-expand-lg navbar-dark bg-black sticky-top">
-    <div class="container">
-        <a class="navbar-brand fw-bold" href="/admin">Админка ShlyapOff</a>
-        <div class="collapse navbar-collapse">
-            <ul class="navbar-nav ms-auto">
-                <li class="nav-item"><a class="nav-link" href="/admin/dashboard">Дашборд</a></li>
-                <li class="nav-item"><a class="nav-link" href="/admin">Товары</a></li>
-                <li class="nav-item"><a class="nav-link" href="/admin/categories">Категории</a></li>
-                <li class="nav-item"><a class="nav-link" href="/admin/brands">Бренды</a></li>
-                <li class="nav-item"><a class="nav-link active" href="/admin/orders">Заказы</a></li>
-                <li class="nav-item"><a class="nav-link" href="/admin/customers">Клиенты</a></li>
-                <li class="nav-item"><a class="nav-link" href="/admin/loyalty">Лояльность</a></li>
-                <li class="nav-item"><a class="nav-link" href="/admin/promo-codes">Промокоды</a></li>
-                <li class="nav-item"><a class="nav-link" href="/">На сайт</a></li>
-                <li class="nav-item">
-                    <form th:action="@{/logout}" method="post" class="d-inline">
-                        <button type="submit" class="nav-link btn btn-link text-white-50 text-decoration-none p-0 border-0">Выйти</button>
-                    </form>
-                </li>
-            </ul>
-        </div>
-    </div>
-</nav>
+<header th:replace="~{fragments/admin :: navigation('orders')}"></header>
 
 <div class="container mt-5">
     <h1 class="mb-4">Заказы</h1>
 
-    <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
-    <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+    <div th:if="${successMessage}" class="alert alert-secondary admin-notice" th:text="${successMessage}"></div>
+    <div th:if="${errorMessage}" class="alert alert-secondary admin-notice" th:text="${errorMessage}"></div>
 
-    <p class="text-white-50">
+    <p class="text-body-secondary">
         Пока заказ не переведён в статус «Выполнен», он не отображается в истории заказов клиента
         и не учитывается в программе лояльности.
     </p>
 
-    <table class="table table-dark table-striped align-middle">
+    <div class="table-responsive"><table class="table table-striped align-middle">
         <thead>
         <tr>
             <th>#</th>
@@ -63,41 +43,41 @@
             <td th:text="${order.phone}">Телефон</td>
             <td th:text="${order.subtotalAmount} + ' ₽'">0 ₽</td>
             <td th:text="${order.bonusesSpent} + ' бонусов'">0 бонусов</td>
-            <td><span th:if="${order.promoCode != null}" th:text="${order.promoCode + ' (−' + order.promoDiscountAmount + ' ₽)'}" class="badge bg-info text-dark"></span><span th:if="${order.promoCode == null}" class="text-white-50">—</span></td>
+            <td><span th:if="${order.promoCode != null}" th:text="${order.promoCode + ' (−' + order.promoDiscountAmount + ' ₽)'}" class="badge text-bg-light"></span><span th:if="${order.promoCode == null}" class="text-body-secondary">—</span></td>
             <td th:text="${order.totalAmount} + ' ₽'">0 ₽</td>
             <td>
                 <span th:switch="${order.status.name()}">
-                    <span th:case="'NEW'" class="badge bg-secondary">Новый</span>
-                    <span th:case="'PROCESSING'" class="badge bg-warning text-dark">В обработке</span>
-                    <span th:case="'COMPLETED'" class="badge bg-success">Выполнен</span>
-                    <span th:case="'CANCELLED'" class="badge bg-danger">Отменён</span>
-                    <span th:case="*" th:text="${order.status}" class="badge bg-secondary"></span>
+                    <span th:case="'NEW'" class="badge text-bg-secondary">Новый</span>
+                    <span th:case="'PROCESSING'" class="badge text-bg-light">В обработке</span>
+                    <span th:case="'COMPLETED'" class="badge text-bg-dark">Выполнен</span>
+                    <span th:case="'CANCELLED'" class="badge text-bg-secondary">Отменён</span>
+                    <span th:case="*" th:text="${order.status}" class="badge text-bg-secondary"></span>
                 </span>
             </td>
             <td>
                 <form th:if="${order.status.name() == 'NEW' or order.status.name() == 'PROCESSING'}"
                       th:action="@{/admin/orders/{id}/status(id=${order.id})}" method="post" class="d-flex gap-2">
-                    <select name="status" required class="form-select form-select-sm bg-dark text-white border-secondary">
+                    <select name="status" required class="form-select form-select-sm border-secondary">
                         <option value="" selected disabled>Новый статус</option>
                         <option th:if="${order.status.name() == 'NEW'}" value="PROCESSING">В обработке</option>
                         <option value="COMPLETED">Выполнен</option>
                         <option value="CANCELLED">Отменён</option>
                     </select>
-                    <button type="submit" class="btn btn-sm btn-outline-light">Сохранить</button>
+                    <button type="submit" class="btn btn-sm btn-outline-dark">Сохранить</button>
                 </form>
                 <span th:if="${order.status.name() == 'COMPLETED' or order.status.name() == 'CANCELLED'}"
-                      class="text-white-50">Изменение недоступно</span>
+                      class="text-body-secondary">Изменение недоступно</span>
             </td>
         </tr>
         <tr th:if="${orders.isEmpty()}">
-            <td colspan="9" class="text-white-50">Заказов пока нет.</td>
+            <td colspan="9" class="text-body-secondary">Заказов пока нет.</td>
         </tr>
         </tbody>
-    </table>
+    </table></div>
     <nav th:if="${totalPages > 1}" class="d-flex gap-2">
-        <a th:if="${currentPage > 0}" th:href="@{/admin/orders(page=${currentPage - 1})}" class="btn btn-outline-light">Назад</a>
+        <a th:if="${currentPage > 0}" th:href="@{/admin/orders(page=${currentPage - 1})}" class="btn btn-outline-dark">Назад</a>
         <span class="align-self-center" th:text="${currentPage + 1 + ' / ' + totalPages}">1 / 1</span>
-        <a th:if="${currentPage < totalPages - 1}" th:href="@{/admin/orders(page=${currentPage + 1})}" class="btn btn-outline-light">Вперёд</a>
+        <a th:if="${currentPage < totalPages - 1}" th:href="@{/admin/orders(page=${currentPage + 1})}" class="btn btn-outline-dark">Вперёд</a>
     </nav>
 </div>
 

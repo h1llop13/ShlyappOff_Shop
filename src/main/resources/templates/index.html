@@ -2,395 +2,45 @@
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ShlyapOff - Главная</title>
-    <script src="/js/telegram-loader.js"></script>
-
-    <style>
-        :root {
-            --bg: var(--tg-theme-bg-color, #ffffff);
-            --text: var(--tg-theme-text-color, #000000);
-            --hint: var(--tg-theme-hint-color, #888888);
-            --secondary-bg: var(--tg-theme-secondary-bg-color, #f5f5f5);
-            --btn-bg: var(--text);
-            --btn-text: var(--bg);
-            --border: color-mix(in srgb, var(--text) 10%, transparent);
-            --card-bg: color-mix(in srgb, var(--text) 5%, transparent);
-            --radius: 16px;
-            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            padding-bottom: 80px;
-            -webkit-font-smoothing: antialiased;
-        }
-
-        /* === HERO SECTION === */
-        .hero {
-            padding: 24px 16px;
-            text-align: center;
-            background: var(--secondary-bg);
-            border-bottom: 1px solid var(--border);
-        }
-        .hero-greeting {
-            font-size: 14px;
-            color: var(--hint);
-            margin-bottom: 8px;
-            font-weight: 500;
-        }
-        .hero-title {
-            font-size: 28px;
-            font-weight: 800;
-            margin-bottom: 12px;
-            line-height: 1.2;
-        }
-        .hero-subtitle {
-            font-size: 15px;
-            color: var(--hint);
-            margin-bottom: 20px;
-            line-height: 1.4;
-        }
-        .hero-btn {
-            display: inline-block;
-            padding: 14px 32px;
-            background: var(--btn-bg);
-            color: var(--btn-text);
-            border: none;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: 600;
-            text-decoration: none;
-            transition: var(--transition);
-        }
-        .hero-btn:active {
-            transform: scale(0.98);
-        }
-
-        /* === CATEGORIES SCROLL === */
-        .categories-section {
-            padding: 24px 0 16px 0;
-        }
-        .section-header {
-            padding: 0 16px 12px 16px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .section-title {
-            font-size: 20px;
-            font-weight: 700;
-        }
-        .section-link {
-            font-size: 14px;
-            color: var(--hint);
-            text-decoration: none;
-            font-weight: 500;
-        }
-
-        .categories-scroll {
-            display: flex;
-            gap: 12px;
-            overflow-x: auto;
-            padding: 0 16px 16px 16px;
-            scrollbar-width: none;
-            -ms-overflow-style: none;
-        }
-        .categories-scroll::-webkit-scrollbar {
-            display: none;
-        }
-
-        .category-chip {
-            flex-shrink: 0;
-            padding: 12px 20px;
-            background: var(--card-bg);
-            border: 1px solid var(--border);
-            border-radius: 24px;
-            font-size: 14px;
-            font-weight: 500;
-            color: var(--text);
-            text-decoration: none;
-            transition: var(--transition);
-            white-space: nowrap;
-        }
-        .category-chip:active {
-            background: var(--btn-bg);
-            color: var(--btn-text);
-        }
-
-        /* === PRODUCTS GRID === */
-        .products-section {
-            padding: 0 16px;
-        }
-        .products-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
-        }
-
-        .product-card {
-            background: var(--card-bg);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            overflow: hidden;
-            transition: var(--transition);
-            display: flex;
-            flex-direction: column;
-            height: 300px;
-        }
-        .product-card:active {
-            transform: scale(0.98);
-        }
-
-        .product-image {
-            display: block;
-            width: 100%;
-            height: 160px;
-            flex: 0 0 160px;
-            object-fit: cover;
-            object-position: center;
-            background: var(--secondary-bg);
-        }
-
-        .product-content {
-            padding: 12px;
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .product-title {
-            font-size: 14px;
-            font-weight: 600;
-            margin-bottom: 6px;
-            line-height: 1.3;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-        }
-
-        .product-price {
-            font-size: 16px;
-            font-weight: 700;
-            margin-bottom: 10px;
-            margin-top: auto;
-        }
-
-        .stock-status {
-            font-size: 12px;
-            margin-bottom: 8px;
-            color: var(--hint);
-        }
-
-        .stock-status.out-of-stock { color: #ef4444; }
-
-        .product-actions {
-            display: flex;
-            gap: 6px;
-        }
-
-        .btn-details {
-            flex: 1;
-            padding: 8px;
-            background: transparent;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            color: var(--text);
-            font-size: 12px;
-            font-weight: 500;
-            text-decoration: none;
-            text-align: center;
-            transition: var(--transition);
-        }
-
-        .btn-cart {
-            flex: 1;
-            padding: 8px;
-            background: var(--btn-bg);
-            border: none;
-            border-radius: 8px;
-            color: var(--btn-text);
-            font-size: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: var(--transition);
-        }
-
-        /* === EMPTY STATE === */
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-            color: var(--hint);
-        }
-        .empty-icon {
-            font-size: 64px;
-            margin-bottom: 16px;
-            opacity: 0.3;
-        }
-
-        /* === BOTTOM NAVIGATION === */
-        .bottom-nav {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: var(--bg);
-            border-top: 1px solid var(--border);
-            backdrop-filter: blur(20px);
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            padding: 12px 0;
-            z-index: 1000;
-        }
-        .nav-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 4px;
-            text-decoration: none;
-            color: var(--hint);
-            transition: var(--transition);
-            padding: 8px 16px;
-            border-radius: 12px;
-        }
-        .nav-item.active {
-            color: var(--text);
-            font-weight: 600;
-        }
-        .nav-icon {
-            font-size: 24px;
-        }
-        .nav-label {
-            font-size: 11px;
-            font-weight: 500;
-        }
-
-        /* === RESPONSIVE === */
-        @media (min-width: 640px) {
-            .products-grid {
-                grid-template-columns: repeat(3, 1fr);
-            }
-        }
-        @media (min-width: 1024px) {
-            .products-grid {
-                grid-template-columns: repeat(4, 1fr);
-            }
-        }
-    </style>
-    <link rel="stylesheet" href="/css/cart-feedback.css">
-    <link rel="stylesheet" href="/css/loading-states.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#ffffff">
+    <title>Магазин · ShlyapOff</title>
     <link rel="stylesheet" href="/css/storefront.css">
+    <script src="/js/telegram-loader.js" defer></script>
+    <script src="/js/storefront.js" defer></script>
 </head>
 <body>
-<!-- HERO SECTION -->
-<section class="hero">
-    <div class="hero-greeting" id="userGreeting">Добро пожаловать!</div>
-    <h1 class="hero-title">ShlyapOff</h1>
-    <p class="hero-subtitle">Каталог, который удобно листать. Выбирайте своё в пару касаний.</p>
-    <a href="/catalog" class="hero-btn">Смотреть каталог <span aria-hidden="true">↗</span></a>
-</section>
-
-<!-- CATEGORIES -->
-<section class="categories-section">
-    <div class="section-header">
-        <h2 class="section-title">Категории</h2>
-        <a href="/catalog" class="section-link">Все →</a>
-    </div>
-    <div class="categories-scroll">
-        <a href="/catalog" class="category-chip">Все товары</a>
-        <a th:each="category : ${categories}" th:href="@{/catalog(categoryId=${category.id})}"
-           th:text="${category.name}" class="category-chip">Категория</a>
-    </div>
-</section>
-
-<!-- PRODUCTS -->
-<section class="products-section">
-    <div class="section-header">
-        <h2 class="section-title">Новинки</h2>
-        <a href="/catalog" class="section-link">Все →</a>
-    </div>
-
-    <!-- Empty State -->
-    <div th:if="${#lists.isEmpty(products)}" class="empty-state">
-        <div class="empty-icon">📦</div>
-        <h3>Товаров пока нет</h3>
-        <p>Загляните позже!</p>
-    </div>
-
-    <!-- Products Grid -->
-    <div th:if="${!#lists.isEmpty(products)}" class="products-grid">
-        <div class="product-card" th:each="product : ${products}">
-            <img th:if="${product.imageUrl != null}" th:src="${product.imageThumbnailUrl ?: product.imageUrl}" class="product-image" alt="Фото" loading="lazy" decoding="async">
-            <img th:if="${product.imageUrl == null}" src="/img/placeholder.svg" class="product-image" alt="Нет фото" loading="lazy" decoding="async">
-
-            <div class="product-content">
-                <h3 class="product-title" th:text="${product.name}">Название товара</h3>
-                <p th:if="${!product.requiresVariant}"
-                   th:classappend="${product.stockQuantity > 0} ? '' : ' out-of-stock'"
-                   class="stock-status"
-                   th:text="${product.stockQuantity > 0} ? 'В наличии: ' + product.stockQuantity + ' шт.' : 'Нет в наличии'">В наличии: 0 шт.</p>
-                <div class="product-price" th:text="${product.price} + ' ₽'">0 ₽</div>
-
-                <div class="product-actions">
-                    <a th:href="@{/product/{id}(id=${product.id})}" class="btn-details">Подробнее</a>
-                    <form th:if="${!product.requiresVariant}"
-                          th:action="@{/cart/add}" method="post" style="flex: 1;" data-cart-form>
-                        <input type="hidden" name="productId" th:value="${product.id}">
-                        <input th:if="${_csrf != null}" type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-                        <button type="submit" class="btn-cart" th:disabled="${product.stockQuantity == null || product.stockQuantity <= 0}"
-                                th:text="${product.stockQuantity != null && product.stockQuantity > 0} ? 'В корзину' : 'Нет в наличии'">В корзину</button>
-                    </form>
-                </div>
-            </div>
+<header th:replace="~{fragments/store :: navigation('home')}"></header>
+<main class="shell">
+    <section class="hero">
+        <h1>ShlyapOff.</h1>
+        <form action="/catalog" method="get" class="search-row" role="search" aria-label="Поиск по магазину">
+            <input type="search" name="search" aria-label="Название товара" placeholder="Что ищете?">
+            <button class="button inverse" type="submit">Найти</button>
+        </form>
+        <a href="/catalog" class="hero-link">Смотреть каталог <span aria-hidden="true">→</span></a>
+    </section>
+    <section class="store-section" th:unless="${#lists.isEmpty(categories)}">
+        <h2>Категории</h2>
+        <div class="category-list">
+            <a th:each="category : ${categories}" th:href="@{/catalog(categoryId=${category.id})}"
+               th:text="${category.name}" class="button secondary">Категория</a>
         </div>
+    </section>
+    <section class="store-section">
+        <div class="section-header">
+            <h2>Новинки</h2>
+            <a href="/catalog">Все товары <span aria-hidden="true">→</span></a>
+        </div>
+        <p th:if="${#lists.isEmpty(products)}" class="empty-state">Товаров пока нет.</p>
+        <div class="products-grid" th:unless="${#lists.isEmpty(products)}">
+        <th:block th:each="product : ${products}">
+            <article th:replace="~{fragments/store :: productCard(${product})}"></article>
+        </th:block>
     </div>
-</section>
-
-<!-- BOTTOM NAVIGATION -->
-<nav class="bottom-nav">
-    <a href="/" class="nav-item active">
-        <span class="nav-icon">🏠</span>
-        <span class="nav-label">Главная</span>
-    </a>
-    <a href="/catalog" class="nav-item">
-        <span class="nav-icon">📦</span>
-        <span class="nav-label">Каталог</span>
-    </a>
-    <a href="/cart" class="nav-item">
-        <span class="nav-icon">🛒</span>
-        <span class="nav-label">Корзина</span>
-    </a>
-    <a href="/profile" class="nav-item">
-        <span class="nav-icon">👤</span>
-        <span class="nav-label">Профиль</span>
-    </a>
-</nav>
-
-<script src="/js/haptic-feedback.js"></script>
+    </section>
+</main>
 <script src="/js/telegram-shop.js"></script>
 <script src="/js/cart-feedback.js"></script>
-<script src="/js/loading-states.js"></script>
-<script>
-    // === TELEGRAM WEBAPP ===
-    window.TelegramLoader.onReady((tg) => {
-        tg.expand();
-        tg.ready();
-
-        // Персонализация: показываем имя пользователя
-        if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
-            const user = tg.initDataUnsafe.user;
-            const greeting = document.getElementById('userGreeting');
-            if (greeting && user.first_name) {
-                greeting.textContent = `Привет, ${user.first_name}! 👋`;
-            }
-        }
-    });
-</script>
 </body>
 </html>

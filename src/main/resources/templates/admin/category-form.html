@@ -4,14 +4,12 @@
     <meta charset="UTF-8">
     <title>Форма категории</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="/css/admin.css">
 </head>
-<body class="bg-dark text-white">
+<body class="admin-page">
 
-<nav class="navbar navbar-expand-lg navbar-dark bg-black sticky-top">
-    <div class="container">
-        <a class="navbar-brand fw-bold" href="/admin">Админка ShlyapOff</a>
-    </div>
-</nav>
+<header th:replace="~{fragments/admin :: navigation('categories')}"></header>
 
 <div class="container mt-5">
     <h1 th:text="${category.id != null ? 'Редактировать категорию' : 'Добавить категорию'}">Форма</h1>
@@ -19,23 +17,23 @@
     <form th:action="${category.id != null ? '/admin/category/edit/' + category.id : '/admin/category/create'}" method="post">
         <div class="mb-3">
             <label for="name" class="form-label">Название категории</label>
-            <input type="text" class="form-control bg-dark text-white" id="name" name="name"
+            <input type="text" class="form-control" id="name" name="name"
                    th:value="${category.name}" required>
         </div>
         <div class="mb-3">
             <label for="variantType" class="form-label">Тип вариантов товара</label>
-            <select class="form-select bg-dark text-white" id="variantType" name="variantType" required>
+            <select class="form-select" id="variantType" name="variantType" required>
                 <option th:each="variantType : ${variantTypes}"
                         th:value="${variantType}"
                         th:text="${variantType.displayName}"
                         th:selected="${category.variantType == variantType}">
                 </option>
             </select>
-            <div class="form-text text-white-50">Определяет, что указывается для товаров этой категории.</div>
+            <div class="form-text text-body-secondary">Определяет, что указывается для товаров этой категории.</div>
         </div>
         <div class="d-flex gap-2">
-            <button type="submit" class="btn btn-warning">Сохранить</button>
-            <a href="/admin/categories" class="btn btn-outline-light">Отмена</a>
+            <button type="submit" class="btn btn-dark">Сохранить</button>
+            <a href="/admin/categories" class="btn btn-outline-dark">Отмена</a>
         </div>
     </form>
 </div>

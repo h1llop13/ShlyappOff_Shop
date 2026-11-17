@@ -5,34 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title th:text="${product.id != null ? 'Редактировать товар' : 'Добавить товар'}">Форма товара</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/admin.css">
 </head>
-<body class="bg-dark text-white">
+<body class="admin-page">
 
-<nav class="navbar navbar-expand-lg navbar-dark bg-black sticky-top">
-    <div class="container">
-        <a class="navbar-brand fw-bold" href="/admin">Админка ShlyapOff</a>
-        <div class="collapse navbar-collapse">
-            <ul class="navbar-nav ms-auto">
-                <li class="nav-item"><a class="nav-link" href="/admin">Каталог</a></li>
-                <li class="nav-item"><a class="nav-link" href="/">На сайт</a></li>
-            </ul>
-        </div>
-    </div>
-</nav>
+<header th:replace="~{fragments/admin :: navigation('catalog')}"></header>
 
 <main class="container mt-5">
     <nav aria-label="Навигация" class="mb-3">
-        <a href="/admin" class="link-light text-decoration-none">Каталог</a>
-        <span class="text-white-50 mx-2">/</span>
-        <a th:href="@{/admin/category/{categoryId}/products(categoryId=${category.id})}" class="link-light text-decoration-none" th:text="${category.name}">Категория</a>
-        <span class="text-white-50 mx-2">/</span>
+        <a href="/admin" class="link-dark text-decoration-none">Каталог</a>
+        <span class="text-body-secondary mx-2">/</span>
+        <a th:href="@{/admin/category/{categoryId}/products(categoryId=${category.id})}" class="link-dark text-decoration-none" th:text="${category.name}">Категория</a>
+        <span class="text-body-secondary mx-2">/</span>
         <span th:text="${product.id != null ? 'Редактирование' : 'Новый товар'}">Товар</span>
     </nav>
 
     <h1 class="mb-2" th:text="${product.id != null ? 'Редактировать товар' : 'Добавить товар'}">Форма товара</h1>
-    <p class="text-white-50 mb-4">Категория: <strong class="text-white" th:text="${category.name}">Категория</strong></p>
+    <p class="text-body-secondary mb-4">Категория: <strong th:text="${category.name}">Категория</strong></p>
 
-    <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+    <div th:if="${errorMessage}" class="alert alert-secondary admin-notice" th:text="${errorMessage}"></div>
 
     <form th:action="${product.id != null ? '/admin/product/edit/' + product.id : '/admin/product/create'}"
           method="post"
@@ -41,22 +32,22 @@
 
         <div class="mb-3">
             <label for="name" class="form-label">Название товара</label>
-            <input type="text" class="form-control bg-dark text-white" id="name" name="name" th:value="${product.name}" required>
+            <input type="text" class="form-control" id="name" name="name" th:value="${product.name}" required>
         </div>
 
         <div class="mb-3">
             <label for="description" class="form-label">Описание</label>
-            <textarea class="form-control bg-dark text-white" id="description" name="description" rows="3" th:text="${product.description}"></textarea>
+            <textarea class="form-control" id="description" name="description" rows="3" th:text="${product.description}"></textarea>
         </div>
 
         <div class="row">
             <div class="col-md-6 mb-3">
                 <label for="price" class="form-label">Цена (₽)</label>
-                <input type="number" step="0.01" min="0" class="form-control bg-dark text-white" id="price" name="price" th:value="${product.price}" required>
+                <input type="number" step="0.01" min="0" class="form-control" id="price" name="price" th:value="${product.price}" required>
             </div>
             <div class="col-md-6 mb-3">
                 <label for="brand_id" class="form-label">Бренд</label>
-                <select class="form-select bg-dark text-white" id="brand_id" name="brand_id" required>
+                <select class="form-select" id="brand_id" name="brand_id" required>
                     <option value="">Выберите бренд</option>
                     <option th:each="brand : ${brands}" th:value="${brand.id}" th:text="${brand.name}"
                             th:selected="${product.brand != null && product.brand.id == brand.id}">Бренд</option>
@@ -67,7 +58,7 @@
         <div class="row">
             <div th:each="field : ${fields}" class="col-md-4 mb-3">
                 <label th:for="${field.propertyName}" class="form-label" th:text="${field.displayName}">Характеристика</label>
-                <input type="text" class="form-control bg-dark text-white"
+                <input type="text" class="form-control"
                        th:id="${field.propertyName}" th:name="${field.propertyName}"
                        th:value="${field.getValue(product)}" th:placeholder="${field.placeholder}" required>
             </div>
@@ -75,10 +66,10 @@
 
         <div th:if="${category.variantType.name() == 'NONE'}" class="mb-3">
             <label for="stockQuantity" class="form-label">Остаток на складе (шт.)</label>
-            <input type="number" min="0" class="form-control bg-dark text-white" id="stockQuantity" name="stockQuantity" th:value="${product.stockQuantity}" required>
+            <input type="number" min="0" class="form-control" id="stockQuantity" name="stockQuantity" th:value="${product.stockQuantity}" required>
         </div>
 
-        <section th:if="${product.id == null && category.variantType.name() != 'NONE'}" class="card bg-black mb-3">
+        <section th:if="${product.id == null && category.variantType.name() != 'NONE'}" class="card admin-surface mb-3">
             <div class="card-body">
                 <h2 class="h5 mb-3" th:text="${category.variantType.displayTitle}">Варианты</h2>
                 <div id="variantRows" class="d-grid gap-2"></div>
@@ -93,16 +84,16 @@
 
         <div class="mb-3">
             <label for="imageFile" class="form-label">Изображение товара</label>
-            <input type="file" class="form-control bg-dark text-white" id="imageFile" name="imageFile" accept="image/*">
+            <input type="file" class="form-control" id="imageFile" name="imageFile" accept="image/*">
             <div th:if="${product.imageUrl != null}" class="mt-2">
-                <small class="text-white-50">Текущее изображение:</small>
+                <small class="text-body-secondary">Текущее изображение:</small>
                 <img th:src="${product.imageUrl}" alt="Текущее изображение" class="img-thumbnail mt-2" style="max-width: 200px;">
             </div>
         </div>
 
         <div class="d-flex gap-2">
-            <button type="submit" class="btn btn-warning" th:text="${product.id != null ? 'Сохранить изменения' : 'Добавить товар'}">Сохранить</button>
-            <a th:href="@{/admin/category/{categoryId}/products(categoryId=${category.id})}" class="btn btn-outline-light">Отмена</a>
+            <button type="submit" class="btn btn-dark" th:text="${product.id != null ? 'Сохранить изменения' : 'Добавить товар'}">Сохранить</button>
+            <a th:href="@{/admin/category/{categoryId}/products(categoryId=${category.id})}" class="btn btn-outline-dark">Отмена</a>
         </div>
     </form>
 </main>
@@ -115,9 +106,9 @@
     function addVariantRow() {
         const row = document.createElement('div');
         row.className = 'input-group';
-        row.innerHTML = `<input type="text" name="variantValues" class="form-control bg-dark text-white" placeholder="Укажите ${singular}" required>
-                         <input type="number" min="0" name="variantStockQuantities" value="0" class="form-control bg-dark text-white" aria-label="Остаток" required>
-                         <button type="button" class="btn btn-outline-danger">Удалить</button>`;
+        row.innerHTML = `<input type="text" name="variantValues" class="form-control" placeholder="Укажите ${singular}" required>
+                         <input type="number" min="0" name="variantStockQuantities" value="0" class="form-control" aria-label="Остаток" required>
+                         <button type="button" class="btn btn-outline-dark admin-delete">Удалить</button>`;
         row.querySelector('button').addEventListener('click', () => row.remove());
         variantRows.appendChild(row);
     }

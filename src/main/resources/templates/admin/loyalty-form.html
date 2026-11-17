@@ -4,34 +4,32 @@
     <meta charset="UTF-8">
     <title>Форма порога лояльности</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="/css/admin.css">
 </head>
-<body class="bg-dark text-white">
+<body class="admin-page">
 
-<nav class="navbar navbar-expand-lg navbar-dark bg-black sticky-top">
-    <div class="container">
-        <a class="navbar-brand fw-bold" href="/admin">Админка ShlyapOff</a>
-    </div>
-</nav>
+<header th:replace="~{fragments/admin :: navigation('loyalty')}"></header>
 
 <div class="container mt-5">
     <h1 th:text="${tier.id != null ? 'Редактировать порог' : 'Добавить порог лояльности'}">Форма</h1>
 
-    <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+    <div th:if="${errorMessage}" class="alert alert-secondary admin-notice" th:text="${errorMessage}"></div>
 
     <form th:action="${tier.id != null ? '/admin/loyalty/edit/' + tier.id : '/admin/loyalty/create'}" method="post" style="max-width: 420px;">
         <div class="mb-3">
             <label for="minAmount" class="form-label">Сумма всех заказов для уровня (₽)</label>
-            <input type="number" step="0.01" min="0" class="form-control bg-dark text-white" id="minAmount" name="minAmount"
+            <input type="number" step="0.01" min="0" class="form-control" id="minAmount" name="minAmount"
                    th:value="${tier.minAmount}" required>
         </div>
         <div class="mb-3">
             <label for="bonusPercent" class="form-label">Кешбэк бонусами (%)</label>
-            <input type="number" step="1" min="0" max="100" class="form-control bg-dark text-white" id="bonusPercent" name="bonusPercent"
+            <input type="number" step="1" min="0" max="100" class="form-control" id="bonusPercent" name="bonusPercent"
                    th:value="${tier.bonusPercent}" required>
         </div>
         <div class="d-flex gap-2">
-            <button type="submit" class="btn btn-warning">Сохранить</button>
-            <a href="/admin/loyalty" class="btn btn-outline-light">Отмена</a>
+            <button type="submit" class="btn btn-dark">Сохранить</button>
+            <a href="/admin/loyalty" class="btn btn-outline-dark">Отмена</a>
         </div>
     </form>
 </div>

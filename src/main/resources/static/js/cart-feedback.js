@@ -13,10 +13,6 @@
         toast.setAttribute('role', 'status');
         toast.setAttribute('aria-live', 'polite');
 
-        const icon = document.createElement('span');
-        icon.className = 'cart-toast__icon';
-        icon.setAttribute('aria-hidden', 'true');
-
         const content = document.createElement('div');
         content.className = 'cart-toast__content';
         const title = document.createElement('div');
@@ -26,12 +22,12 @@
         content.append(title, message);
 
         const action = document.createElement('button');
-        action.className = 'cart-toast__action';
+        action.className = 'button secondary cart-toast__action';
         action.type = 'button';
-        action.textContent = 'В корзину';
+        action.textContent = 'Открыть корзину';
         action.addEventListener('click', () => window.location.assign('/cart'));
 
-        toast.append(icon, content, action);
+        toast.append(content, action);
         document.body.append(toast);
         return toast;
     }
@@ -50,7 +46,6 @@
         const toast = getToast();
         window.clearTimeout(dismissTimer);
         toast.classList.toggle('cart-toast--error', error);
-        toast.querySelector('.cart-toast__icon').textContent = error ? '!' : '✓';
         toast.querySelector('.cart-toast__title').textContent = title;
         toast.querySelector('.cart-toast__message').textContent = message || '';
         toast.classList.add('is-visible');
@@ -80,10 +75,9 @@
                 throw new Error(payload && payload.message ? payload.message : 'Не удалось добавить товар в корзину');
             }
 
-            const itemWord = payload.itemCount === 1 ? 'товар' : 'товаров';
             showToast({
                 title: `«${payload.productName}» добавлен в корзину`,
-                message: `В корзине: ${payload.itemCount} ${itemWord}`
+                message: `В корзине: ${payload.itemCount}`
             });
             triggerHaptic('success');
         } catch (error) {

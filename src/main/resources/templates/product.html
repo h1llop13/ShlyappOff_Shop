@@ -2,201 +2,70 @@
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title th:text="${product.name} + ' - ShlyapOff'">Товар</title>
-
-    <script src="/js/telegram-loader.js"></script>
-
-    <style>
-        :root {
-            --bg: var(--tg-theme-bg-color, #000000);
-            --text: var(--tg-theme-text-color, #ffffff);
-            --hint: var(--tg-theme-hint-color, #888888);
-            --secondary-bg: var(--tg-theme-secondary-bg-color, #1a1a1a);
-
-            --btn-bg: var(--text);
-            --btn-text: var(--bg);
-
-            --border: color-mix(in srgb, var(--text) 15%, transparent);
-            --radius: 16px;
-        }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            padding-bottom: 100px;
-        }
-
-        .app-header {
-            position: sticky; top: 0; z-index: 100; display: flex; align-items: center;
-            padding: 16px; background: var(--bg); border-bottom: 1px solid var(--border);
-            backdrop-filter: blur(10px);
-        }
-        .back-btn { font-size: 24px; text-decoration: none; color: var(--text); margin-right: 16px; padding: 8px; }
-        .header-title { font-size: 18px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-        .product-image-container {
-            width: 100%; background: var(--secondary-bg); display: flex;
-            justify-content: center; align-items: center; max-height: 400px; overflow: hidden;
-        }
-        .product-image { width: 100%; height: 100%; object-fit: cover; }
-
-        .product-content { padding: 20px 16px; }
-        .price-tag { font-size: 28px; font-weight: 800; color: var(--text); margin-bottom: 8px; }
-        .product-name { font-size: 22px; font-weight: 700; margin-bottom: 12px; line-height: 1.3; }
-        .product-desc { font-size: 15px; color: var(--hint); line-height: 1.5; margin-bottom: 24px; }
-        .stock-status { font-size: 14px; margin: -12px 0 20px; color: var(--hint); }
-        .stock-status.out-of-stock { color: #ef4444; }
-
-        .section-title { font-size: 16px; font-weight: 600; margin-bottom: 12px; color: var(--text); }
-
-        .specs-list {
-            background: var(--secondary-bg); border-radius: var(--radius);
-            padding: 4px 16px; margin-bottom: 24px;
-        }
-        .spec-item {
-            display: flex; justify-content: space-between; padding: 12px 0;
-            border-bottom: 1px solid var(--border); font-size: 14px;
-        }
-        .spec-item:last-child { border-bottom: none; }
-        .spec-label { color: var(--hint); }
-        .spec-value { font-weight: 500; text-align: right; }
-
-        .variants-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; }
-        .variant-chip {
-            padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: 500;
-            border: 1px solid var(--border); background: transparent; color: var(--text);
-            display: flex; align-items: center; gap: 6px;
-        }
-        .variant-chip.in-stock { border-color: var(--text); color: var(--text); }
-        .variant-chip.out-of-stock { color: var(--hint); text-decoration: line-through; opacity: 0.6; }
-
-        .bottom-bar {
-            position: fixed; bottom: 0; left: 0; right: 0; padding: 16px;
-            background: var(--bg); border-top: 1px solid var(--border);
-            backdrop-filter: blur(20px); z-index: 1000;
-        }
-        .add-to-cart-btn {
-            width: 100%; padding: 16px; background: var(--btn-bg); color: var(--btn-text);
-            border: none; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer;
-        }
-    </style>
-    <link rel="stylesheet" href="/css/cart-feedback.css">
-    <link rel="stylesheet" href="/css/loading-states.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#ffffff">
+    <title>Товар · ShlyapOff</title>
     <link rel="stylesheet" href="/css/storefront.css">
+    <script src="/js/telegram-loader.js" defer></script>
+    <script src="/js/storefront.js" defer></script>
 </head>
 <body>
-
-<!-- HEADER -->
-<header class="app-header">
-    <a href="/catalog" class="back-btn" aria-label="Вернуться в каталог">←</a>
-    <h1 class="header-title" th:text="${product.name}">Товар</h1>
-</header>
-
-<!-- IMAGE -->
-<div class="product-image-container">
-    <img th:if="${product.imageUrl != null}" th:src="${product.imageUrl}" class="product-image" alt="Фото">
-    <img th:if="${product.imageUrl == null}" src="/img/placeholder.svg" class="product-image" alt="Нет фото">
-</div>
-
-<!-- CONTENT -->
-<div class="product-content">
-    <div class="price-tag" th:text="${product.price} + ' ₽'">0 ₽</div>
-    <h2 class="product-name" th:text="${product.name}">Название товара</h2>
-    <p class="product-desc" th:text="${product.description}">Описание товара...</p>
-    <p th:if="${!requiresVariant}" class="stock-status"
-       th:classappend="${product.stockQuantity > 0} ? '' : ' out-of-stock'"
-       th:text="${product.stockQuantity > 0} ? 'В наличии: ' + product.stockQuantity + ' шт.' : 'Нет в наличии'">В наличии: 0 шт.</p>
-
-    <p th:if="${errorMessage}" class="product-desc" th:text="${errorMessage}"></p>
-
-    <!-- VARIANTS (FLAVORS) -->
-    <div th:if="${variants != null && !variants.isEmpty()}">
-        <h3 class="section-title" th:text="${product.category != null ? product.category.variantType.displayTitle : 'Варианты'}">Варианты</h3>
-        <div class="variants-grid">
-            <label th:each="variant : ${variants}"
-                 th:class="${variant.stockQuantity > 0} ? 'variant-chip in-stock' : 'variant-chip out-of-stock'">
-                <input th:if="${requiresVariant}" type="radio" name="variantId" th:value="${variant.id}"
-                       form="addToCartForm" th:disabled="${variant.stockQuantity <= 0}" required>
-                <span th:text="${variant.value}">Вариант</span>
-                <span th:text="${'· ' + variant.stockQuantity + ' шт.'}">· 0 шт.</span>
-                <span th:if="${variant.stockQuantity <= 0}">✕</span>
-            </label>
+<header th:replace="~{fragments/store :: navigation('')}"></header>
+<main class="shell">
+    <a href="/catalog" class="back-link" data-mini-back>← Каталог</a>
+    <section class="product-layout">
+        <div class="product-image-container">
+            <img th:if="${product.imageUrl != null}" th:src="${product.imageUrl}" class="product-image" th:alt="${product.name}">
+            <img th:if="${product.imageUrl == null}" src="/img/placeholder.svg" class="product-image" alt="Нет фотографии товара">
         </div>
-    </div>
+        <div class="product-detail">
+            <h1 class="product-name" th:text="${product.name}">Название товара</h1>
+            <p class="price-tag" th:text="${#numbers.formatDecimal(product.price, 1, 'WHITESPACE', 2, 'COMMA')} + ' ₽'">0 ₽</p>
+            <p class="product-desc" th:text="${product.description}">Описание товара...</p>
+            <p th:if="${!requiresVariant}" class="stock-status"
+               th:classappend="${product.stockQuantity > 0} ? '' : ' out-of-stock'"
+               th:text="${product.stockQuantity > 0} ? 'В наличии: ' + product.stockQuantity + ' шт.' : 'Нет в наличии'">В наличии: 0 шт.</p>
 
-    <!-- SPECS -->
-    <h3 class="section-title">Характеристики</h3>
-    <div class="specs-list">
-        <div class="spec-item" th:each="field : ${productFields}">
-            <span class="spec-label" th:text="${field.displayName}">Характеристика</span>
-            <span class="spec-value" th:text="${field.getValue(product) ?: 'Не указано'}">-</span>
-        </div>
-        <div class="spec-item">
-            <span class="spec-label">Категория</span>
-            <span class="spec-value" th:text="${product.category != null ? product.category.name : 'Без категории'}">-</span>
-        </div>
-        <div class="spec-item">
-            <span class="spec-label">Бренд</span>
-            <span class="spec-value" th:text="${product.brand != null ? product.brand.name : 'Неизвестен'}">-</span>
-        </div>
-    </div>
-</div>
+            <p th:if="${errorMessage}" class="notice" role="alert" th:text="${errorMessage}"></p>
 
-<!-- BOTTOM BAR (HTML Fallback) -->
-<div class="bottom-bar" id="htmlBottomBar">
-    <form th:action="@{/cart/add}" method="post" id="addToCartForm" style="width: 100%;" data-cart-form>
-        <input type="hidden" name="productId" th:value="${product.id}">
-        <input th:if="${_csrf != null}" type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-        <button type="submit" class="add-to-cart-btn" th:disabled="${(requiresVariant && !hasInStockVariants) || (!requiresVariant && (product.stockQuantity == null || product.stockQuantity <= 0))}"
-                th:text="${(requiresVariant && !hasInStockVariants) || (!requiresVariant && (product.stockQuantity == null || product.stockQuantity <= 0))} ? 'Нет в наличии' : 'Добавить в корзину'">Добавить в корзину</button>
-    </form>
-</div>
-
-<script src="/js/haptic-feedback.js"></script>
+            <div th:if="${variants != null && !variants.isEmpty()}">
+                <h2 class="section-title" th:text="${product.category != null ? product.category.variantType.displayTitle : 'Варианты'}">Варианты</h2>
+                <div class="variants-grid">
+                    <label th:each="variant : ${variants}"
+                         th:class="${variant.stockQuantity > 0} ? 'variant-chip in-stock' : 'variant-chip out-of-stock'">
+                        <input th:if="${requiresVariant}" type="radio" name="variantId" th:value="${variant.id}"
+                               form="addToCartForm" th:disabled="${variant.stockQuantity <= 0}" required>
+                        <span th:text="${variant.value}">Вариант</span>
+                        <span th:text="${'· ' + variant.stockQuantity + ' шт.'}">· 0 шт.</span>
+                    </label>
+                </div>
+            </div>
+            <form th:action="@{/cart/add}" method="post" id="addToCartForm" data-cart-form>
+                <input type="hidden" name="productId" th:value="${product.id}">
+                <button type="submit" class="button wide" th:disabled="${(requiresVariant && !hasInStockVariants) || (!requiresVariant && (product.stockQuantity == null || product.stockQuantity <= 0))}"
+                        th:text="${(requiresVariant && !hasInStockVariants) || (!requiresVariant && (product.stockQuantity == null || product.stockQuantity <= 0))} ? 'Нет в наличии' : 'Добавить в корзину'">Добавить в корзину</button>
+            </form>
+            <details class="specs">
+                <summary>Характеристики</summary>
+                <div class="specs-list">
+                    <div class="spec-item" th:each="field : ${productFields}">
+                        <span class="spec-label" th:text="${field.displayName}">Характеристика</span>
+                        <span class="spec-value" th:text="${field.getValue(product) ?: 'Не указано'}">-</span>
+                    </div>
+                    <div class="spec-item">
+                        <span class="spec-label">Категория</span>
+                        <span class="spec-value" th:text="${product.category != null ? product.category.name : 'Без категории'}">-</span>
+                    </div>
+                    <div class="spec-item">
+                        <span class="spec-label">Бренд</span>
+                        <span class="spec-value" th:text="${product.brand != null ? product.brand.name : 'Неизвестен'}">-</span>
+                    </div>
+                </div>
+            </details>
+        </div>
+    </section>
+</main>
 <script src="/js/telegram-shop.js"></script>
 <script src="/js/cart-feedback.js"></script>
-<script src="/js/loading-states.js"></script>
-<script>
-    // === TELEGRAM WEBAPP MAGIC ===
-    window.TelegramLoader.onReady((tg) => {
-        if (!tg.initData) return;
-        tg.expand();
-        tg.ready();
-
-        // 1. Нативная кнопка "Назад" в шапке Telegram
-        tg.BackButton.show();
-        tg.BackButton.onClick(() => {
-            if (window.MiniAppHaptics) {
-                window.MiniAppHaptics.impact('light');
-            }
-            window.history.back();
-        });
-
-        // 2. Нативная нижняя кнопка "В корзину" (MainButton)
-        // Она выглядит намного круче и нативнее, чем HTML-кнопка
-        if (tg.MainButton && !document.querySelector('.add-to-cart-btn').disabled) {
-            tg.MainButton.setText('Добавить в корзину');
-            tg.MainButton.show();
-            tg.MainButton.onClick(() => {
-                if (window.MiniAppHaptics) {
-                    window.MiniAppHaptics.impact('soft');
-                }
-                const form = document.getElementById('addToCartForm');
-                if (form.requestSubmit) {
-                    form.requestSubmit();
-                } else {
-                    form.submit();
-                }
-            });
-
-            // Скрываем нашу HTML-кнопку, так как есть нативная
-            document.getElementById('htmlBottomBar').style.display = 'none';
-        }
-    });
-</script>
 </body>
 </html>

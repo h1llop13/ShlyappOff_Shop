@@ -1,0 +1,33 @@
+.admin-page {
+    --bs-body-font-family: system-ui, sans-serif;
+    --bs-body-color: #121212;
+    --bs-secondary-color: #595959;
+    --bs-border-color: #d8d8d8;
+    --bs-secondary-rgb: 112, 112, 112;
+    --bs-dark-rgb: 18, 18, 18;
+    --bs-light-rgb: 240, 240, 240;
+    --bs-link-color: #121212;
+    --bs-link-hover-color: #363636;
+    padding-bottom: 2rem;
+    color-scheme: light;
+    accent-color: #121212;
+}
+.admin-header { background: #fff; border-bottom: 1px solid #d8d8d8; }
+.admin-header-top, .admin-account { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem 1rem; }
+.admin-header-top { min-height: 60px; justify-content: space-between; }
+.admin-wordmark { font-size: 1.15rem; font-weight: 800; text-decoration: none; }
+.admin-nav { display: flex; gap: .25rem 1rem; overflow-x: auto; }
+.admin-nav a { display: grid; place-items: center; min-height: 44px; flex: none; text-decoration: none; color: #595959; }
+.admin-nav a[aria-current=page] { color: #121212; font-weight: 750; text-decoration: underline; text-underline-offset: .25em; }
+.admin-page h1 { letter-spacing: -.035em; font-weight: 750; }
+.admin-surface, .metric { background: #f5f5f5; }
+.metric { border: 1px solid #d8d8d8; border-radius: .75rem; }
+.chart-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: .75rem; align-items: center; }
+.bar { height: .65rem; background: #121212; border-radius: 1rem; }
+.admin-notice { border-left: 4px solid #121212; }
+.admin-delete { text-decoration: underline; text-underline-offset: .18em; }
+.admin-page img { filter: grayscale(100%); }
+.admin-page :focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+.admin-page :is(.form-control, .form-select, .form-check-input):focus { border-color: #121212; box-shadow: 0 0 0 .16rem #12121233; }
+.admin-page .form-check-input:checked { background-color: #121212; border-color: #121212; }
+.admin-page .form-switch .form-check-input:focus:not(:checked) { --bs-form-switch-bg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3E%3Ccircle r='3' fill='%23595959'/%3E%3C/svg%3E"); }

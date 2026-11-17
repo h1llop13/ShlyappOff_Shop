@@ -90,7 +90,7 @@ class ShopApplicationTests {
 						"Content-Security-Policy",
 						"frame-ancestors 'self' https://web.telegram.org https://*.telegram.org"
 				))
-				.andExpect(content().string(containsString("<script src=\"/js/telegram-loader.js\"></script>")))
+				.andExpect(content().string(containsString("<script src=\"/js/telegram-loader.js\" defer></script>")))
 				.andExpect(content().string(not(containsString(
 						"<script src=\"https://telegram.org/js/telegram-web-app.js"
 				))));
@@ -112,12 +112,20 @@ class ShopApplicationTests {
 	}
 
 	@Test
-	void storefrontLoadsSkeletonAssetsAndHasNoFavoritesUi() throws Exception {
+	void storefrontRendersSharedNavigationWithoutBlockingOverlay() throws Exception {
 		mockMvc.perform(get("/"))
 				.andExpect(status().isOk())
-				.andExpect(content().string(containsString("/css/loading-states.css")))
-				.andExpect(content().string(containsString("/js/loading-states.js")))
+				.andExpect(content().string(containsString("/css/storefront.css")))
+				.andExpect(content().string(containsString("aria-current=\"page\">Главная")))
+				.andExpect(content().string(not(containsString("/js/loading-states.js"))))
 				.andExpect(content().string(not(containsString("favorite-btn"))));
+	}
+
+	@Test
+	void anonymousVisitorsCanLoadTheProductPlaceholder() throws Exception {
+		mockMvc.perform(get("/img/placeholder.svg"))
+				.andExpect(status().isOk())
+				.andExpect(content().contentTypeCompatibleWith("image/svg+xml"));
 	}
 
 	@Test
