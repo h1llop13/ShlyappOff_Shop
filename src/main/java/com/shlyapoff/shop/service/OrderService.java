@@ -11,6 +11,10 @@ import com.shlyapoff.shop.repository.OrderRepository;
 import com.shlyapoff.shop.repository.ProductRepository;
 import com.shlyapoff.shop.repository.ProductVariantRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -28,8 +32,10 @@ import java.util.Comparator;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class OrderService {
 
+    private final PlatformTransactionManager transactionManager;
     private final OrderRepository orderRepository;
     private final CartService cartService;
     private final NotificationOutboxService notificationOutboxService;
@@ -167,7 +173,7 @@ public class OrderService {
     @Transactional
     public void updateStatus(Long orderId, String status) {
         OrderStatus nextStatus = OrderStatus.from(status);
-        Order order = orderRepository.findById(orderId)
+        Order order = orderRepository.findByIdForUpdate(orderId)
                 .orElseThrow(() -> new RuntimeException("Заказ не найден"));
 
         OrderStatus previousStatus = order.getStatus();
@@ -222,14 +228,27 @@ public class OrderService {
     }
 
     @Scheduled(fixedDelayString = "${app.orders.reservation-cleanup-ms:60000}")
-    @Transactional
     public void releaseExpiredReservations() {
+        var transaction = new TransactionTemplate(transactionManager);
+        transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         LocalDateTime now = LocalDateTime.now();
-        for (Order order : orderRepository.findExpiredReservations(now)) {
-            restoreInventory(order);
-            order.setInventoryReserved(false);
-            order.setReservationExpiresAt(null);
-            orderRepository.save(order);
+        for (Long id : orderRepository.findExpiredReservationIds(now, PageRequest.of(0, 50))) {
+            try {
+                transaction.executeWithoutResult(ignored -> {
+                    Order order = orderRepository.findByIdForUpdate(id).orElse(null);
+                    if (order == null || order.getStatus() != OrderStatus.NEW
+                            || !Boolean.TRUE.equals(order.getInventoryReserved())
+                            || order.getReservationExpiresAt() == null
+                            || order.getReservationExpiresAt().isAfter(now)) {
+                        return;
+                    }
+                    restoreInventory(order);
+                    order.setInventoryReserved(false);
+                    order.setReservationExpiresAt(null);
+                });
+            } catch (RuntimeException exception) {
+                log.warn("Не удалось освободить резерв заказа {}", id, exception);
+            }
         }
     }
 

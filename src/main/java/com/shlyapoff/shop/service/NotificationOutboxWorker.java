@@ -1,18 +1,25 @@
 package com.shlyapoff.shop.service;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class NotificationOutboxWorker {
 
     private final NotificationOutboxService notificationOutboxService;
 
     @Scheduled(fixedDelayString = "${app.notifications.fixed-delay-ms}")
     public void deliverPendingNotifications() {
-        notificationOutboxService.findReadyNotificationIds()
-                .forEach(notificationOutboxService::deliver);
+        for (Long id : notificationOutboxService.findReadyNotificationIds()) {
+            try {
+                notificationOutboxService.deliver(id);
+            } catch (RuntimeException exception) {
+                log.warn("Ошибка обработки уведомления {}", id, exception);
+            }
+        }
     }
 }

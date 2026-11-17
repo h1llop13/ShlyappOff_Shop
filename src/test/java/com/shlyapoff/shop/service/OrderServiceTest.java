@@ -222,7 +222,7 @@ class OrderServiceTest {
         order.setId(1L);
         order.setStatus(OrderStatus.NEW);
 
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(order));
 
         orderService.updateStatus(1L, "COMPLETED");
 
@@ -244,7 +244,7 @@ class OrderServiceTest {
         order.setId(1L);
         order.setStatus(OrderStatus.NEW);
         order.addItem(item);
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(order));
         when(productRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(product));
 
         orderService.updateStatus(1L, "COMPLETED");
@@ -272,7 +272,7 @@ class OrderServiceTest {
         order.setId(1L);
         order.setStatus(OrderStatus.NEW);
         order.addItem(item);
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(order));
         when(productVariantRepository.findByIdForUpdate(7L)).thenReturn(Optional.of(variant));
 
         orderService.updateStatus(1L, "COMPLETED");
@@ -296,7 +296,7 @@ class OrderServiceTest {
         order.setId(1L);
         order.setStatus(OrderStatus.NEW);
         order.addItem(item);
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(order));
         when(productRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(product));
 
         assertThatThrownBy(() -> orderService.updateStatus(1L, "COMPLETED"))
@@ -314,7 +314,7 @@ class OrderServiceTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Недопустимый статус заказа");
 
-        verify(orderRepository, never()).findById(any());
+        verify(orderRepository, never()).findByIdForUpdate(any());
         verify(orderRepository, never()).save(any());
     }
 
@@ -324,7 +324,7 @@ class OrderServiceTest {
         Order order = new Order();
         order.setId(1L);
         order.setStatus(OrderStatus.COMPLETED);
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(order));
 
         assertThatThrownBy(() -> orderService.updateStatus(1L, "CANCELLED"))
                 .isInstanceOf(IllegalStateException.class)
@@ -345,7 +345,7 @@ class OrderServiceTest {
         order.setCustomer(customer);
         order.setSubtotalAmount(new BigDecimal("450.50"));
         order.setTotalAmount(new BigDecimal("450.50"));
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(order));
         when(customerService.registerOrderAndAccrueBonuses(customer, new BigDecimal("450.50"), new BigDecimal("450.50")))
                 .thenReturn(customer);
 
@@ -361,7 +361,7 @@ class OrderServiceTest {
     @Test
     @DisplayName("выбрасывает исключение при обновлении статуса несуществующего заказа")
     void throwsWhenUpdatingStatusOfMissingOrder() {
-        when(orderRepository.findById(404L)).thenReturn(Optional.empty());
+        when(orderRepository.findByIdForUpdate(404L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> orderService.updateStatus(404L, "COMPLETED"))
                 .isInstanceOf(RuntimeException.class)

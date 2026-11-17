@@ -118,7 +118,7 @@ class OrderCheckoutIntegrationTest {
     }
 
     @Test
-    void expiredReservationReleasesStockWithoutCancellingOrder() {
+    void expiredReservationReleasesStockWithoutCancellingOrder() throws Exception {
         Product product = product("Товар для резерва", "75.00", 5);
         cartService.addToCart("expired-reservation-session", product.getId(), 2);
         Order order = orderService.createOrderFromCart(
@@ -127,6 +127,12 @@ class OrderCheckoutIntegrationTest {
         order.setReservationExpiresAt(LocalDateTime.now().minusMinutes(1));
         orderRepository.saveAndFlush(order);
 
+        try (var workers = java.util.concurrent.Executors.newFixedThreadPool(2)) {
+            var first = workers.submit(orderService::releaseExpiredReservations);
+            var second = workers.submit(orderService::releaseExpiredReservations);
+            first.get(10, java.util.concurrent.TimeUnit.SECONDS);
+            second.get(10, java.util.concurrent.TimeUnit.SECONDS);
+        }
         orderService.releaseExpiredReservations();
 
         Order expired = orderRepository.findById(order.getId()).orElseThrow();

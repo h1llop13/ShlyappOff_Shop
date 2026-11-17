@@ -32,6 +32,9 @@ public class NotificationOutbox {
     @Column(name = "next_attempt_at", nullable = false)
     private LocalDateTime nextAttemptAt;
 
+    @Column(name = "claim_token", length = 36)
+    private String claimToken;
+
     @Column(name = "sent_at")
     private LocalDateTime sentAt;
 

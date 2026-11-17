@@ -3,6 +3,8 @@ package com.shlyapoff.shop.repository;
 import com.shlyapoff.shop.model.Order;
 import com.shlyapoff.shop.model.OrderStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 import org.springframework.data.repository.query.Param;
@@ -22,9 +24,13 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     long countByPromoCodeEntityIdAndStatusNot(Long promoCodeId, OrderStatus status);
     long countByPromoCodeEntityIdAndCustomerIdAndStatusNot(Long promoCodeId, Long customerId, OrderStatus status);
 
-    @Query("SELECT DISTINCT o FROM Order o LEFT JOIN FETCH o.items WHERE o.status = 'NEW' " +
-            "AND o.inventoryReserved = true AND o.reservationExpiresAt <= :now")
-    List<Order> findExpiredReservations(@Param("now") LocalDateTime now);
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT o FROM Order o WHERE o.id = :id")
+    java.util.Optional<Order> findByIdForUpdate(@Param("id") Long id);
+
+    @Query("SELECT o.id FROM Order o WHERE o.status = 'NEW' " +
+            "AND o.inventoryReserved = true AND o.reservationExpiresAt <= :now ORDER BY o.id")
+    List<Long> findExpiredReservationIds(@Param("now") LocalDateTime now, Pageable pageable);
 
     @Query("""
             SELECT COALESCE(SUM(o.totalAmount), 0) AS revenue, COUNT(o) AS orders

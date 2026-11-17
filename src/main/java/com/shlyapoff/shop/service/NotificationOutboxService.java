@@ -6,21 +6,26 @@ import com.shlyapoff.shop.repository.NotificationOutboxRepository;
 import com.shlyapoff.shop.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class NotificationOutboxService {
-
     private final NotificationOutboxRepository notificationOutboxRepository;
     private final OrderRepository orderRepository;
     private final TelegramNotificationService telegramNotificationService;
+    private final PlatformTransactionManager transactionManager;
 
     @Transactional
     public void enqueueNewOrderNotification(Order order) {
@@ -33,32 +38,40 @@ public class NotificationOutboxService {
 
     @Transactional(readOnly = true)
     public List<Long> findReadyNotificationIds() {
-        return notificationOutboxRepository.findTop10BySentAtIsNullAndNextAttemptAtLessThanEqualOrderById(LocalDateTime.now())
-                .stream()
-                .map(NotificationOutbox::getId)
-                .toList();
+        return notificationOutboxRepository.findReadyIds(LocalDateTime.now(), PageRequest.of(0, 10));
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public void deliver(Long outboxId) {
-        NotificationOutbox outbox = notificationOutboxRepository.findById(outboxId).orElse(null);
-        if (outbox == null || outbox.getSentAt() != null || outbox.getNextAttemptAt().isAfter(LocalDateTime.now())) {
-            return;
-        }
-
-        try {
+        TransactionTemplate transaction = new TransactionTemplate(transactionManager);
+        transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        String token = UUID.randomUUID().toString();
+        Delivery delivery = transaction.execute(ignored -> {
+            LocalDateTime now = LocalDateTime.now();
+            // A crashed worker's claim becomes available again after five minutes.
+            if (notificationOutboxRepository.claim(outboxId, token, now, now.plusMinutes(5)) == 0) {
+                return null;
+            }
+            NotificationOutbox outbox = notificationOutboxRepository.findById(outboxId).orElseThrow();
             Order order = orderRepository.findByIdWithItems(outbox.getOrder().getId())
                     .orElseThrow(() -> new IllegalStateException("Заказ для уведомления не найден"));
-            telegramNotificationService.notifyAdminAboutNewOrder(order);
-            outbox.setSentAt(LocalDateTime.now());
-            outbox.setLastError(null);
+            return new Delivery(order, outbox.getAttempts());
+        });
+        if (delivery == null) return;
+
+        try {
+            telegramNotificationService.notifyAdminAboutNewOrder(delivery.order());
         } catch (RuntimeException exception) {
-            int attempts = outbox.getAttempts() + 1;
-            outbox.setAttempts(attempts);
-            outbox.setLastError(exception.getMessage());
+            int attempts = delivery.attempts() + 1;
             long delaySeconds = Math.min(300, 5L * (1L << Math.min(attempts, 6)));
-            outbox.setNextAttemptAt(LocalDateTime.now().plusSeconds(delaySeconds));
-            log.warn("Не удалось отправить уведомление по outbox {}. Повтор через {} сек.", outboxId, delaySeconds, exception);
+            transaction.executeWithoutResult(ignored -> notificationOutboxRepository.retry(
+                    outboxId, token, attempts, LocalDateTime.now().plusSeconds(delaySeconds), exception.getMessage()));
+            log.warn("Не удалось отправить уведомление {}. Повтор через {} сек.", outboxId, delaySeconds, exception);
+            return;
         }
+        transaction.executeWithoutResult(ignored ->
+                notificationOutboxRepository.complete(outboxId, token, LocalDateTime.now()));
     }
+
+    private record Delivery(Order order, int attempts) {}
 }

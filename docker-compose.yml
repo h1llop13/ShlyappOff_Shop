@@ -52,7 +52,7 @@ services:
       # Логин/пароль первого админа (пароль опционален, см. .env.example)
       APP_ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
       APP_ADMIN_PASSWORD: ${ADMIN_PASSWORD}
-      JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=55 -XX:MaxMetaspaceSize=192m -XX:ActiveProcessorCount=1 -Djava.security.egd=file:/dev/./urandom
+      JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=55 -XX:MaxMetaspaceSize=192m -Djava.security.egd=file:/dev/./urandom
     depends_on:
       db:
         condition: service_healthy

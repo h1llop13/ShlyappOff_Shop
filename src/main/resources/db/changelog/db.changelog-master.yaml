@@ -45,3 +45,5 @@ databaseChangeLog:
       file: db/changelog/changes/022-add-reservations-and-promo-codes.sql
   - include:
       file: db/changelog/changes/023-catalog-price-indexes.sql
+  - include:
+      file: db/changelog/changes/024-outbox-claim-token.sql

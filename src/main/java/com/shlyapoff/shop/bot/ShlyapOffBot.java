@@ -11,7 +11,8 @@ import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.webapp.WebAppInfo;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
-import lombok.RequiredArgsConstructor;
+import org.telegram.telegrambots.bots.DefaultBotOptions;
+import org.apache.http.client.config.RequestConfig;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import lombok.extern.slf4j.Slf4j;
@@ -23,12 +24,28 @@ import java.util.List;
 import java.util.Objects;
 
 @Component
-@RequiredArgsConstructor // Используем конструктор для внедрения зависимостей
 @Slf4j
 public class ShlyapOffBot extends TelegramLongPollingBot {
 
     private final AdminRepository adminRepository;
     private final TelegramConfig telegramConfig;
+
+    public ShlyapOffBot(AdminRepository adminRepository, TelegramConfig telegramConfig) {
+        super(botOptions());
+        this.adminRepository = adminRepository;
+        this.telegramConfig = telegramConfig;
+    }
+
+    private static DefaultBotOptions botOptions() {
+        DefaultBotOptions options = new DefaultBotOptions();
+        options.setGetUpdatesTimeout(30);
+        options.setRequestConfig(RequestConfig.custom()
+                .setConnectTimeout(5000)
+                .setConnectionRequestTimeout(5000)
+                .setSocketTimeout(60000)
+                .build());
+        return options;
+    }
 
     @Value("${app.base-url}")
     private String baseUrl;
