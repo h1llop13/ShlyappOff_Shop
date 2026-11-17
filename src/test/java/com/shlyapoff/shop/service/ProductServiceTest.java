@@ -3,6 +3,7 @@ package com.shlyapoff.shop.service;
 import com.shlyapoff.shop.dto.ProductCard;
 import com.shlyapoff.shop.model.Product;
 import com.shlyapoff.shop.repository.ProductRepository;
+import com.shlyapoff.shop.repository.CatalogQueryRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -14,6 +15,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
+import org.springframework.data.domain.SliceImpl;
 
 import java.util.List;
 import java.util.Optional;
@@ -30,6 +33,9 @@ class ProductServiceTest {
 
     @Mock
     private ProductRepository productRepository;
+
+    @Mock
+    private CatalogQueryRepository catalogQueryRepository;
 
     @InjectMocks
     private ProductService productService;
@@ -119,17 +125,18 @@ class ProductServiceTest {
     }
 
     @Test
-    @DisplayName("Расширенный каталог передаёт пустой поиск строкой, а не null")
-    void extendedFiltersUseEmptyStringForMissingSearch() {
-        when(productRepository.findCardsWithFilters(
-                anyString(), isNull(), isNull(), isNull(), isNull(), eq(false), any(Pageable.class)))
-                .thenReturn(Page.empty());
+    @DisplayName("Расширенный каталог запрашивает срез без подсчёта всех товаров")
+    void extendedFiltersUseSlice() {
+        when(catalogQueryRepository.findCards(
+                isNull(), isNull(), isNull(), isNull(), isNull(), eq(false), any(Pageable.class)))
+                .thenReturn(new SliceImpl<>(List.of(), PageRequest.of(0, 12), false));
 
-        productService.findWithFilters(null, null, null, null, null,
+        Slice<ProductCard> result = productService.findWithFilters(null, null, null, null, null,
                 false, "newest", 0, 12);
 
-        verify(productRepository).findCardsWithFilters(
-                eq(""), isNull(), isNull(), isNull(), isNull(), eq(false), any(Pageable.class));
+        assertThat(result.hasNext()).isFalse();
+        verify(catalogQueryRepository).findCards(
+                isNull(), isNull(), isNull(), isNull(), isNull(), eq(false), any(Pageable.class));
     }
 
     @Test

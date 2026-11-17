@@ -3,12 +3,14 @@ package com.shlyapoff.shop.service;
 import com.shlyapoff.shop.dto.ProductCard;
 import com.shlyapoff.shop.model.Product;
 import com.shlyapoff.shop.repository.ProductRepository;
+import com.shlyapoff.shop.repository.CatalogQueryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +24,7 @@ import java.util.stream.Collectors;
 public class ProductService {
 
     private final ProductRepository productRepository;
+    private final CatalogQueryRepository catalogQueryRepository;
 
     @Transactional(readOnly = true)
     @Cacheable("latestProducts")
@@ -76,7 +79,7 @@ public class ProductService {
     }
 
     @Transactional(readOnly = true)
-    public Page<ProductCard> findWithFilters(String name, Long categoryId, Long brandId,
+    public Slice<ProductCard> findWithFilters(String name, Long categoryId, Long brandId,
                                              java.math.BigDecimal minPrice, java.math.BigDecimal maxPrice,
                                              boolean onlyInStock, String sort, int page, int size) {
         Sort order = switch (sort == null ? "newest" : sort) {
@@ -84,11 +87,8 @@ public class ProductService {
             case "price_desc" -> Sort.by(Sort.Direction.DESC, "price");
             default -> Sort.by(Sort.Direction.DESC, "createdAt");
         };
-        // PostgreSQL cannot infer the type of a null parameter inside lower(...).
-        // An empty string preserves the "no search filter" behavior without sending null.
-        String searchTerm = name == null || name.isBlank() ? "" : name.trim();
-        return productRepository.findCardsWithFilters(
-                searchTerm, categoryId, brandId,
+        return catalogQueryRepository.findCards(
+                name, categoryId, brandId,
                 minPrice, maxPrice, onlyInStock, PageRequest.of(Math.max(page, 0), size, order));
     }
 

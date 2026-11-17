@@ -227,18 +227,14 @@
         </div>
     </div>
 
-    <div th:if="${totalPages > 1}" class="pagination">
+    <div th:if="${currentPage > 0 || hasNextPage}" class="pagination">
         <a th:if="${currentPage > 0}"
            th:href="@{/catalog(page=${currentPage - 1}, search=${search}, categoryId=${categoryId}, brandId=${brandId}, minPrice=${minPrice}, maxPrice=${maxPrice}, onlyInStock=${onlyInStock}, sort=${sort})}"
            class="page-btn">← Назад</a>
 
-        <span th:each="i : ${#numbers.sequence(0, totalPages - 1)}">
-                <a th:href="@{/catalog(page=${i}, search=${search}, categoryId=${categoryId}, brandId=${brandId}, minPrice=${minPrice}, maxPrice=${maxPrice}, onlyInStock=${onlyInStock}, sort=${sort})}"
-                   th:text="${i + 1}"
-                   th:class="${i == currentPage} ? 'page-btn active' : 'page-btn'">1</a>
-            </span>
+        <span class="page-btn active" th:text="${currentPage + 1}">1</span>
 
-        <a th:if="${currentPage < totalPages - 1}"
+        <a th:if="${hasNextPage}"
            th:href="@{/catalog(page=${currentPage + 1}, search=${search}, categoryId=${categoryId}, brandId=${brandId}, minPrice=${minPrice}, maxPrice=${maxPrice}, onlyInStock=${onlyInStock}, sort=${sort})}"
            class="page-btn">Вперёд →</a>
     </div>

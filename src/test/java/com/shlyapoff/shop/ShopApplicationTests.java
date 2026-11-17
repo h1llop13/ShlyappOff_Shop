@@ -2,6 +2,10 @@ package com.shlyapoff.shop;
 
 import org.junit.jupiter.api.Test;
 import com.shlyapoff.shop.service.ProductService;
+import com.shlyapoff.shop.model.Product;
+import com.shlyapoff.shop.repository.ProductRepository;
+import org.springframework.transaction.annotation.Transactional;
+import java.math.BigDecimal;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -29,6 +33,34 @@ class ShopApplicationTests {
 
 	@Autowired
 	private ProductService productService;
+
+	@Autowired
+	private ProductRepository productRepository;
+
+	@Test
+	@Transactional
+	void catalogSlicesAndPriceSortPreserveFilters() {
+		for (int index = 1; index <= 14; index++) {
+			Product product = new Product();
+			product.setName("CatalogSliceFixture " + index);
+			product.setPrice(BigDecimal.valueOf(index));
+			product.setStockQuantity(index == 1 ? 0 : 5);
+			productRepository.save(product);
+		}
+		productRepository.flush();
+
+		var first = productService.findWithFilters("CatalogSliceFixture", null, null,
+				BigDecimal.valueOf(2), null, true, "price_asc", 0, 12);
+		var second = productService.findWithFilters("CatalogSliceFixture", null, null,
+				BigDecimal.valueOf(2), null, true, "price_asc", 1, 12);
+
+		org.assertj.core.api.Assertions.assertThat(first.getContent()).hasSize(12);
+		org.assertj.core.api.Assertions.assertThat(first.hasNext()).isTrue();
+		org.assertj.core.api.Assertions.assertThat(first.getContent().getFirst().getPrice())
+				.isEqualByComparingTo("2.00");
+		org.assertj.core.api.Assertions.assertThat(second.getContent()).hasSize(1);
+		org.assertj.core.api.Assertions.assertThat(second.hasNext()).isFalse();
+	}
 
 	@Autowired
 	private MockMvc mockMvc;

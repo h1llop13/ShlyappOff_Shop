@@ -32,3 +32,12 @@ WHERE p.is_active = TRUE
   AND p.brand_id = (SELECT id FROM brands ORDER BY id LIMIT 1)
 ORDER BY p.created_at DESC
 LIMIT 12;
+
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT p.id, p.name, p.price
+FROM products p
+WHERE p.is_active = TRUE
+  AND p.category_id = (SELECT id FROM categories ORDER BY id LIMIT 1)
+  AND p.price >= 100
+ORDER BY p.price ASC, p.id ASC
+LIMIT 13;

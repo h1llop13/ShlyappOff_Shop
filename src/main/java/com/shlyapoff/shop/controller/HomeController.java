@@ -16,6 +16,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Slice;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -84,14 +85,14 @@ public class HomeController {
         }
 
         // Запрашиваем страницу товаров (по 12 штук на страницу)
-        Page<ProductCard> productPage = productService.findWithFilters(search, categoryId, brandId,
+        Slice<ProductCard> productPage = productService.findWithFilters(search, categoryId, brandId,
                 minPrice, maxPrice, onlyInStock, sort, page, 12);
 
         // Кладем в модель сам список товаров для текущей страницы
         model.addAttribute("products", productPage.getContent());
         // Кладем информацию о пагинации
-        model.addAttribute("currentPage", page);
-        model.addAttribute("totalPages", productPage.getTotalPages());
+        model.addAttribute("currentPage", productPage.getNumber());
+        model.addAttribute("hasNextPage", productPage.hasNext());
 
         // Сохраняем параметры фильтрации, чтобы они не пропали при переходе по страницам
         model.addAttribute("search", search);
