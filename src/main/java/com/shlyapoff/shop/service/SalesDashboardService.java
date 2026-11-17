@@ -1,9 +1,9 @@
 package com.shlyapoff.shop.service;
 
-import com.shlyapoff.shop.model.Order;
 import com.shlyapoff.shop.model.OrderStatus;
 import com.shlyapoff.shop.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -11,7 +11,10 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -28,51 +31,46 @@ public class SalesDashboardService {
     public DashboardData getDashboard() {
         LocalDate today = LocalDate.now();
         LocalDate sinceDate = today.minusDays(29);
-        List<Order> completed = orderRepository.findCompletedSinceWithItems(sinceDate.atStartOfDay());
+        LocalDateTime since = sinceDate.atStartOfDay();
+        OrderRepository.SalesTotals totals = orderRepository.sumCompletedSince(OrderStatus.COMPLETED, since);
+        BigDecimal periodRevenue = totals.getRevenue();
+        long periodOrders = totals.getOrders();
+        BigDecimal average = periodOrders == 0 ? BigDecimal.ZERO
+                : periodRevenue.divide(BigDecimal.valueOf(periodOrders), 2, RoundingMode.HALF_UP);
 
-        BigDecimal periodRevenue = completed.stream().map(Order::getTotalAmount)
-                .filter(Objects::nonNull).reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal todayRevenue = completed.stream()
-                .filter(order -> order.getCompletedAt() != null && order.getCompletedAt().toLocalDate().equals(today))
-                .map(Order::getTotalAmount).filter(Objects::nonNull).reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal average = completed.isEmpty() ? BigDecimal.ZERO
-                : periodRevenue.divide(BigDecimal.valueOf(completed.size()), 2, RoundingMode.HALF_UP);
-
-        Map<LocalDate, List<Order>> byDay = new HashMap<>();
-        completed.stream().filter(order -> order.getCompletedAt() != null)
-                .forEach(order -> byDay.computeIfAbsent(order.getCompletedAt().toLocalDate(), key -> new ArrayList<>()).add(order));
+        Map<LocalDate, DailyTotal> byDay = new HashMap<>();
+        for (Object[] row : orderRepository.sumCompletedByDay(OrderStatus.COMPLETED, since)) {
+            LocalDate date = LocalDate.of(((Number) row[0]).intValue(),
+                    ((Number) row[1]).intValue(), ((Number) row[2]).intValue());
+            byDay.put(date, new DailyTotal((BigDecimal) row[3], ((Number) row[4]).longValue()));
+        }
+        BigDecimal todayRevenue = byDay.getOrDefault(today, DailyTotal.EMPTY).revenue();
         BigDecimal maxRevenue = BigDecimal.ONE;
-        for (List<Order> orders : byDay.values()) {
-            BigDecimal revenue = orders.stream().map(Order::getTotalAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
-            if (revenue.compareTo(maxRevenue) > 0) maxRevenue = revenue;
+        for (DailyTotal total : byDay.values()) {
+            if (total.revenue().compareTo(maxRevenue) > 0) maxRevenue = total.revenue();
         }
         List<DailySales> daily = new ArrayList<>();
         for (int i = 13; i >= 0; i--) {
             LocalDate date = today.minusDays(i);
-            List<Order> orders = byDay.getOrDefault(date, List.of());
-            BigDecimal revenue = orders.stream().map(Order::getTotalAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+            DailyTotal total = byDay.getOrDefault(date, DailyTotal.EMPTY);
+            BigDecimal revenue = total.revenue();
             int width = revenue.signum() == 0 ? 2 : revenue.multiply(BigDecimal.valueOf(100))
                     .divide(maxRevenue, 0, RoundingMode.HALF_UP).intValue();
-            daily.add(new DailySales(date, revenue, orders.size(), Math.max(2, width)));
+            daily.add(new DailySales(date, revenue, total.orders(), Math.max(2, width)));
         }
 
-        Map<String, ProductAccumulator> products = new HashMap<>();
-        completed.forEach(order -> order.getItems().forEach(item -> {
-            ProductAccumulator accumulator = products.computeIfAbsent(item.getProductName(), key -> new ProductAccumulator());
-            accumulator.quantity += item.getQuantity();
-            accumulator.revenue = accumulator.revenue.add(item.getPriceAtMoment().multiply(BigDecimal.valueOf(item.getQuantity())));
-        }));
-        List<TopProduct> topProducts = products.entrySet().stream()
-                .map(entry -> new TopProduct(entry.getKey(), entry.getValue().quantity, entry.getValue().revenue))
-                .sorted(Comparator.comparingLong(TopProduct::quantity).reversed()).limit(5).toList();
+        List<TopProduct> topProducts = orderRepository.findTopProductsSince(OrderStatus.COMPLETED, since,
+                        PageRequest.of(0, 5)).stream()
+                .map(row -> new TopProduct((String) row[0], ((Number) row[1]).longValue(),
+                        (BigDecimal) row[2]))
+                .toList();
 
-        return new DashboardData(todayRevenue, periodRevenue, completed.size(), average,
+        return new DashboardData(todayRevenue, periodRevenue, periodOrders, average,
                 orderRepository.countByStatus(OrderStatus.NEW), orderRepository.countByStatus(OrderStatus.PROCESSING),
                 daily, topProducts);
     }
 
-    private static class ProductAccumulator {
-        long quantity;
-        BigDecimal revenue = BigDecimal.ZERO;
+    private record DailyTotal(BigDecimal revenue, long orders) {
+        private static final DailyTotal EMPTY = new DailyTotal(BigDecimal.ZERO, 0);
     }
 }
