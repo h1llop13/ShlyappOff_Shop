@@ -25,6 +25,9 @@ public class Customer {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Version
+    private Long version;
+
     @Column(name = "telegram_user_id", nullable = false, unique = true)
     private Long telegramUserId;
 

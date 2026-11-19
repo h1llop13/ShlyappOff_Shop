@@ -12,10 +12,46 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.servlet.ModelAndView;
 
 import java.net.URI;
+import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.PessimisticLockingFailureException;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 @ControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler({OptimisticLockingFailureException.class, PessimisticLockingFailureException.class})
+    public Object handleConcurrentUpdate(Exception exception, HttpServletRequest request) {
+        return response(exception, request, HttpStatus.CONFLICT,
+                "Данные изменились во время запроса. Обновите страницу и повторите действие.");
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public Object handleDataConflict(Exception exception, HttpServletRequest request) {
+        return response(exception, request, HttpStatus.CONFLICT,
+                "Не удалось сохранить изменение: запись уже существует или используется в других данных.");
+    }
+
+    @ExceptionHandler({HttpMessageNotReadableException.class, MissingServletRequestParameterException.class,
+            MethodArgumentTypeMismatchException.class})
+    public Object handleInvalidRequest(Exception exception, HttpServletRequest request) {
+        return response(exception, request, HttpStatus.BAD_REQUEST, "Проверьте формат и обязательные поля запроса.");
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public Object handleNotFound(Exception exception, HttpServletRequest request) {
+        return response(exception, request, HttpStatus.NOT_FOUND, "Страница не найдена.");
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public Object handleLargeUpload(Exception exception, HttpServletRequest request) {
+        return response(exception, request, HttpStatus.PAYLOAD_TOO_LARGE, "Изображение слишком большое. Максимум — 5 МБ.");
+    }
 
     @ExceptionHandler({IllegalArgumentException.class, IllegalStateException.class, BindException.class,
             MethodArgumentNotValidException.class})
@@ -32,9 +68,9 @@ public class GlobalExceptionHandler {
     }
 
     private Object response(Exception exception, HttpServletRequest request, HttpStatus status, String message) {
-        if (request.getRequestURI().startsWith("/api/")) {
+        if (request.getRequestURI().startsWith("/api/") || "XMLHttpRequest".equals(request.getHeader("X-Requested-With"))) {
             ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, message);
-            problem.setTitle(status == HttpStatus.BAD_REQUEST ? "Некорректный запрос" : "Внутренняя ошибка");
+            problem.setTitle(status.getReasonPhrase());
             problem.setInstance(URI.create(request.getRequestURI()));
             return ResponseEntity.status(status).body(problem);
         }

@@ -158,6 +158,7 @@ public class AdminController {
 
     // Обработка формы редактирования товара
     @PostMapping("/product/edit/{id}")
+    @Transactional
     public String editProduct(
             @PathVariable Long id,
             @ModelAttribute("product") Product product,

@@ -37,26 +37,7 @@ public class DataInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        if (userRepository.count() == 0) {
-            String rawPassword = (adminPassword == null || adminPassword.isBlank())
-                    ? generateRandomPassword()
-                    : adminPassword;
-
-            User admin = new User();
-            admin.setUsername(adminUsername);
-            admin.setPassword(passwordEncoder.encode(rawPassword));
-            admin.setRole("ROLE_ADMIN");
-            userRepository.save(admin);
-
-            System.out.println("=====================================================");
-            System.out.println("Создан администратор: логин '" + adminUsername + "'");
-            if (adminPassword == null || adminPassword.isBlank()) {
-                System.out.println("Сгенерированный пароль (сохраните и смените после входа): " + rawPassword);
-            } else {
-                System.out.println("Пароль взят из переменной окружения ADMIN_PASSWORD.");
-            }
-            System.out.println("=====================================================");
-        }
+        initializeAdmin();
 
         if (categoryRepository.count() == 0) {
             Category cat1 = new Category();
@@ -69,6 +50,8 @@ public class DataInitializer implements CommandLineRunner {
             cat2.setVariantType(VariantType.FLAVOR);
             categoryRepository.save(cat2);
 
+        }
+        if (brandRepository.count() == 0) {
             Brand brand1 = new Brand();
             brand1.setName("HQD");
             brandRepository.save(brand1);
@@ -77,8 +60,53 @@ public class DataInitializer implements CommandLineRunner {
             brand2.setName("ELFBAR");
             brandRepository.save(brand2);
 
-            System.out.println("Тестовые категории и бренды созданы");
+            System.out.println("Начальные бренды созданы");
         }
+    }
+
+    private void initializeAdmin() {
+        boolean configuredPassword = adminPassword != null && !adminPassword.isBlank();
+        var existingAdmin = userRepository.findByUsername(adminUsername);
+
+        if (existingAdmin.isPresent()) {
+            User admin = existingAdmin.get();
+            boolean changed = false;
+            if (configuredPassword && !"ROLE_ADMIN".equals(admin.getRole())) {
+                admin.setRole("ROLE_ADMIN");
+                changed = true;
+            }
+            // An explicitly configured password is the source of truth on every start.
+            // It makes a recovery from a lost local password possible without deleting data.
+            if (configuredPassword && !passwordEncoder.matches(adminPassword, admin.getPassword())) {
+                admin.setPassword(passwordEncoder.encode(adminPassword));
+                changed = true;
+            }
+            if (changed) {
+                userRepository.save(admin);
+                System.out.println("Учётная запись администратора '" + adminUsername + "' обновлена из переменных окружения.");
+            }
+            return;
+        }
+
+        if (userRepository.count() != 0 && !configuredPassword) {
+            return;
+        }
+
+        String rawPassword = configuredPassword ? adminPassword : generateRandomPassword();
+        User admin = new User();
+        admin.setUsername(adminUsername);
+        admin.setPassword(passwordEncoder.encode(rawPassword));
+        admin.setRole("ROLE_ADMIN");
+        userRepository.save(admin);
+
+        System.out.println("=====================================================");
+        System.out.println("Создан администратор: логин '" + adminUsername + "'");
+        if (configuredPassword) {
+            System.out.println("Пароль взят из переменной окружения ADMIN_PASSWORD.");
+        } else {
+            System.out.println("Сгенерированный пароль (сохраните и смените после входа): " + rawPassword);
+        }
+        System.out.println("=====================================================");
     }
 
     private String generateRandomPassword() {

@@ -148,4 +148,69 @@ class ShopApplicationTests {
 				.andExpect(content().string(containsString("\"status\":\"UP\"")));
 	}
 
+    @Test
+    void publicPlaceholderAndSessionProbeDoNotRedirectToLogin() throws Exception {
+        mockMvc.perform(get("/img/placeholder.svg")).andExpect(status().isOk());
+        mockMvc.perform(get("/api/cart/session"))
+                .andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.bound").value(false));
+    }
+
+    @Test
+    void signedTelegramCartSurvivesNewSessionAndSupportsCheckout() throws Exception {
+        Product product = new Product();
+        product.setName("Mini App recovery fixture");
+        product.setPrice(BigDecimal.valueOf(150));
+        product.setStockQuantity(5);
+        productRepository.saveAndFlush(product);
+        var first = new org.springframework.mock.web.MockHttpSession();
+        String initData = signedTelegramData(987654L);
+        var bound = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/cart/bind")
+                .session(first).contentType("application/json").content("{\"initData\":\"" + initData + "\"}"))
+                .andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.changed").value(true))
+                .andReturn();
+        String csrf = new com.fasterxml.jackson.databind.ObjectMapper().readTree(bound.getResponse().getContentAsString())
+                .get("csrfToken").asText();
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/cart/add")
+                .session(first).header("X-Requested-With", "XMLHttpRequest")
+                .param("productId", product.getId().toString()).param("_csrf", csrf))
+                .andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.itemCount").value(1));
+        var reopened = new org.springframework.mock.web.MockHttpSession();
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/cart/bind")
+                .session(reopened).contentType("application/json").content("{\"initData\":\"" + initData + "\"}"))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/cart/session").session(reopened))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.bound").value(true));
+        mockMvc.perform(get("/cart").session(reopened)).andExpect(status().isOk())
+                .andExpect(content().string(containsString("Mini App recovery fixture")));
+        mockMvc.perform(get("/checkout").session(reopened)).andExpect(status().isOk());
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/cart/bind")
+                .session(reopened).contentType("application/json").content("{\"initData\":\"" + initData + "\"}"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.changed").value(false));
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/cart/bind")
+                .session(reopened).contentType("application/json").content("{\"initData\":\"" + signedTelegramData(777L) + "\"}"))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void malformedTelegramDataReturnsUnauthorized() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/cart/bind")
+                .contentType("application/json").content("{\"initData\":\"user=%ZZ&hash=abc\"}"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    private String signedTelegramData(long userId) throws Exception {
+        String date = Long.toString(java.time.Instant.now().getEpochSecond());
+        String user = "{\"id\":" + userId + ",\"first_name\":\"Test\"}";
+        var mac = javax.crypto.Mac.getInstance("HmacSHA256");
+        mac.init(new javax.crypto.spec.SecretKeySpec("WebAppData".getBytes(java.nio.charset.StandardCharsets.UTF_8), "HmacSHA256"));
+        byte[] secret = mac.doFinal("test-token".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        mac.init(new javax.crypto.spec.SecretKeySpec(secret, "HmacSHA256"));
+        String hash = java.util.HexFormat.of().formatHex(mac.doFinal(("auth_date=" + date + "\nuser=" + user)
+                .getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+        return "auth_date=" + date + "&user=" + java.net.URLEncoder.encode(user, java.nio.charset.StandardCharsets.UTF_8) + "&hash=" + hash;
+    }
+
 }

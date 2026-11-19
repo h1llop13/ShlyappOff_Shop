@@ -325,11 +325,8 @@
 <script>
     // === TELEGRAM WEBAPP ===
     window.TelegramLoader.onReady((tg) => {
-        if (window.TelegramShop) {
-            window.TelegramShop.bindPersistentCart().then(result => {
-                if (result.changed) window.location.reload();
-            });
-        }
+        if (!tg.initData) return;
+        window.TelegramShop.refreshCartPage();
         tg.expand();
         tg.ready();
 
@@ -366,8 +363,7 @@
             }
         });
 
-        // Скрываем HTML-кнопку
-        document.getElementById('htmlBottomBar').style.display = 'none';
+        // HTML-кнопка остаётся доступной независимо от нативных кнопок Telegram.
     });
 
     // Подсветка выбранной радио-кнопки

@@ -44,12 +44,20 @@ public class TelegramNotificationService {
         }
     }
 
+    private String escape(String value, int maxCodePoints) {
+        if (value == null) return "";
+        if (value.codePointCount(0, value.length()) > maxCodePoints) {
+            value = value.substring(0, value.offsetByCodePoints(0, maxCodePoints)) + "…";
+        }
+        return value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;");
+    }
+
     private String formatOrderMessage(Order order) {
         StringBuilder sb = new StringBuilder();
         sb.append("🛍 <b>НОВЫЙ ЗАКАЗ #").append(order.getId()).append("</b>\n\n");
-        sb.append("👤 <b>Клиент:</b> ").append(order.getCustomerName()).append("\n");
+        sb.append("👤 <b>Клиент:</b> ").append(escape(order.getCustomerName(), 100)).append("\n");
 
-        if (order.getTelegramUsername() != null && !order.getTelegramUsername().isBlank()) {
+        if (order.getTelegramUsername() != null && order.getTelegramUsername().matches("[A-Za-z0-9_]{1,64}")) {
             sb.append("💬 <b>Telegram:</b> <a href=\"https://t.me/")
                     .append(order.getTelegramUsername()).append("\">@")
                     .append(order.getTelegramUsername()).append("</a>\n");
@@ -58,19 +66,26 @@ public class TelegramNotificationService {
         }
 
         if (order.getPhone() != null && !order.getPhone().isBlank()) {
-            sb.append("📱 <b>Телефон:</b> ").append(order.getPhone()).append("\n");
+            sb.append("📱 <b>Телефон:</b> ").append(escape(order.getPhone(), 20)).append("\n");
         }
 
-        sb.append("📍 <b>Получение:</b> ").append(order.getDeliveryType()).append("\n");
+        sb.append("📍 <b>Получение:</b> ").append(escape(order.getDeliveryType(), 30)).append("\n");
 
         if (order.getComment() != null && !order.getComment().isBlank()) {
-            sb.append("💬 <b>Комментарий:</b> <i>").append(order.getComment()).append("</i>\n");
+            sb.append("💬 <b>Комментарий:</b> <i>").append(escape(order.getComment(), 200)).append("</i>\n");
         }
 
         sb.append("\n📦 <b>Состав:</b>\n");
+        int shownItems = 0;
         for (OrderItem item : order.getItems()) {
+            if (sb.length() > 2800) {
+                sb.append("… Ещё позиций: ").append(order.getItems().size() - shownItems)
+                        .append(". Полный состав — в админке.\n");
+                break;
+            }
+            shownItems++;
             BigDecimal itemTotal = item.getPriceAtMoment().multiply(BigDecimal.valueOf(item.getQuantity()));
-            sb.append("• ").append(item.getProductName())
+            sb.append("• ").append(escape(item.getProductName(), 100))
                     .append(" (").append(item.getQuantity()).append(" шт) — ")
                     .append(itemTotal).append(" ₽\n");
         }

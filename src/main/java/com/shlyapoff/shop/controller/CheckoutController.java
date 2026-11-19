@@ -111,7 +111,7 @@ public class CheckoutController {
                     telegramUser != null ? telegramUser.username() : null, orderDto.isUseBonuses(),
                     orderDto.getPromoCode());
 
-            // TODO: Здесь будет отправка уведомления в Telegram
+            // Notification is already queued transactionally by OrderService.
 
             // Передаем ID заказа прямо в URL
             return "redirect:/success?orderId=" + savedOrder.getId();
@@ -148,6 +148,8 @@ public class CheckoutController {
                 .mapToDouble(item -> item.getProduct().getPrice().doubleValue() * item.getQuantity())
                 .sum();
         model.addAttribute("total", total);
+        model.addAttribute("bonusBalance", telegramUserId == null ? BigDecimal.ZERO
+                : orderService.findBonusBalance(telegramUserId));
         return true;
     }
 }

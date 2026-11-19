@@ -119,4 +119,25 @@ class TelegramNotificationServiceTest {
         assertThat(ShlyapOffBot.isPublicHttpsUrl("https://127.0.0.1/admin/orders")).isFalse();
         assertThat(ShlyapOffBot.isPublicHttpsUrl("not a URL")).isFalse();
     }
+    @Test
+    void escapesCustomerTextAndLimitsLargeOrdersForTelegram() {
+        Order order = buildOrder();
+        order.setCustomerName("<b>Имя & фамилия</b>");
+        order.setComment("<script>".repeat(100));
+        for (int i = 0; i < 100; i++) {
+            OrderItem item = new OrderItem();
+            item.setProductName("<Товар>".repeat(30));
+            item.setQuantity(1);
+            item.setPriceAtMoment(BigDecimal.ONE);
+            order.addItem(item);
+        }
+        when(adminRepository.findAll()).thenReturn(List.of());
+        buildService().notifyAdminAboutNewOrder(order);
+        ArgumentCaptor<String> message = ArgumentCaptor.forClass(String.class);
+        verify(bot).sendMessageWithButton(eq(ADMIN_CHAT_ID), message.capture(), anyString(), anyString());
+        assertThat(message.getValue()).contains("&lt;b&gt;Имя &amp; фамилия&lt;/b&gt;")
+                .doesNotContain("<script>").contains("Ещё позиций:");
+        assertThat(message.getValue().length()).isLessThan(4096);
+    }
+
 }

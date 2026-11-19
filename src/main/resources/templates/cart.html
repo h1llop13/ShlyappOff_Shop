@@ -214,11 +214,8 @@
 <script src="/js/telegram-shop.js"></script>
 <script>
     window.TelegramLoader.onReady((tg) => {
-        if (window.TelegramShop) {
-            window.TelegramShop.bindPersistentCart().then(result => {
-                if (result.changed) window.location.reload();
-            });
-        }
+        if (!tg.initData) return;
+        window.TelegramShop.refreshCartPage();
         tg.expand();
         tg.ready();
         tg.BackButton.show();
@@ -243,8 +240,6 @@
                 }
                 window.location.href = '/checkout';
             });
-
-            document.getElementById('htmlBottomBar').style.display = 'none';
         } else {
             tg.MainButton.hide();
         }

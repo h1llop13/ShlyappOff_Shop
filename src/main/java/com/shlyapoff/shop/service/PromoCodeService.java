@@ -111,6 +111,15 @@ public class PromoCodeService {
         if (promoCode.getMinOrderAmount() != null && promoCode.getMinOrderAmount().signum() < 0) {
             throw new IllegalArgumentException("Минимальная сумма не может быть отрицательной");
         }
+        if (promoCode.getMaxDiscountAmount() != null && promoCode.getMaxDiscountAmount().signum() <= 0) {
+            throw new IllegalArgumentException("Максимальная скидка должна быть больше нуля");
+        }
+        if (promoCode.getUsageLimit() != null && promoCode.getUsageLimit() <= 0) {
+            throw new IllegalArgumentException("Лимит использований должен быть больше нуля");
+        }
+        if (promoCode.getPerCustomerLimit() != null && promoCode.getPerCustomerLimit() <= 0) {
+            throw new IllegalArgumentException("Лимит на покупателя должен быть больше нуля");
+        }
         if (promoCode.getStartsAt() != null && promoCode.getEndsAt() != null
                 && !promoCode.getEndsAt().isAfter(promoCode.getStartsAt())) {
             throw new IllegalArgumentException("Дата окончания должна быть позже даты начала");

@@ -14,6 +14,8 @@
         requestAnimationFrame(() => overlay.classList.add('is-hidden'));
         window.setTimeout(() => overlay.remove(), 250);
     };
-    if (document.readyState === 'complete') hide();
-    else window.addEventListener('load', hide, { once: true });
+    // The server already rendered the catalog. Never wait for images or the remote SDK.
+    if (document.readyState !== 'loading') hide();
+    else document.addEventListener('DOMContentLoaded', hide, { once: true });
+    window.setTimeout(hide, 1500);
 })();

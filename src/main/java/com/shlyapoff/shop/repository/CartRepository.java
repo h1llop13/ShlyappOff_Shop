@@ -31,15 +31,8 @@ public interface CartRepository extends JpaRepository<Cart, Long> {
     Optional<Cart> findBySessionIdWithItems(@Param("sessionId") String sessionId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("""
-    SELECT DISTINCT c FROM Cart c
-    LEFT JOIN FETCH c.items i
-    LEFT JOIN FETCH i.product p
-    LEFT JOIN FETCH i.productVariant
-    LEFT JOIN FETCH p.category
-    WHERE c.sessionId = :sessionId
-""")
-    Optional<Cart> findBySessionIdWithItemsForUpdate(@Param("sessionId") String sessionId);
+    @Query("SELECT c FROM Cart c WHERE c.sessionId = :sessionId")
+    Optional<Cart> findBySessionIdForUpdate(@Param("sessionId") String sessionId);
 
     @Query("""
     SELECT DISTINCT c FROM Cart c
@@ -53,13 +46,6 @@ public interface CartRepository extends JpaRepository<Cart, Long> {
     Optional<Cart> findByTelegramUserIdWithItems(@Param("telegramUserId") Long telegramUserId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("""
-    SELECT DISTINCT c FROM Cart c
-    LEFT JOIN FETCH c.items i
-    LEFT JOIN FETCH i.product p
-    LEFT JOIN FETCH i.productVariant
-    LEFT JOIN FETCH p.category
-    WHERE c.telegramUserId = :telegramUserId
-    """)
-    Optional<Cart> findByTelegramUserIdWithItemsForUpdate(@Param("telegramUserId") Long telegramUserId);
+    @Query("SELECT c FROM Cart c WHERE c.telegramUserId = :telegramUserId")
+    Optional<Cart> findByTelegramUserIdForUpdate(@Param("telegramUserId") Long telegramUserId);
 }

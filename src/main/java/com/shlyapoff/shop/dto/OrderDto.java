@@ -12,10 +12,12 @@ public class OrderDto {
     @Size(min = 2, max = 100, message = "Имя должно быть от 2 до 100 символов")
     private String customerName;
 
+    @NotBlank(message = "Укажите номер телефона")
     @Pattern(regexp = "^\\+?[0-9\\s\\-()]{10,20}$", message = "Некорректный номер телефона")
     private String phone;
 
     @NotBlank(message = "Выберите способ получения")
+    @Pattern(regexp = "Самовывоз|Доставка", message = "Выберите самовывоз или доставку")
     private String deliveryType;
 
     @Size(max = 500, message = "Комментарий слишком длинный")

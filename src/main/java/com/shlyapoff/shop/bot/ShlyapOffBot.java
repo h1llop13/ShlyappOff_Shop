@@ -17,6 +17,9 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMa
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import lombok.extern.slf4j.Slf4j;
 
+import org.telegram.telegrambots.meta.api.methods.menubutton.SetChatMenuButton;
+import org.telegram.telegrambots.meta.api.objects.menubutton.MenuButtonWebApp;
+
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -64,12 +67,25 @@ public class ShlyapOffBot extends TelegramLongPollingBot {
 
     @Override
     public void onUpdateReceived(Update update) {
-        if (update.hasMessage() && update.getMessage().hasText()) {
+        try {
+            handleUpdate(update);
+        } catch (RuntimeException exception) {
+            log.warn("Не удалось обработать Telegram update {} ({})", update == null ? null : update.getUpdateId(),
+                    exception.getClass().getSimpleName());
+            if (update != null && update.hasMessage()) {
+                sendMessage(update.getMessage().getChatId(), "Не удалось выполнить команду. Попробуйте ещё раз.");
+            }
+        }
+    }
+
+    private void handleUpdate(Update update) {
+        if (update != null && update.hasMessage() && update.getMessage().hasText()) {
             String messageText = update.getMessage().getText();
             long chatId = update.getMessage().getChatId();
 
             if (isCommand(messageText, "/start") || isCommand(messageText, "/help")) {
-                sendWelcomeMessage(chatId);
+                if (update.getMessage().isUserMessage()) sendWelcomeMessage(chatId);
+                else sendMessage(chatId, "Откройте личный чат с ботом и отправьте /start.");
             }
             else if (isCommand(messageText, "/support")) {
                 sendSupportMessage(chatId);
@@ -131,17 +147,28 @@ public class ShlyapOffBot extends TelegramLongPollingBot {
             return true;
         } catch (TelegramApiException e) {
             // 3. Заменяем плохое e.printStackTrace() на правильное логирование
-            log.error("Ошибка отправки простого сообщения в чат {}", chatId, e);
+            log.warn("Ошибка отправки сообщения в чат {} ({})", chatId, e.getClass().getSimpleName());
             return false;
         }
+    }
+
+    public boolean configureMenuButton() throws TelegramApiException {
+        if (!isPublicHttpsUrl(baseUrl)) {
+            log.warn("Для Mini App задайте APP_BASE_URL: публичный HTTPS-адрес ngrok.");
+            return true;
+        }
+        SetChatMenuButton request = new SetChatMenuButton();
+        request.setMenuButton(MenuButtonWebApp.builder().text("Магазин")
+                .webAppInfo(new WebAppInfo(baseUrl.trim())).build());
+        return Boolean.TRUE.equals(execute(request));
     }
 
     private void sendWelcomeMessage(long chatId) {
         List<List<InlineKeyboardButton>> rows = new ArrayList<>();
         if (isPublicHttpsUrl(baseUrl)) {
             InlineKeyboardButton storeButton = new InlineKeyboardButton();
-            storeButton.setText("🛍 Открыть магазин");
-            storeButton.setWebApp(new WebAppInfo(baseUrl));
+            storeButton.setText("Открыть магазин");
+            storeButton.setWebApp(new WebAppInfo(baseUrl.trim()));
             rows.add(List.of(storeButton));
         } else {
             log.warn("APP_BASE_URL is not a public HTTPS URL; Mini App button is hidden: {}", baseUrl);
@@ -150,7 +177,7 @@ public class ShlyapOffBot extends TelegramLongPollingBot {
         String feedbackUrl = telegramConfig.getFeedbackUrl();
         if (isPublicHttpsUrl(feedbackUrl)) {
             InlineKeyboardButton supportButton = new InlineKeyboardButton();
-            supportButton.setText("💬 Поддержка");
+            supportButton.setText("Поддержка");
             supportButton.setUrl(feedbackUrl);
             rows.add(List.of(supportButton));
         }
@@ -208,14 +235,14 @@ public class ShlyapOffBot extends TelegramLongPollingBot {
             execute(message);
             return true;
         } catch (TelegramApiException e) {
-            log.error("Ошибка отправки сообщения с кнопкой в чат {}", chatId, e);
+            log.warn("Ошибка отправки сообщения с кнопкой в чат {} ({})", chatId, e.getClass().getSimpleName());
             return false;
         }
     }
 
     public static boolean isPublicHttpsUrl(String url) {
         try {
-            URI uri = new URI(url);
+            URI uri = new URI(url.trim());
             return "https".equalsIgnoreCase(uri.getScheme())
                     && uri.getHost() != null
                     && !"localhost".equalsIgnoreCase(uri.getHost())

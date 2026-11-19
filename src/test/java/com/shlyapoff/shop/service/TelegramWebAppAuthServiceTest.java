@@ -66,6 +66,17 @@ class TelegramWebAppAuthServiceTest {
         assertThat(service.validate(signedInitData(fiveMinutesAhead))).isEmpty();
     }
 
+    @Test
+    void rejectsMalformedEncodingWithoutThrowing() {
+        assertThat(service.validate("user=%ZZ&hash=abc")).isEmpty();
+    }
+
+    @Test
+    void rejectsDuplicateSignedParameters() throws Exception {
+        String signed = signedInitData(Instant.now().getEpochSecond());
+        assertThat(service.validate(signed + "&query_id=AAEAA-test-query")).isEmpty();
+    }
+
     private String signedInitData(Long authDate) throws Exception {
         Map<String, String> params = new LinkedHashMap<>();
         params.put("query_id", "AAEAA-test-query");

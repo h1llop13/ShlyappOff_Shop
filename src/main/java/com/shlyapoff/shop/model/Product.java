@@ -22,6 +22,9 @@ public class Product {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Version
+    private Long version;
+
     @NotBlank
     @Column(nullable = false)
     private String name;
@@ -53,6 +56,8 @@ public class Product {
     private String packageQuantity;
 
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @lombok.ToString.Exclude
+    @lombok.EqualsAndHashCode.Exclude
     private List<ProductVariant> variants = new ArrayList<>();
 
     @Column(name = "is_active", nullable = false)

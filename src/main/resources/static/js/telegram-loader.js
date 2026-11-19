@@ -9,6 +9,10 @@
             : null;
     }
 
+    function invoke(callback, value) {
+        try { callback(value); } catch (error) { console.error("Mini App initialization failed", error); }
+    }
+
     function notifyReady() {
         const webApp = getWebApp();
         if (!webApp) {
@@ -16,8 +20,10 @@
             return;
         }
 
+        unavailable = false;
+        try { webApp.ready(); } catch (_) { /* Browser preview */ }
         while (readyCallbacks.length) {
-            readyCallbacks.shift()(webApp);
+            invoke(readyCallbacks.shift(), webApp);
         }
     }
 
@@ -26,7 +32,7 @@
         unavailable = true;
 
         while (unavailableCallbacks.length) {
-            unavailableCallbacks.shift()();
+            invoke(unavailableCallbacks.shift());
         }
     }
 
@@ -34,14 +40,14 @@
         onReady(callback) {
             const webApp = getWebApp();
             if (webApp) {
-                callback(webApp);
+                invoke(callback, webApp);
                 return;
             }
             readyCallbacks.push(callback);
         },
         onUnavailable(callback) {
             if (unavailable) {
-                callback();
+                invoke(callback);
                 return;
             }
             unavailableCallbacks.push(callback);

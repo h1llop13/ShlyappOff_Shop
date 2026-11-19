@@ -39,23 +39,24 @@ public class TelegramWebAppAuthService {
      * Возвращает данные пользователя, если initData валидна (подпись совпала и она не протухла).
      */
     public Optional<TelegramWebAppUser> validate(String initData) {
-        if (initData == null || initData.isBlank()) {
+        if (initData == null || initData.isBlank() || initData.length() > 16384
+                || botToken == null || botToken.isBlank()) {
             return Optional.empty();
         }
-
-        Map<String, String> params = parseQueryString(initData);
-        String receivedHash = params.remove("hash");
-        if (receivedHash == null) {
-            return Optional.empty();
-        }
-
-        String dataCheckString = params.entrySet().stream()
-                .sorted(Map.Entry.comparingByKey())
-                .map(e -> e.getKey() + "=" + e.getValue())
-                .reduce((a, b) -> a + "\n" + b)
-                .orElse("");
 
         try {
+            Map<String, String> params = parseQueryString(initData);
+            String receivedHash = params.remove("hash");
+            if (receivedHash == null) {
+                return Optional.empty();
+            }
+
+            String dataCheckString = params.entrySet().stream()
+                    .sorted(Map.Entry.comparingByKey())
+                    .map(e -> e.getKey() + "=" + e.getValue())
+                    .reduce((a, b) -> a + "\n" + b)
+                    .orElse("");
+
             byte[] secretKey = hmacSha256(botToken.getBytes(StandardCharsets.UTF_8), "WebAppData".getBytes(StandardCharsets.UTF_8));
             byte[] computedHash = hmacSha256(dataCheckString.getBytes(StandardCharsets.UTF_8), secretKey);
             String computedHashHex = toHex(computedHash);
@@ -82,6 +83,7 @@ public class TelegramWebAppAuthService {
 
             Map<?, ?> userMap = objectMapper.readValue(userJson, Map.class);
             Long id = ((Number) userMap.get("id")).longValue();
+            if (id <= 0) return Optional.empty();
             String username = (String) userMap.get("username");
             String firstName = (String) userMap.get("first_name");
             String lastName = (String) userMap.get("last_name");
@@ -99,7 +101,10 @@ public class TelegramWebAppAuthService {
             int idx = pair.indexOf('=');
             String key = idx >= 0 ? pair.substring(0, idx) : pair;
             String value = idx >= 0 ? pair.substring(idx + 1) : "";
-            result.put(URLDecoder.decode(key, StandardCharsets.UTF_8), URLDecoder.decode(value, StandardCharsets.UTF_8));
+            if (result.putIfAbsent(URLDecoder.decode(key, StandardCharsets.UTF_8),
+                    URLDecoder.decode(value, StandardCharsets.UTF_8)) != null) {
+                throw new IllegalArgumentException("Duplicate initData parameter");
+            }
         }
         return result;
     }

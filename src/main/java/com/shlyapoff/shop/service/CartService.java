@@ -116,9 +116,12 @@ public class CartService {
 
     @Transactional
     public Optional<Cart> getCartForCheckout(String sessionId, Long telegramUserId) {
-        return telegramUserId == null
-                ? cartRepository.findBySessionIdWithItemsForUpdate(sessionId)
-                : cartRepository.findByTelegramUserIdWithItemsForUpdate(telegramUserId);
+        // Lock only the cart row, then load its contents within the same transaction.
+        // PostgreSQL does not allow FOR UPDATE on a DISTINCT / nullable outer-join result.
+        Optional<Cart> locked = telegramUserId == null
+                ? cartRepository.findBySessionIdForUpdate(sessionId)
+                : cartRepository.findByTelegramUserIdForUpdate(telegramUserId);
+        return locked.flatMap(cart -> getCart(sessionId, telegramUserId));
     }
 
     @Transactional
@@ -161,8 +164,15 @@ public class CartService {
                 cartItemRepository.delete(guestItem);
             } else {
                 validateProductAvailability(guestItem.getProduct(), variantId, guestItem.getQuantity());
-                guestItem.setCart(persistent);
-                cartItemRepository.save(guestItem);
+                // Moving the managed child is unsafe with orphanRemoval: deleting the guest
+                // cart would cascade-delete it even after changing its parent. Copy instead.
+                CartItem copy = new CartItem();
+                copy.setCart(persistent);
+                copy.setProduct(guestItem.getProduct());
+                copy.setProductVariant(guestItem.getProductVariant());
+                copy.setVariantKey(guestItem.getVariantKey());
+                copy.setQuantity(guestItem.getQuantity());
+                cartItemRepository.save(copy);
             }
         }
         cartRepository.delete(guest);
@@ -179,7 +189,7 @@ public class CartService {
                 ? cartRepository.findBySessionId(sessionId)
                 : cartRepository.findByTelegramUserId(telegramUserId);
         if (cart.isPresent()) return cart.get();
-        if (!create) throw new RuntimeException("Корзина не найдена");
+        if (!create) throw new IllegalStateException("Корзина не найдена");
         Cart newCart = new Cart();
         newCart.setSessionId(sessionId);
         newCart.setTelegramUserId(telegramUserId);
@@ -188,7 +198,7 @@ public class CartService {
 
     private CartItem findItem(Cart cart, Long productId, Long variantId) {
         return findCartItem(cart.getId(), productId, variantId)
-                .orElseThrow(() -> new RuntimeException("Товар не найден в корзине"));
+                .orElseThrow(() -> new IllegalStateException("Товар не найден в корзине"));
     }
 
     private Optional<CartItem> findCartItem(Long cartId, Long productId, Long variantId) {

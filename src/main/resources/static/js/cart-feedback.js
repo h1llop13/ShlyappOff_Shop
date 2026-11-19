@@ -59,6 +59,8 @@
 
     async function submitCartForm(form) {
         const button = form.querySelector('button[type="submit"]');
+        if (form.dataset.submitting === 'true') return;
+        form.dataset.submitting = 'true';
         const originalLabel = button ? button.textContent : null;
         if (button) {
             button.disabled = true;
@@ -69,14 +71,12 @@
             if (window.TelegramShop) {
                 await window.TelegramShop.bindPersistentCart();
             }
-            const response = await window.fetch(form.action, {
+            const payload = await window.TelegramShop.requestJson(form.action, {
                 method: form.method || 'POST',
-                body: new FormData(form),
-                credentials: 'same-origin',
-                headers: { [REQUEST_HEADER]: 'XMLHttpRequest', Accept: 'application/json' }
+                body: new URLSearchParams(new FormData(form)),
+                headers: { [REQUEST_HEADER]: 'XMLHttpRequest', 'Content-Type': 'application/x-www-form-urlencoded' }
             });
-            const payload = await response.json().catch(() => null);
-            if (!response.ok || !payload || !payload.success) {
+            if (!payload || !payload.success) {
                 throw new Error(payload && payload.message ? payload.message : 'Не удалось добавить товар в корзину');
             }
 
@@ -94,6 +94,7 @@
             });
             triggerHaptic('error');
         } finally {
+            delete form.dataset.submitting;
             if (button) {
                 button.disabled = false;
                 button.textContent = originalLabel;

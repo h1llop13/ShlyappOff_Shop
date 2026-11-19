@@ -169,6 +169,7 @@
 </nav>
 
 <script src="/js/haptic-feedback.js"></script>
+<script src="/js/telegram-shop.js"></script>
 <script>
     const loyaltyCard = document.getElementById('loyaltyCard');
     const ordersList = document.getElementById('ordersList');
@@ -255,22 +256,14 @@
 
     async function loadProfile(initData) {
         try {
-            const res = await fetch('/api/profile/me', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ initData })
+            const data = await window.TelegramShop.requestJson('/api/profile/me', {
+                method: 'POST', body: JSON.stringify({ initData })
             });
-
-            if (!res.ok) {
-                showError('Не удалось загрузить профиль. Откройте магазин через кнопку в Telegram-боте.');
-                return;
-            }
-
-            const data = await res.json();
             renderLoyalty(data.loyalty);
             renderOrders(data.orders);
         } catch (e) {
-            showError('Не удалось загрузить профиль. Попробуйте ещё раз.');
+            showError('Не удалось загрузить профиль.');
+            window.TelegramShop.showError(e);
         }
     }
 
