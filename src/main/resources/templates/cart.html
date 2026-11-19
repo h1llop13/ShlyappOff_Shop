@@ -229,11 +229,9 @@
         const hasItems = document.getElementById('htmlBottomBar') !== null;
 
         if (hasItems) {
-            const totalText = document.querySelector('.total-value').innerText;
-
-            // ИСПРАВЛЕНИЕ: Вместо alert() — переход на /checkout
-            tg.MainButton.setText(`Оформить • ${totalText}`);
+            tg.MainButton.setText('Оформить');
             tg.MainButton.show();
+            document.getElementById('htmlBottomBar').hidden = true;
             tg.MainButton.onClick(() => {
                 if (window.MiniAppHaptics) {
                     window.MiniAppHaptics.impact('medium');

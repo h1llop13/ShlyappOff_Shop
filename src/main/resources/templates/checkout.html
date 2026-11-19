@@ -348,9 +348,9 @@
         }
 
         // Нативная кнопка Telegram
-        const totalText = document.querySelector('.total-row span:last-child').innerText;
-        tg.MainButton.setText(`Подтвердить • ${totalText}`);
+        tg.MainButton.setText('Подтвердить');
         tg.MainButton.show();
+        document.getElementById('htmlBottomBar').hidden = true;
         tg.MainButton.onClick(() => {
             if (window.MiniAppHaptics) {
                 window.MiniAppHaptics.impact('medium');
@@ -362,8 +362,6 @@
                 form.submit();
             }
         });
-
-        // HTML-кнопка остаётся доступной независимо от нативных кнопок Telegram.
     });
 
     // Подсветка выбранной радио-кнопки
